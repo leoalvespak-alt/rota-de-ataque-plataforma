@@ -1,0 +1,13 @@
+{
+  "card": {
+    "bg": { "$value": "{color.neutral.900}", "$type": "color" },
+    "bg-alt": { "$value": "{color.neutral.850}", "$type": "color" },
+    "ink": { "$value": "{color.neutral.850}", "$type": "color" },
+    "surface-1": { "$value": "{color.neutral.800}", "$type": "color" },
+    "surface-2": { "$value": "{color.neutral.750}", "$type": "color" },
+    "border": { "$value": "{color.neutral.700}", "$type": "color" },
+    "text": { "$value": "#F0F0F0", "$type": "color" },
+    "muted": { "$value": "{color.neutral.400}", "$type": "color" },
+    "box": { "$value": "rgba(31, 31, 31, 0.88)", "$type": "color" }
+  }
+}

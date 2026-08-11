@@ -1,0 +1,11 @@
+{
+  "ui": {
+    "bg": { "$value": "#1a1a1a", "$type": "color" },
+    "panel": { "$value": "#242424", "$type": "color" },
+    "panel2": { "$value": "#2e2e2e", "$type": "color" },
+    "border": { "$value": "#3a3a3a", "$type": "color" },
+    "text": { "$value": "#e0e0e0", "$type": "color" },
+    "muted": { "$value": "#888888", "$type": "color" },
+    "accent": { "$value": "{color.red.500}", "$type": "color" }
+  }
+}

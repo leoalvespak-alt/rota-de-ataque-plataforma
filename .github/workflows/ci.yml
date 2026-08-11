@@ -11,8 +11,6 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
@@ -37,8 +35,6 @@ jobs:
       TURBO_CONCURRENCY: 4
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
@@ -80,8 +76,6 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9

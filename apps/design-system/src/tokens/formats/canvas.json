@@ -1,0 +1,40 @@
+{
+  "format": {
+    "square": {
+      "width": { "$value": "1080px", "$type": "dimension" },
+      "height": { "$value": "1080px", "$type": "dimension" },
+      "padding": { "$value": "60px", "$type": "dimension" },
+      "safeArea": { "$value": "40px", "$type": "dimension" }
+    },
+    "portrait": {
+      "width": { "$value": "1080px", "$type": "dimension" },
+      "height": { "$value": "1920px", "$type": "dimension" },
+      "padding": { "$value": "60px", "$type": "dimension" },
+      "safeArea": { "$value": "80px", "$type": "dimension" }
+    },
+    "carousel": {
+      "width": { "$value": "1080px", "$type": "dimension" },
+      "height": { "$value": "1080px", "$type": "dimension" },
+      "padding": { "$value": "60px", "$type": "dimension" },
+      "safeArea": { "$value": "40px", "$type": "dimension" }
+    },
+    "landscape": {
+      "width": { "$value": "1920px", "$type": "dimension" },
+      "height": { "$value": "1080px", "$type": "dimension" },
+      "padding": { "$value": "80px", "$type": "dimension" },
+      "safeArea": { "$value": "60px", "$type": "dimension" }
+    },
+    "slide": {
+      "width": { "$value": "1920px", "$type": "dimension" },
+      "height": { "$value": "1080px", "$type": "dimension" },
+      "padding": { "$value": "80px", "$type": "dimension" },
+      "safeArea": { "$value": "60px", "$type": "dimension" }
+    },
+    "document": {
+      "width": { "$value": "794px", "$type": "dimension" },
+      "height": { "$value": "1123px", "$type": "dimension" },
+      "padding": { "$value": "60px", "$type": "dimension" },
+      "safeArea": { "$value": "40px", "$type": "dimension" }
+    }
+  }
+}
