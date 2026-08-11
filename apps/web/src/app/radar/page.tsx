@@ -1,2 +1,2 @@
-import { OperationalDashboard } from '@/components/OperationalDashboard'
-export default function Page() { return <OperationalDashboard view="radar" title="Radar" subtitle="Posts em ascensão e oportunidades near-real-time" /> }
+import { DashboardPage } from '@/components/DashboardPage'
+export default function Page() { return <DashboardPage view="radar" title="Radar" subtitle="Posts em ascensão e oportunidades quase em tempo real" /> }

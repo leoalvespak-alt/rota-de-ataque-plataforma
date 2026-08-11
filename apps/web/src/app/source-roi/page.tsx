@@ -1,2 +1,2 @@
-import { OperationalDashboard } from '@/components/OperationalDashboard'
-export default function Page() { return <OperationalDashboard view="source-roi" title="Source ROI" subtitle="Qualidade, retenção e conversão por origem" /> }
+import { DashboardPage } from '@/components/DashboardPage'
+export default function Page() { return <DashboardPage view="source-roi" title="ROI por origem" subtitle="Qualidade, retenção e conversão por origem" /> }

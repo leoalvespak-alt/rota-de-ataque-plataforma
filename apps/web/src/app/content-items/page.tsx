@@ -1,12 +1,6 @@
 import { createDatabase } from '@plataforma/db'
-import { ContentItemCard, EmptyState, PageHeader, SavedViewTabs } from '@plataforma/ui-bridge'
-import Link from 'next/link'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ContentItemsClient } from './ContentItemsClient'
 
-export const dynamic = 'force-dynamic'
-export default async function ContentItemsPage() {
-  const { pool } = createDatabase(process.env.DATABASE_URL!)
-  try {
-    const items = (await pool.query<{id:string;hook:string;status:string;channels:string[]}>(`SELECT item.id,item.hook,item.status,COALESCE(array_agg(DISTINCT variant.channel) FILTER(WHERE variant.channel IS NOT NULL),'{}') channels FROM content_items item LEFT JOIN content_variants variant ON variant.content_item_id=item.id GROUP BY item.id ORDER BY item.created_at DESC LIMIT 100`)).rows
-    return <main className="page"><PageHeader title="Content items" subtitle="Briefing canônico, variantes por canal e publicação rastreável"/><SavedViewTabs views={['draft','approved','producing','published','archived']} active="draft"/>{items.length ? <section className="feature-grid">{items.map((item)=><Link href={`/content-items/${item.id}`} key={item.id}><ContentItemCard title={item.hook} status={item.status} channels={item.channels as never}/></Link>)}</section> : <EmptyState message="Nenhum content item ainda. Crie um a partir de uma oportunidade aprovada."/>}</main>
-  } finally { await pool.end() }
-}
+export const dynamic='force-dynamic'
+export default async function ContentItemsPage({searchParams}:{searchParams:Promise<{status?:string}>}){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const requested=(await searchParams).status;const initialStatus=['draft','approved','producing','published','archived','forked'].includes(requested??'')?requested!:'Todos';const items=(await pool.query(`SELECT item.id,item.hook,item.angle,item.status,item.funnel_stage,item.created_at,thesis.title thesis,COALESCE(array_agg(DISTINCT variant.channel) FILTER(WHERE variant.channel IS NOT NULL),'{}') channels,count(DISTINCT variant.id)::int variants,COALESCE(sum(performance.impressions),0)::int impressions,COALESCE(sum(performance.conversions),0)::int conversions FROM content_items item LEFT JOIN theses thesis ON thesis.id=item.thesis_id LEFT JOIN content_variants variant ON variant.content_item_id=item.id LEFT JOIN content_performance performance ON performance.variant_id=variant.id WHERE ($1::uuid IS NULL OR item.campaign_id=$1) GROUP BY item.id,thesis.title ORDER BY item.created_at DESC LIMIT 300`,[selected?.id??null])).rows;return <ContentItemsClient initialItems={items} initialStatus={initialStatus}/>}finally{await pool.end()}}

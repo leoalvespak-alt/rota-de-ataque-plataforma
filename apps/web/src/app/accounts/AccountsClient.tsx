@@ -1,14 +1,15 @@
 'use client'
 
-import { HealthDial, KpiCard, KpiRow, PageHeader, RoleBadge } from '@plataforma/ui-bridge'
+import { HealthDial, IntegrationState, KpiCard, KpiRow, PageHeader, RoleBadge } from '@plataforma/ui-bridge'
 import { useEffect, useState } from 'react'
+import type { IntegrationCapability } from '@/lib/integration-capabilities'
 
 interface Policy { action_type:string; enabled:boolean; daily_limit:number; hourly_limit:number; required_role:'collector'|'actor' }
 interface Account { id:string; username:string; role:'collector'|'actor'; status:string; health_score:string|null; meta_token_expires_at:string|null; policies:Policy[] }
 interface Competitor { id:string; username:string; campaign_id:string; campaign_name:string; weight:string; campaign_status:'active'|'paused'|'archived'; followers_count:number|null; last_synced_via_api_at:string|null }
 interface Campaign { id:string; name:string }
 
-export function AccountsClient({ accounts:initialAccounts, competitors:initialCompetitors, campaigns, notice }:{ accounts:Account[]; competitors:Competitor[]; campaigns:Campaign[]; notice?:string }) {
+export function AccountsClient({ accounts:initialAccounts, competitors:initialCompetitors, campaigns, capabilities, notice }:{ accounts:Account[]; competitors:Competitor[]; campaigns:Campaign[]; capabilities:IntegrationCapability[]; notice?:string }) {
   const [accounts, setAccounts] = useState(initialAccounts)
   const [competitors, setCompetitors] = useState(initialCompetitors)
   const [username, setUsername] = useState('')
@@ -46,6 +47,7 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
   return <div className="page">
     <PageHeader title="Contas Meta" subtitle="Papéis fixos, políticas, saúde e concorrentes monitorados" />
     {notice && <p className="banner" role="status">{notice}</p>}
+    <section><h2>Integrações</h2><div className="integration-grid">{capabilities.map((capability)=><IntegrationState key={capability.id} name={capability.name} status={capability.status} detail={capability.detail}/>)}</div></section>
     <div className="account-grid">{(['collector','actor'] as const).map((role) => {
       const account = accounts.find((item) => item.role === role)
       return <section className="card account-large" key={role}>

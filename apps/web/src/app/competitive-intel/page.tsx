@@ -1,2 +1,2 @@
-import { OperationalDashboard } from '@/components/OperationalDashboard'
-export default function Page() { return <OperationalDashboard view="competitive-intel" title="Competitive Intel" subtitle="Temas, dores, perguntas e hooks por concorrente" /> }
+import { DashboardPage } from '@/components/DashboardPage'
+export default function Page() { return <DashboardPage view="competitive-intel" title="Inteligência competitiva" subtitle="Temas, dores, perguntas e hooks por concorrente" /> }
