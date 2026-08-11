@@ -5,6 +5,7 @@ import { runWorker } from '@plataforma/queue/runtime'
 import { logger } from '@plataforma/shared'
 import { startWorkerHeartbeat } from '@plataforma/shared/worker'
 import { createMetaSyncProcessor, spec, type CompetitorTarget, type MetaSyncRepository } from './index.js'
+import { normalizeInstagramInsights, upsertInstagramPerformance } from './instagram-performance.js'
 
 const databaseUrl = process.env.DATABASE_URL
 const redisUrl = process.env.REDIS_URL
@@ -40,7 +41,14 @@ const repository: MetaSyncRepository = {
     try {
       await client.query('BEGIN')
       await client.query('UPDATE accounts SET username=COALESCE($2::text,username),meta_ig_user_id=COALESCE($3::text,meta_ig_user_id),last_meta_sync_at=now() WHERE id=$1', [accountId, profile.username, profile.id])
-      for (const item of media) await client.query(`INSERT INTO own_media(account_id,ig_media_id,media_type,caption,permalink,posted_at,insights,last_synced_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()) ON CONFLICT(ig_media_id) DO UPDATE SET caption=EXCLUDED.caption,permalink=EXCLUDED.permalink,insights=EXCLUDED.insights,last_synced_at=now()`, [accountId, item.id, item.media_type, item.caption, item.permalink, item.timestamp, JSON.stringify(insights)])
+      const insightsByMedia = new Map(insights.map((entry) => [entry.mediaId, entry.data]))
+      for (const item of media) {
+        if (!item.id) continue
+        const mediaInsights = insightsByMedia.get(item.id) ?? []
+        await client.query(`INSERT INTO own_media(account_id,ig_media_id,media_type,caption,permalink,posted_at,insights,last_synced_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()) ON CONFLICT(ig_media_id) DO UPDATE SET caption=EXCLUDED.caption,permalink=EXCLUDED.permalink,insights=EXCLUDED.insights,last_synced_at=now()`, [accountId, item.id, item.media_type, item.caption, item.permalink, item.timestamp, JSON.stringify(mediaInsights)])
+        // content_performance receives cumulative Meta totals; the helper uses GREATEST so repeated syncs stay idempotent.
+        await upsertInstagramPerformance(client, item.id, normalizeInstagramInsights(mediaInsights, { likes: item.like_count, comments: item.comments_count }))
+      }
       for (const mention of mentions) await client.query(`INSERT INTO own_mentions(account_id,ig_mention_id,from_username,text,mentioned_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(ig_mention_id) DO NOTHING`, [accountId, mention.id, mention.username, mention.caption, mention.timestamp])
       for (const conversation of conversations) await client.query(`INSERT INTO own_dm_threads(account_id,ig_thread_id,participant_username,participant_ig_user_id,last_message_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(ig_thread_id) DO UPDATE SET last_message_at=EXCLUDED.last_message_at`, [accountId, conversation.id, JSON.stringify(conversation.participants ?? null), null, conversation.updated_time ?? null])
       await client.query('COMMIT')

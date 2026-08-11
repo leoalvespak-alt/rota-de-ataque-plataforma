@@ -91,5 +91,6 @@ jobs:
           version: 9.15.9
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @plataforma/db migrate
+      - run: pnpm --filter @plataforma/worker-meta-sync test:integration
       - run: pnpm --filter @plataforma/db migrate:down
       - run: pnpm --filter @plataforma/db migrate

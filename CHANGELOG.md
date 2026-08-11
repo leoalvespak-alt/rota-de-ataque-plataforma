@@ -18,6 +18,9 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 
 ### Changed
 
+- WhatsApp individual mantém resposta escrita por humano, validada por `validateChannelText('whatsapp_dm', ...)`; o copiloto automático foi adiado conscientemente para reduzir risco operacional e o `conversation-agent` permanece exclusivo de Instagram DM.
+- Insights cumulativos de publicações Instagram passam a alimentar `content_performance` sem duplicar métricas entre sincronizações.
+
 - Design System movido integralmente para `apps/design-system` e renomeado para `@plataforma/design-system`.
 - `class-variance-authority`, `clsx` e `tailwind-merge` reclassificados como dependências de runtime conforme decisão D1.
 - `playwright` declarado como dependência de runtime após o gate H.1.2 detectar uso em `src/server/render/playwrightRenderer.ts`.

@@ -13,6 +13,18 @@ export class MetaApiClient {
     media: (id='me', limit=25) => this.request<MetaPage<MetaMedia>>(`${id}/media?fields=id,caption,media_type,permalink,timestamp,comments_count,like_count&limit=${limit}`),
     comments: (mediaId:string) => this.request<MetaPage<Record<string, unknown>>>(`${mediaId}/comments?fields=id,text,username,timestamp,parent_id,replies{id,text,username,timestamp}`),
     insights: (id:string) => this.request<MetaPage<Record<string, unknown>>>(`${id}/insights?metric=reach,impressions,profile_views`),
+    mediaInsights: async (id:string) => {
+      const metrics = ['views','impressions','reach','total_interactions','saved','shares']
+      try { return await this.request<MetaPage<Record<string, unknown>>>(`${id}/insights?metric=${metrics.join(',')}`) }
+      catch (error) {
+        if (!(error instanceof MetaApiError) || error.status !== 400) throw error
+        const responses = await Promise.all(metrics.map(async (metric) => {
+          try { return (await this.request<MetaPage<Record<string, unknown>>>(`${id}/insights?metric=${metric}`)).data }
+          catch (metricError) { if (metricError instanceof MetaApiError && metricError.status === 400) return []; throw metricError }
+        }))
+        return { data: responses.flat() }
+      }
+    },
     mentions: (id='me') => this.request<MetaPage<Record<string, unknown>>>(`${id}/tags?fields=id,caption,media_type,permalink,timestamp,username`),
     dms: (id='me') => this.request<MetaPage<Record<string, unknown>>>(`${id}/conversations?fields=id,participants,updated_time,messages.limit(50){id,from,to,message,created_time}`)
   }

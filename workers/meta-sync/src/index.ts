@@ -7,18 +7,19 @@ export const spec = { queue: 'meta-sync', requiredRole: 'actor', requiresMetaTok
 export const processJob = createWorker(spec)
 
 export interface CompetitorTarget { campaignId: string; competitorId: string; username: string }
+export interface MediaInsights { mediaId: string; data: Record<string, unknown>[] }
 export interface MetaSyncRepository {
   activeCompetitors(filter?: { campaignId?: string; competitorId?: string }): Promise<CompetitorTarget[]>
   updateCompetitor(target: CompetitorTarget, profile: Record<string, unknown>): Promise<void>
   upsertPost(target: CompetitorTarget, media: MetaMedia): Promise<{ id: string; inserted: boolean }>
-  saveOwnSnapshot(accountId: string, profile: Record<string, unknown>, media: MetaMedia[], insights: Record<string, unknown>[], mentions: Record<string, unknown>[], conversations: Record<string, unknown>[]): Promise<void>
+  saveOwnSnapshot(accountId: string, profile: Record<string, unknown>, media: MetaMedia[], insights: MediaInsights[], mentions: Record<string, unknown>[], conversations: Record<string, unknown>[]): Promise<void>
   incrementRateLimit(accountId: string): Promise<void>
 }
 export interface MetaSyncQueue { extraction(postId: string, runId: string, payload: Record<string, unknown>): Promise<void> }
 export interface MetaSyncPayload { kind: 'competitor' | 'own'; accountId: string; collectorAccountId?: string; igUserId: string; campaignId?: string; competitorId?: string; limit?: number; runId?: string }
 export interface MetaSyncApi {
   businessDiscovery(id: string, username: string, limit?: number): Promise<BusinessDiscoveryResult>
-  self: { profile(id?: string): Promise<Record<string, unknown>>; media(id?: string, limit?: number): Promise<MetaPage<MetaMedia>>; insights(id: string): Promise<MetaPage<Record<string, unknown>>>; mentions(id?: string): Promise<MetaPage<Record<string, unknown>>>; dms(id?: string): Promise<MetaPage<Record<string, unknown>>> }
+  self: { profile(id?: string): Promise<Record<string, unknown>>; media(id?: string, limit?: number): Promise<MetaPage<MetaMedia>>; mediaInsights(id: string): Promise<MetaPage<Record<string, unknown>>>; mentions(id?: string): Promise<MetaPage<Record<string, unknown>>>; dms(id?: string): Promise<MetaPage<Record<string, unknown>>> }
 }
 
 const shortcodeFrom = (media: MetaMedia) => {
@@ -53,14 +54,14 @@ export function createMetaSyncProcessor(repository: MetaSyncRepository, queue: M
           }
         }
       } else {
-        const [profile, media, insights, mentions, conversations] = await Promise.all([
+        const [profile, media, mentions, conversations] = await Promise.all([
           api.self.profile(job.payload.igUserId),
           api.self.media(job.payload.igUserId, job.payload.limit ?? 25),
-          api.self.insights(job.payload.igUserId),
           api.self.mentions(job.payload.igUserId),
           api.self.dms(job.payload.igUserId),
         ])
-        await repository.saveOwnSnapshot(job.payload.accountId, profile, media.data, insights.data, mentions.data, conversations.data)
+        const insights = await Promise.all(media.data.filter((item) => item.id).map(async (item) => ({ mediaId: item.id!, data: (await api.self.mediaInsights(item.id!)).data })))
+        await repository.saveOwnSnapshot(job.payload.accountId, profile, media.data, insights, mentions.data, conversations.data)
       }
       return { ...base, event: { kind: 'meta-sync.completed', payload: { kind: job.payload.kind, postsNew } } }
     } catch (error) {

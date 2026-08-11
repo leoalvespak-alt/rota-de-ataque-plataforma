@@ -549,7 +549,7 @@ Email não é newsletter. É **motor de nutrição, reativação e conversão** 
 ## FASE 16 — WhatsApp Individual (Cloud API + opt-in)
 
 ### Objetivo
-WhatsApp abaixo do funil. Número entra **apenas com opt-in explícito** (entidade de banco, não flag). Conversa individual passa pelo `conversation-agent` já existente (Fase 5.4 do plano-mestre), com contexto completo do lead antes de responder.
+WhatsApp abaixo do funil. Número entra **apenas com opt-in explícito** (entidade de banco, não flag). Por decisão conservadora de operação, a resposta é escrita por humano e validada pelas regras do canal antes do envio; o `conversation-agent` permanece exclusivo de Instagram DM.
 
 ### Etapa 16.1 — Schema
 
@@ -618,9 +618,9 @@ WhatsApp abaixo do funil. Número entra **apenas com opt-in explícito** (entida
 - **Passo 16.4.1** — Consome fila de webhook (endpoint `/api/whatsapp/webhook` já enfileira).
 - **Passo 16.4.2** — Roteia por tipo: `messages` (inbound de usuário) → grava `whatsapp_messages`, atualiza `session_window_expires_at = now() + 24h`, emite `whatsapp.message_inbound` na timeline; `statuses` (delivery updates) → atualiza `whatsapp_messages.status`.
 - **Passo 16.4.3** — Se `lead_id` já vinculado, apenas atualiza; senão cria novo `lead` + `identity (channel='whatsapp', external_id=phone_hash)` (P13).
-- **Passo 16.4.4** — Passa mensagem inbound ao `conversation-agent` (Fase 5.4 do plano-mestre) para classificação + geração de resposta candidata; humano aprova via review_inbox.
+- **Passo 16.4.4** — Abre item em `review_inbox` para resposta escrita por humano. Antes do envio, `whatsapp-outbound` aplica `validateChannelText('whatsapp_dm', ...)`; não há resposta candidata automática enquanto o volume operacional não justificar um copiloto dedicado.
 - **Passo 16.4.5** — Palavras-chave sensíveis (reclamação formal, jurídico, ameaça) → sempre review (regra hard já do §17 do plano-mestre).
-- **DoD:** mensagem inbound de teste chega, cria lead se novo, gera resposta em review_inbox.
+- **DoD:** mensagem inbound de teste chega, cria lead se novo, abre revisão humana e bloqueia o envio de texto que viole as regras de `whatsapp_dm`.
 
 ### Etapa 16.5 — `workers/whatsapp-outbound/`
 
