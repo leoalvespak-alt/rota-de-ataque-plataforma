@@ -8,6 +8,7 @@ da Gazeta Concursos continuam os mesmos e saudáveis antes de concluir.
 
 param(
     [switch]$SkipChecks,
+    [switch]$SkipBuild,
     [string]$IdentityFile = 'C:\Users\Lenovo\.ssh\id_rsa',
     [string]$CredentialsFile
 )
@@ -159,10 +160,12 @@ export COMPOSE_PARALLEL_LIMIT=1
 export DOCKER_BUILDKIT=1
 
 dc config --quiet
-printf 'Build remoto iniciado no VPS (web + imagem-base dos workers/migrations).\n'
-dc build --pull web migrate
+if [ "$4" != 1 ]; then
+  printf 'Build remoto iniciado no VPS (web + imagem-base dos workers/migrations).\n'
+  dc build --pull web migrate
+fi
 if [ "$3" = 1 ]; then
-  dc run --rm --no-deps migrate sh -lc 'pnpm check:runtime-deps && pnpm check:hashes'
+  dc run --rm --no-deps -T migrate sh -lc 'pnpm check:runtime-deps && pnpm check:hashes' </dev/null
 fi
 dc up -d postgres redis embeddings
 
@@ -185,7 +188,7 @@ wait_healthy postgres 180
 wait_healthy redis 180
 wait_healthy embeddings 900
 
-dc run --rm migrate
+dc run --rm -T migrate </dev/null
 latest_migration="$(dc exec -T postgres psql -U prospector -d prospector -tAc "SELECT max(version) FROM schema_migrations" </dev/null)"
 test "${latest_migration//[[:space:]]/}" = 0006_humanization_feedback
 
@@ -228,7 +231,8 @@ find "$root/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort 
 printf 'Deploy concluído: duas campanhas, dependências saudáveis e Gazeta preservada.\n'
 '@
     $RunRemoteChecks = if ($SkipChecks) { '0' } else { '1' }
-    Invoke-Remote $RemoteScript @($RunId, $RemoteArchive, $RunRemoteChecks)
+    $ReuseRemoteBuild = if ($SkipBuild) { '1' } else { '0' }
+    Invoke-Remote $RemoteScript @($RunId, $RemoteArchive, $RunRemoteChecks, $ReuseRemoteBuild)
     & ssh @SshOptions $Remote "test -L /opt/prospector-platform/current && curl --fail --silent --output /dev/null http://127.0.0.1:3010/prospector/api/health"
     if ($LASTEXITCODE -ne 0) { Fail 'Verificação independente do cutover falhou.' }
     Step 'Deploy concluído'
