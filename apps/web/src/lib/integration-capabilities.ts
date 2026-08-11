@@ -31,7 +31,7 @@ export async function getIntegrationCapabilities(database?:Queryable):Promise<In
     capability('reddit','Reddit',['REDDIT_CLIENT_ID','REDDIT_CLIENT_SECRET','REDDIT_USER_AGENT']),
     capability('whatsapp','WhatsApp Cloud',['WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_BUSINESS_ACCOUNT_ID','WHATSAPP_ACCESS_TOKEN','WHATSAPP_WEBHOOK_VERIFY_TOKEN','WHATSAPP_APP_SECRET']),
     capability('email','E-mail / Resend',['RESEND_API_KEY','EMAIL_FROM','RESEND_WEBHOOK_SECRET']),
-    {id:'llm',name:'Modelos de IA',status:aiReady||Boolean(process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY)?'ready':'not_configured',missing:[],detail:aiReady?'Modelo padrão e provedor ativos no cofre do Prospector.':process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY?'Modelo configurado pelas variáveis de ambiente.':'Cadastre uma chave e ative o modelo padrão em Modelos de IA.'},
+    {id:'llm',name:'Modelos de IA',status:(aiReady||Boolean(process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY)?'ready':'not_configured') as IntegrationCapability['status'],missing:[],detail:aiReady?'Modelo padrão e provedor ativos no cofre do Prospector.':process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY?'Modelo configurado pelas variáveis de ambiente.':'Cadastre uma chave e ative o modelo padrão em Modelos de IA.'},
     capability('embeddings','Embeddings',['EMBEDDINGS_ENDPOINT']),
     capability('runtime','Banco e filas',['DATABASE_URL','REDIS_URL']),
   ]
