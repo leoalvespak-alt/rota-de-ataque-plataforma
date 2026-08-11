@@ -1,2 +1,5 @@
-import { OperationalDashboard } from '@/components/OperationalDashboard'
-export default function Page(){return <OperationalDashboard view="market-radar" title="Radar de mercado" subtitle="Sinais passivos do Reddit, velocidade e evidências para conteúdo" pane/>}
+import { createDatabase } from '@plataforma/db'
+import { EmptyState, MarketSignalCard, PageHeader } from '@plataforma/ui-bridge'
+
+export const dynamic = 'force-dynamic'
+export default async function MarketRadarPage(){const {pool}=createDatabase(process.env.DATABASE_URL!);try{const signals=(await pool.query<{id:string;label:string;kind:string;velocity_7d:string|null;evidence_refs:unknown[]}>(`SELECT id,label,kind,velocity_7d,evidence_refs FROM market_signals ORDER BY velocity_7d DESC NULLS LAST,last_seen_at DESC LIMIT 100`)).rows;return <main className="page"><PageHeader title="Radar de mercado" subtitle="Sinais passivos do Reddit ordenados por velocidade e evidências."/>{signals.length?<section className="feature-grid">{signals.map((signal)=><MarketSignalCard key={signal.id} label={signal.label} kind={signal.kind} velocity={Number(signal.velocity_7d??0)} evidenceCount={signal.evidence_refs.length}/>)}</section>:<EmptyState message="Ainda não há sinais. Adicione um watch Reddit para iniciar a coleta passiva."/>}</main>}finally{await pool.end()}}

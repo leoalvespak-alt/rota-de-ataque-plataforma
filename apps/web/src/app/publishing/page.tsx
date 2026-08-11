@@ -1,19 +1,4 @@
 import { createDatabase } from '@plataforma/db'
-import { KanbanBoard, PageHeader, RoleBadge } from '@plataforma/ui-bridge'
-
-export const dynamic = 'force-dynamic'
-export default async function PublishingPage() {
-  const { pool } = createDatabase(process.env.DATABASE_URL!)
-  try {
-    const publications = (await pool.query<{ id: string; thesis: string; scheduled_for: Date; status: string; ig_media_id: string | null }>(
-      `SELECT publication.id, opportunity.thesis, publication.scheduled_for, publication.status, publication.ig_media_id
-       FROM scheduled_publications publication JOIN content_opportunities opportunity ON opportunity.id = publication.content_opportunity_id
-       ORDER BY publication.scheduled_for DESC LIMIT 100`,
-    )).rows
-    const statuses = ['draft', 'scheduled', 'publishing', 'published', 'failed']
-    return <div className="page"><PageHeader title="Publicação e agendamento" subtitle="Criativos, calendário editorial e entrega pela Meta Graph API" actions={<button>+ Agendar novo</button>} />
-      <section className="card" aria-label="Próximas publicações">{publications.slice(0, 7).map((publication) => <p key={publication.id}><strong>{publication.thesis}</strong> · {publication.scheduled_for?.toLocaleString('pt-BR') ?? 'Sem horário'}</p>)}</section>
-      <KanbanBoard columns={statuses.map((status) => ({ title: status, items: publications.filter((publication) => publication.status === status).map((publication) => <article className="card" key={publication.id}><strong>{publication.thesis}</strong><p>{publication.scheduled_for?.toLocaleString('pt-BR') ?? 'Sem horário'}</p><RoleBadge role="actor" />{publication.ig_media_id && <small>Meta ID: {publication.ig_media_id}</small>}</article>) }))} />
-    </div>
-  } finally { await pool.end() }
-}
+import { ChannelBadge, KanbanBoard, PageHeader, RoleBadge } from '@plataforma/ui-bridge'
+export const dynamic='force-dynamic'
+export default async function PublishingPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const publications=(await pool.query<{id:string;title:string;scheduled_for:Date;status:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';external_id:string|null}>(`SELECT publication.id,item.hook title,publication.published_at scheduled_for,variant.status,publication.channel,publication.external_id FROM content_publications publication JOIN content_variants variant ON variant.id=publication.variant_id JOIN content_items item ON item.id=variant.content_item_id UNION ALL SELECT scheduled.id,opportunity.thesis,scheduled.scheduled_for,scheduled.status,'instagram',scheduled.ig_media_id FROM scheduled_publications scheduled JOIN content_opportunities opportunity ON opportunity.id=scheduled.content_opportunity_id ORDER BY scheduled_for DESC LIMIT 150`)).rows;const now=new Date(),first=new Date(now.getFullYear(),now.getMonth(),1),start=new Date(first);start.setDate(1-first.getDay());const days=Array.from({length:42},(_,index)=>{const date=new Date(start);date.setDate(start.getDate()+index);return date});const statuses=['draft','ready','approved','scheduled','publishing','published','failed'];return <main className="page"><PageHeader title="Publicação multicanal" subtitle="Calendário editorial, fila de aprovação e entregas por canal"/><section className="card" aria-label="Calendário mensal"><h2>{now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h2><div className="calendar-grid">{days.map(day=><article className="calendar-day" key={day.toISOString()}><strong>{day.getDate()}</strong>{publications.filter(item=>item.scheduled_for&&new Date(item.scheduled_for).toDateString()===day.toDateString()).slice(0,3).map(item=><small key={item.id}><ChannelBadge channel={item.channel}/>{item.title}</small>)}</article>)}</div></section><KanbanBoard columns={statuses.map(status=>({title:status,items:publications.filter(item=>item.status===status).map(item=><article className="card" key={`${status}:${item.id}`}><ChannelBadge channel={item.channel}/><strong>{item.title}</strong><p>{item.scheduled_for?.toLocaleString('pt-BR')??'Sem horário'}</p><RoleBadge role="actor"/>{item.external_id&&<small>ID externo: {item.external_id}</small>}</article>)}))}/></main>}finally{await pool.end()}}

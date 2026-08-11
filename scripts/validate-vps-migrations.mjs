@@ -48,12 +48,14 @@ try {
 
   const migrationsDir = path.join(root, 'packages', 'db', 'migrations')
   const upFiles = readdirSync(migrationsDir).filter((file) => file.endsWith('.up.sql')).sort()
+  const latest = upFiles.at(-1)?.replace('.up.sql', '')
+  if (!latest) throw new Error('Nenhuma migration encontrada')
   for (const file of upFiles) ssh(`docker exec -i ${container} psql -v ON_ERROR_STOP=1 -U platformcheck -d multichannel_check`, readFileSync(path.join(migrationsDir, file), 'utf8'))
-  ssh(`docker exec -i ${container} psql -v ON_ERROR_STOP=1 -U platformcheck -d multichannel_check`, readFileSync(path.join(migrationsDir, '0005_multichannel_runtime.down.sql'), 'utf8'))
-  ssh(`docker exec -i ${container} psql -v ON_ERROR_STOP=1 -U platformcheck -d multichannel_check`, readFileSync(path.join(migrationsDir, '0005_multichannel_runtime.up.sql'), 'utf8'))
+  ssh(`docker exec -i ${container} psql -v ON_ERROR_STOP=1 -U platformcheck -d multichannel_check`, readFileSync(path.join(migrationsDir, `${latest}.down.sql`), 'utf8'))
+  ssh(`docker exec -i ${container} psql -v ON_ERROR_STOP=1 -U platformcheck -d multichannel_check`, readFileSync(path.join(migrationsDir, `${latest}.up.sql`), 'utf8'))
   const invariant = ssh(`docker exec ${container} psql -v ON_ERROR_STOP=1 -U platformcheck -d multichannel_check -tAc "SELECT count(*) FROM campaigns WHERE name IN ('Rota de Ataque','Gazeta Concursos'); SELECT to_regclass('public.contact_policy_decisions') IS NOT NULL;"`)
   if (!/^2\s+.*t$/s.test(invariant)) throw new Error(`Invariantes de migration falharam: ${invariant}`)
-  console.log(`Migration check aprovado: ${upFiles.length} migrations, rollback/reapply da última e Docker Compose ${versions.split(/\r?\n/).at(-1)}`)
+  console.log(`Migration check aprovado: ${upFiles.length} migrations, rollback/reapply da ${latest} e Docker Compose ${versions.split(/\r?\n/).at(-1)}`)
 } finally {
   spawnSync('ssh', [...sshBase, `docker rm -f ${container}`], { encoding: 'utf8', timeout: 30_000 })
   spawnSync('ssh', [...sshBase, `rm -rf ${composeDir}`], { encoding: 'utf8', timeout: 30_000 })

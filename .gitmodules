@@ -1,0 +1,3 @@
+[submodule "apps/design-system"]
+	path = apps/design-system
+	url = ../rota-design-system.git

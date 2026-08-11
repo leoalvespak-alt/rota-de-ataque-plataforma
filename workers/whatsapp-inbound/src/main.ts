@@ -48,7 +48,8 @@ const repository: WhatsAppInboundRepository = {
   },
   async status(event) {
     const status = event.status === 'read' ? 'read' : event.status === 'delivered' ? 'delivered' : event.status === 'sent' ? 'sent' : 'failed'
-    await pool.query(`UPDATE whatsapp_messages SET status=$2,delivered_at=CASE WHEN $2='delivered' THEN $3 ELSE delivered_at END,read_at=CASE WHEN $2='read' THEN $3 ELSE read_at END WHERE external_id=$1`, [event.messageId, status, event.timestamp ?? new Date()])
+    const updated = (await pool.query<{variant_id:string|null}>(`UPDATE whatsapp_messages SET status=$2,delivered_at=CASE WHEN $2='delivered' THEN $3 ELSE delivered_at END,read_at=CASE WHEN $2='read' THEN $3 ELSE read_at END WHERE external_id=$1 RETURNING variant_id`, [event.messageId, status, event.timestamp ?? new Date()])).rows[0]
+    if (updated?.variant_id && (status === 'delivered' || status === 'read')) await pool.query(`INSERT INTO content_performance(variant_id,channel,reach,engagements) VALUES($1,'whatsapp_dm',$2,$3) ON CONFLICT(variant_id) DO UPDATE SET reach=GREATEST(content_performance.reach,EXCLUDED.reach),engagements=GREATEST(content_performance.engagements,EXCLUDED.engagements),computed_at=now()`, [updated.variant_id, status === 'delivered' ? 1 : 0, status === 'read' ? 1 : 0])
   },
 }
 

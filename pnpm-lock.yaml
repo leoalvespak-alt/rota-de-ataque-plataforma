@@ -1072,6 +1072,9 @@ importers:
       '@plataforma/email-provider':
         specifier: workspace:*
         version: link:../../packages/email-provider
+      '@plataforma/humanizer':
+        specifier: workspace:*
+        version: link:../../packages/humanizer
       '@plataforma/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -1596,6 +1599,9 @@ importers:
       '@plataforma/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      ioredis:
+        specifier: 6.0.0
+        version: 6.0.0
     devDependencies:
       tsx:
         specifier: 4.23.5
@@ -1662,6 +1668,9 @@ importers:
       '@plataforma/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@plataforma/humanizer':
+        specifier: workspace:*
+        version: link:../../packages/humanizer
       '@plataforma/queue':
         specifier: workspace:*
         version: link:../../packages/queue
