@@ -17,8 +17,8 @@ $PlatformRoot = Split-Path -Parent $PSScriptRoot
 $WorkspaceRoot = Split-Path -Parent $PlatformRoot
 if (-not $CredentialsFile) { $CredentialsFile = Join-Path $WorkspaceRoot 'CREDENCIAIS_VPS.txt' }
 $RunId = (Get-Date -Format 'yyyyMMddHHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
-$Archive = Join-Path $env:TEMP "prospector-platform-$RunId.tar.gz"
-$RemoteArchive = "/tmp/prospector-platform-$RunId.tar.gz"
+$Archive = Join-Path $env:TEMP "prospector-platform-$RunId.tar"
+$RemoteArchive = "/tmp/prospector-platform-$RunId.tar"
 
 function Fail([string]$Message) { throw $Message }
 function Step([string]$Message) { Write-Host "`n==> $Message" -ForegroundColor Cyan }
@@ -49,26 +49,8 @@ function Invoke-Remote([string]$Script, [string[]]$Arguments) {
 
 try {
     Set-Location $PlatformRoot
-    if (-not $SkipChecks) {
-        Step 'Validando lockfile, dependências, hashes, testes e build web'
-        & corepack pnpm install --frozen-lockfile
-        if ($LASTEXITCODE -ne 0) { Fail 'pnpm install falhou.' }
-        & corepack pnpm check:runtime-deps
-        if ($LASTEXITCODE -ne 0) { Fail 'Gate de dependências falhou.' }
-        & corepack pnpm check:hashes
-        if ($LASTEXITCODE -ne 0) { Fail 'Gate de hashes falhou.' }
-        & corepack pnpm exec turbo run typecheck --concurrency=4
-        if ($LASTEXITCODE -ne 0) { Fail 'Typecheck global falhou.' }
-        & corepack pnpm exec turbo run test '--filter=!@plataforma/design-system' --concurrency=4
-        if ($LASTEXITCODE -ne 0) { Fail 'Testes do workspace falharam.' }
-        & corepack pnpm --filter @plataforma/design-system exec vitest run --maxWorkers=1
-        if ($LASTEXITCODE -ne 0) { Fail 'Testes do Design System falharam.' }
-        & corepack pnpm --filter @plataforma/web build
-        if ($LASTEXITCODE -ne 0) { Fail 'Build web falhou.' }
-    }
-
-    Step 'Empacotando release sem caches ou segredos'
-    & tar -czf $Archive --exclude='node_modules' --exclude='.git' --exclude='.next' --exclude='dist' --exclude='.turbo' --exclude='baseline/2026-08-08' --exclude='baseline/package-lock.json.pre-pnpm.bak' --exclude='.env' -C $PlatformRoot .
+    Step 'Empacotando apenas o código-fonte, sem build local, caches ou segredos'
+    & tar -cf $Archive --exclude='node_modules' --exclude='.git' --exclude='.next' --exclude='dist' --exclude='.turbo' --exclude='*.tsbuildinfo' --exclude='baseline/2026-08-08' --exclude='baseline/package-lock.json.pre-pnpm.bak' --exclude='.env' -C $PlatformRoot .
     if ($LASTEXITCODE -ne 0) { Fail 'Falha ao criar pacote de release.' }
 
     Step 'Enviando release ao VPS'
@@ -84,7 +66,7 @@ root=/opt/prospector-platform
 release="$root/releases/$run_id"
 shared="$root/shared"
 mkdir -p "$release" "$shared" "$root/releases"
-tar -xzf "$archive" -C "$release"
+tar -xf "$archive" -C "$release"
 rm -f "$archive"
 test -f "$release/docker/docker-compose.yml"
 test -f "$release/packages/db/migrations/0001_initial.up.sql"
@@ -168,13 +150,20 @@ ensure_env WORKER_WHATSAPP_GROUP_MANAGER_ENABLED false
 ensure_env WORKER_IDENTITY_RESOLVER_ENABLED false
 ensure_env WORKER_NEXT_BEST_CHANNEL_ENABLED false
 ensure_env WORKER_CONTACT_POLICY_ENGINE_ENABLED false
+ensure_env SOURCE_ROI_AUTOAPPLY false
 grep -q '^PII_HASH_SALT=.' "$shared/.env" || sed -i "s/^PII_HASH_SALT=.*/PII_HASH_SALT=$(openssl rand -hex 32)/" "$shared/.env"
 ln -sfn "$shared/.env" "$release/.env"
 cd "$release"
 dc() { docker compose --env-file .env -p prospector-platform -f docker/docker-compose.yml -f docker/docker-compose.production.yml "$@"; }
+export COMPOSE_PARALLEL_LIMIT=1
+export DOCKER_BUILDKIT=1
 
 dc config --quiet
-dc build web migrate
+printf 'Build remoto iniciado no VPS (web + imagem-base dos workers/migrations).\n'
+dc build --pull web migrate
+if [ "$3" = 1 ]; then
+  dc run --rm --no-deps migrate sh -lc 'pnpm check:runtime-deps && pnpm check:hashes'
+fi
 dc up -d postgres redis embeddings
 
 wait_healthy() {
@@ -235,7 +224,8 @@ ln -sfn "$release" "$root/current"
 find "$root/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | tail -n +4 | cut -d' ' -f2- | xargs -r rm -rf
 printf 'Deploy concluído: duas campanhas, dependências saudáveis e Gazeta preservada.\n'
 '@
-    Invoke-Remote $RemoteScript @($RunId, $RemoteArchive)
+    $RunRemoteChecks = if ($SkipChecks) { '0' } else { '1' }
+    Invoke-Remote $RemoteScript @($RunId, $RemoteArchive, $RunRemoteChecks)
     & ssh @SshOptions $Remote "test -L /opt/prospector-platform/current && curl --fail --silent --output /dev/null http://127.0.0.1:3010/prospector/api/health"
     if ($LASTEXITCODE -ne 0) { Fail 'Verificação independente do cutover falhou.' }
     Step 'Deploy concluído'
