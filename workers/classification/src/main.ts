@@ -1,5 +1,5 @@
-import { createDatabase, createPostgresHeartbeatStore } from '@plataforma/db'
-import { HttpJsonLlmClient, LocalEmbeddingsClient } from '@plataforma/nlp'
+import { createDatabase, createPostgresHeartbeatStore, loadLlmRuntimeConfig } from '@plataforma/db'
+import { ConfigurableLlmClient, LocalEmbeddingsClient } from '@plataforma/nlp'
 import { createQueueRegistry, enqueueOnce } from '@plataforma/queue'
 import { runWorker } from '@plataforma/queue/runtime'
 import { startWorkerHeartbeat } from '@plataforma/shared/worker'
@@ -10,17 +10,14 @@ const databaseUrl = process.env.DATABASE_URL
 const redisUrl = process.env.REDIS_URL
 const embeddingsEndpoint = process.env.EMBEDDINGS_ENDPOINT
 const embeddingsModel = process.env.EMBEDDINGS_MODEL
-const llmEndpoint = process.env.LLM_ENDPOINT
-const llmModel = process.env.LLM_MODEL
-const llmProvider = process.env.LLM_PROVIDER === 'anthropic' ? 'anthropic' : 'openai-compatible'
-if (!databaseUrl || !redisUrl || !embeddingsEndpoint || !embeddingsModel || !llmModel || (llmProvider !== 'anthropic' && !llmEndpoint)) throw new Error('Classification runtime configuration is incomplete')
+if (!databaseUrl || !redisUrl || !embeddingsEndpoint || !embeddingsModel) throw new Error('Classification runtime configuration is incomplete')
 
 const { pool } = createDatabase(databaseUrl)
 const redis = new Redis(redisUrl, { maxRetriesPerRequest: null })
 const registry = createQueueRegistry(redisUrl)
 const embeddings = new LocalEmbeddingsClient(embeddingsEndpoint, embeddingsModel, redis)
 await embeddings.assertDimension()
-const llm = new HttpJsonLlmClient(llmEndpoint, llmModel, process.env.LLM_API_KEY, llmProvider)
+const llm = new ConfigurableLlmClient(() => loadLlmRuntimeConfig(pool))
 
 const repository: ClassificationRepository = {
   async comment(scope, id) {

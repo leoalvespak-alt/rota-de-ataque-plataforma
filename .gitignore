@@ -1,4 +1,5 @@
 .env
+.env.*
 .next/
 .turbo/
 coverage/
@@ -11,4 +12,5 @@ test-results/
 baseline/**/*.bak
 baseline/package-lock.json.pre-pnpm.bak
 !.env.example
+!.env.production.example
 !baseline/**/*.log

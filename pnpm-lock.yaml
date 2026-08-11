@@ -508,6 +508,9 @@ importers:
 
   packages/nlp:
     dependencies:
+      '@plataforma/db':
+        specifier: workspace:*
+        version: link:../db
       '@plataforma/shared':
         specifier: workspace:*
         version: link:../shared

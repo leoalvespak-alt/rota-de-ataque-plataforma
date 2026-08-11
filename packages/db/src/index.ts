@@ -34,6 +34,37 @@ export function decryptToken(value: string, key: Buffer) {
   return Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]).toString('utf8')
 }
 
+export type LlmProviderKind = 'openai-compatible' | 'anthropic' | 'local'
+export interface LlmRuntimeConfig { provider: 'openai-compatible' | 'anthropic'; endpoint?: string; model: string; apiKey?: string; maxOutputTokens: number; temperature: number; source: 'database' | 'environment' }
+
+function environmentLlmConfig(env: NodeJS.ProcessEnv): LlmRuntimeConfig {
+  const provider = env.LLM_PROVIDER === 'anthropic' ? 'anthropic' : 'openai-compatible'
+  const model = env.LLM_MODEL?.trim()
+  const endpoint = env.LLM_ENDPOINT?.trim()
+  if (!model || (provider === 'openai-compatible' && !endpoint)) throw new Error('Nenhum modelo de IA ativo foi configurado')
+  return { provider, endpoint, model, apiKey: env.LLM_API_KEY?.trim() || undefined, maxOutputTokens: 512, temperature: 0, source: 'environment' }
+}
+
+export async function loadLlmRuntimeConfig(pool: Pool, env: NodeJS.ProcessEnv = process.env): Promise<LlmRuntimeConfig> {
+  try {
+    const result = await pool.query<{kind:LlmProviderKind;base_url:string;api_key_encrypted:string|null;model_id:string;max_output_tokens:number;temperature:string}>(`SELECT provider.kind,provider.base_url,provider.api_key_encrypted,model.model_id,model.max_output_tokens,model.temperature
+      FROM ai_models model JOIN ai_providers provider ON provider.id=model.provider_id
+      WHERE model.is_default AND model.enabled AND provider.enabled LIMIT 1`)
+    const selected = result.rows[0]
+    if (!selected) return environmentLlmConfig(env)
+    let apiKey: string | undefined
+    if (selected.api_key_encrypted) {
+      const encryptionKey = env.TOKEN_ENCRYPTION_KEY
+      if (!encryptionKey) throw new Error('TOKEN_ENCRYPTION_KEY é obrigatória para usar a chave de IA salva')
+      apiKey = decryptToken(selected.api_key_encrypted, Buffer.from(encryptionKey, 'base64'))
+    }
+    return { provider: selected.kind === 'anthropic' ? 'anthropic' : 'openai-compatible', endpoint: selected.base_url, model: selected.model_id, apiKey, maxOutputTokens: selected.max_output_tokens, temperature: Number(selected.temperature), source: 'database' }
+  } catch (error) {
+    if ((error as {code?:string}).code === '42P01') return environmentLlmConfig(env)
+    throw error
+  }
+}
+
 export async function transitionProspect(client: { query: (sql: string, values: unknown[]) => Promise<unknown> }, leadId: string, campaignId: string, from: string, to: string, stage: string) {
   await client.query('BEGIN', [])
   try {
