@@ -1,0 +1,1 @@
+import{OperationalDashboard}from'@/components/OperationalDashboard';export default function Page(){return <OperationalDashboard view="contact-policies" title="Contact Policies" subtitle="Cadência global e elegibilidade por canal e campanha"/>}

@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+set -eu
+corepack pnpm --filter @plataforma/design-system test -- --run --maxWorkers=1

@@ -1,0 +1,1 @@
+import{OperationalDashboard}from'@/components/OperationalDashboard';export default function Page(){return <OperationalDashboard view="identities" title="Identidades e merges" subtitle="Candidatos de identidade com evidência, decisão humana e rollback de 30 dias" pane/>}

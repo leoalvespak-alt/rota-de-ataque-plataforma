@@ -1,0 +1,37 @@
+{
+  "name": "plataforma-rota-de-ataque",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "check:runtime-deps": "node scripts/check-runtime-deps.mjs",
+    "check:hashes": "node scripts/verify-baseline-hashes.mjs"
+  },
+  "devDependencies": {
+    "@plataforma/db": "workspace:*",
+    "@plataforma/meta-api": "workspace:*",
+    "tsx": "4.23.5",
+    "turbo": "2.5.6",
+    "typescript": "6.0.2",
+    "vitest": "4.1.10"
+  },
+  "pnpm": {
+    "overrides": {
+      "storybook@^10.5.5": "10.5.5"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "storybook": "10.5.5"
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+import{OperationalDashboard}from'@/components/OperationalDashboard';export default function Page(){return <OperationalDashboard view="email-flows" title="Fluxos de e-mail" subtitle="Nutrição orientada por eventos, double opt-in e supressões" pane/>}

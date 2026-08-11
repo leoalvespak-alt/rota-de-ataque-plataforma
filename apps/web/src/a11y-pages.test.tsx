@@ -1,0 +1,34 @@
+// @vitest-environment node
+import { renderToStaticMarkup } from 'react-dom/server'
+import { createElement } from 'react'
+import { JSDOM } from 'jsdom'
+import { describe, expect, it } from 'vitest'
+import { LeadsClient } from './app/leads/LeadsClient'
+import { ReviewInboxClient } from './app/review-inbox/ReviewInboxClient'
+import { AccountsClient } from './app/accounts/AccountsClient'
+import { SystemHealthClient } from './app/system-health/SystemHealthClient'
+import { EngagementClient } from './app/engagement-queue/EngagementClient'
+import { NotificationsClient } from './app/notifications/NotificationsClient'
+
+const pages = [
+  createElement(LeadsClient, { initialRows: [] }),
+  createElement(ReviewInboxClient, { initialItems: [], decidedToday: 0 }),
+  createElement(AccountsClient, { accounts: [], competitors: [], campaigns: [] }),
+  createElement(SystemHealthClient, { heartbeats: [], alerts: [], healthScore: 100 }),
+  createElement(EngagementClient, { actions: [], policies: [] }),
+  createElement(NotificationsClient, { triggers: [], alerts: [], deliveries: [] }),
+]
+
+describe('critical pages accessibility', () => {
+  it('has no serious axe violations on all six critical pages', async () => {
+    const dom = new JSDOM('<!doctype html><html lang="pt-BR"><head><title>Plataforma</title></head><body></body></html>')
+    Object.assign(globalThis, { window: dom.window, document: dom.window.document, Node: dom.window.Node, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement })
+    const axe = (await import('axe-core')).default
+    for (const [at, page] of pages.entries()) {
+      dom.window.document.body.innerHTML = `<main>${renderToStaticMarkup(page)}</main>`
+      const result = await axe.run(dom.window.document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa'] }, rules: { 'color-contrast': { enabled: false } } })
+      expect(result.violations.filter((item) => ['critical', 'serious'].includes(item.impact ?? '')), `page ${at + 1}`).toEqual([])
+    }
+    dom.window.close()
+  }, 30_000)
+})

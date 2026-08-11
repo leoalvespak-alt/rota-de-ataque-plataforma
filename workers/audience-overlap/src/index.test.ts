@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';import{spec,processJob}from'./index.js';describe('audience-overlap',()=>it('declares and enforces its worker contract',async()=>{expect(spec.queue).toBe('audience-overlap');expect(typeof processJob).toBe('function')}));

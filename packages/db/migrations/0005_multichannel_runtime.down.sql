@@ -1,0 +1,13 @@
+BEGIN;
+DELETE FROM contact_policies WHERE campaign_id IS NULL AND channel IS NULL AND rules @> '{"inbound_resets_window":true,"whatsapp_group_exempt":true}'::jsonb;
+DROP INDEX IF EXISTS identity_candidates_pending_idx;
+ALTER TABLE identity_candidates DROP COLUMN IF EXISTS created_at;
+DROP INDEX IF EXISTS identities_lead_channel_idx;
+ALTER TABLE timeline_events DROP CONSTRAINT IF EXISTS timeline_events_type_check;
+DROP TABLE IF EXISTS contact_policy_decisions;
+DROP INDEX IF EXISTS reddit_watches_due_idx;
+ALTER TABLE reddit_evidence DROP COLUMN IF EXISTS classified_at;
+DROP TABLE IF EXISTS email_confirmation_tokens;
+DROP INDEX IF EXISTS email_events_provider_external_idx;
+ALTER TABLE email_events DROP COLUMN IF EXISTS provider, DROP COLUMN IF EXISTS external_event_id;
+COMMIT;

@@ -1,0 +1,10 @@
+{
+  "name": "@plataforma/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run", "lint": "tsc -p tsconfig.json --noEmit", "migrate": "tsx src/migrate.ts up", "migrate:down": "tsx src/migrate.ts down" },
+  "dependencies": { "@plataforma/shared": "workspace:*", "drizzle-orm": "0.45.2", "pg": "8.22.0" },
+  "devDependencies": { "@types/node": "24.13.3", "@types/pg": "8.20.3", "tsx": "4.23.5", "typescript": "6.0.2", "vitest": "4.1.10" }
+}

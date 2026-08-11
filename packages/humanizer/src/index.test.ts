@@ -1,0 +1,2 @@
+import { describe,expect,it } from 'vitest';import { humanize } from './index.js';
+describe('humanizer',()=>it('regenerates high similarity',async()=>{let calls=0;const result=await humanize({purpose:'reply',basePrompt:'x',brandVoiceVersion:'v1',context:{},recent:[{id:'1',text:'a',embedding:[1,0],purpose:'reply',createdAt:new Date()}],generate:async()=>{calls++;return{text:String(calls),embedding:calls===1?[1,0]:[0,1]}}});expect(calls).toBe(2);expect(result.repeated).toBe('1')}))

@@ -1,0 +1,108 @@
+name: plataforma-ci
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  design-system-no-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: plataforma/.nvmrc
+          cache: pnpm
+          cache-dependency-path: plataforma/pnpm-lock.yaml
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - run: pnpm install --frozen-lockfile
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/design-system exec playwright install --with-deps chromium
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/design-system exec vitest run --maxWorkers=1
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/design-system exec playwright test --reporter=json --forbid-only > e2e.json
+        working-directory: plataforma
+      - run: node scripts/fail-on-skipped.mjs e2e.json
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/design-system build
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/design-system lint
+        working-directory: plataforma
+      - run: pnpm check:hashes
+        working-directory: plataforma
+
+  workspace-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TURBO_CONCURRENCY: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: plataforma/.nvmrc
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - run: pnpm install --frozen-lockfile
+        working-directory: plataforma
+      - run: pnpm check:runtime-deps
+        working-directory: plataforma
+      - run: pnpm lint
+        working-directory: plataforma
+      - run: pnpm typecheck
+        working-directory: plataforma
+      - run: pnpm exec turbo run test --filter=!@plataforma/design-system
+        working-directory: plataforma
+      - run: pnpm build
+        working-directory: plataforma
+
+  database-migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: plataforma
+          POSTGRES_PASSWORD: plataforma
+          POSTGRES_DB: plataforma_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U plataforma -d plataforma_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://plataforma:plataforma@localhost:5432/plataforma_ci
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: plataforma/.nvmrc
+          cache: pnpm
+          cache-dependency-path: plataforma/pnpm-lock.yaml
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - run: pnpm install --frozen-lockfile
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/db migrate
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/db migrate:down
+        working-directory: plataforma
+      - run: pnpm --filter @plataforma/db migrate
+        working-directory: plataforma

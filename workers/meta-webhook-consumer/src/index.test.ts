@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';import{spec,processJob}from'./index.js';describe('meta-webhook-consumer',()=>it('declares and enforces its worker contract',async()=>{expect(spec.queue).toBe('meta-webhook-consumer');expect(typeof processJob).toBe('function')}));

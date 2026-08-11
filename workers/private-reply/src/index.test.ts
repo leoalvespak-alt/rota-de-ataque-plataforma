@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';import{spec,processJob}from'./index.js';describe('private-reply',()=>it('declares and enforces its worker contract',async()=>{expect(spec.queue).toBe('private-reply');expect(typeof processJob).toBe('function')}));

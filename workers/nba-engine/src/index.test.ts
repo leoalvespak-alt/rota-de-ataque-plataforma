@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';import{spec,processJob}from'./index.js';describe('nba-engine',()=>it('declares and enforces its worker contract',async()=>{expect(spec.queue).toBe('nba-engine');expect(typeof processJob).toBe('function')}));

@@ -1,0 +1,1 @@
+'use client';import{ErrorState}from'@plataforma/ui-bridge';export default function Error({error,reset}:{error:Error&{digest?:string};reset:()=>void}){return <div className="page"><ErrorState traceId={error.digest??'trace_indisponível'} runbook="/docs/runbooks/web.md" onRetry={reset}/></div>}

@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';import{otpFor,verifyOtp}from'./otp';describe('OTP',()=>it('accepts current code and rejects another',()=>{const at=1_800_000;const code=otpFor('a@b.com','secret',at);expect(verifyOtp('a@b.com',code,'secret',at)).toBe(true);expect(verifyOtp('a@b.com','000000','secret',at)).toBe(false)}))

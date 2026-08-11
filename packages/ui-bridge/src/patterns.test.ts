@@ -1,0 +1,1 @@
+import {describe,expect,it}from'vitest';import{semanticTokens}from'./index.js';describe('ui bridge',()=>it('exports semantic references without literal feature colors',()=>expect(semanticTokens.accentPrimary).toBe('var(--accent-primary)')))

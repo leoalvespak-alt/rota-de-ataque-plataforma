@@ -1,0 +1,6 @@
+Command: npm run test:e2e -- --workers=1
+Exit code: 1 (pre-existing baseline failure)
+Tests: 0 passed, 2 failed, 0 skipped
+Failure 1: tests/e2e/editor.spec.ts:5 expected header text 'Rota de Ataque', element not found.
+Failure 2: tests/e2e/editor.spec.ts:16 expected aside text 'Formato', element not found.
+No Design System files had been changed when this baseline was recorded.

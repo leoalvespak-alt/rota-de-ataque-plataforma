@@ -1,0 +1,13 @@
+.env
+.next/
+.turbo/
+coverage/
+node_modules/
+dist/
+playwright-report/
+test-results/
+*.log
+baseline/**/*.bak
+baseline/package-lock.json.pre-pnpm.bak
+!.env.example
+!baseline/**/*.log

@@ -1,0 +1,28 @@
+services:
+  postgres:
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5434:5432"
+  redis:
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6381:6379"
+  embeddings:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.25"
+          memory: 2G
+  web:
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3010:3000"
+  caddy:
+    profiles: ["edge"]
+  cron:
+    profiles: ["backups"]
+  prometheus:
+    profiles: ["observability"]
+  grafana:
+    profiles: ["observability"]
