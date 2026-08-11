@@ -51,7 +51,7 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
     <div className="account-grid">{(['collector','actor'] as const).map((role) => {
       const account = accounts.find((item) => item.role === role)
       return <section className="card account-large" key={role}>
-        {account && ['CHECKPOINT','STOPPED'].includes(account.status) && <div className="danger-banner">Conta interrompida · <a href="/docs/runbooks/accounts">Ver runbook</a></div>}
+        {account && ['CHECKPOINT','STOPPED'].includes(account.status) && <div className="danger-banner">Conta interrompida · <a href={appPath('/docs/runbooks/accounts')}>Ver runbook</a></div>}
         <header><RoleBadge role={role}/><HealthDial value={Math.round(Number(account?.health_score ?? 0))} state={account?.status ?? 'AUTH_REQUIRED'}/></header>
         <h2>{account?.username ? `@${account.username}` : 'Não vinculada'}</h2>
         <KpiRow><KpiCard label="Status" value={account?.status ?? 'AUTH_REQUIRED'}/><KpiCard label="Token" value={account?.meta_token_expires_at ? new Date(account.meta_token_expires_at).toLocaleDateString('pt-BR') : 'ausente'}/></KpiRow>
