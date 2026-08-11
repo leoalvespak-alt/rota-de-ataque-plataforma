@@ -51,7 +51,7 @@ function Invoke-Remote([string]$Script, [string[]]$Arguments) {
 try {
     Set-Location $PlatformRoot
     Step 'Empacotando apenas o código-fonte, sem build local, caches ou segredos'
-    & tar -cf $Archive --exclude='node_modules' --exclude='.git' --exclude='.next' --exclude='dist' --exclude='.turbo' --exclude='*.tsbuildinfo' --exclude='baseline/2026-08-08' --exclude='baseline/package-lock.json.pre-pnpm.bak' --exclude='.env' -C $PlatformRoot .
+    & tar -cf $Archive --exclude='node_modules' --exclude='.git' --exclude='.next' --exclude='dist' --exclude='.turbo' --exclude='*.tsbuildinfo' --exclude='baseline/2026-08-08' --exclude='baseline/package-lock.json.pre-pnpm.bak' --exclude='.env*' -C $PlatformRoot .
     if ($LASTEXITCODE -ne 0) { Fail 'Falha ao criar pacote de release.' }
 
     Step 'Enviando release ao VPS'

@@ -14,7 +14,7 @@ const groups = [
   { label: 'Conteúdo', links: [['/theses', 'Teses'], ['/content-opportunity', 'Oportunidades'], ['/content-items', 'Conteúdos'], ['/creative-bridge', 'Creative Bridge'], ['/publishing', 'Publicação']] },
   { label: 'Canais', links: [['/email-flows', 'Fluxos de e-mail'], ['/communities', 'Grupos WhatsApp'], ['/conversations', 'Conversas']] },
   { label: 'Governança', links: [['/contact-policies', 'Políticas de contato'], ['/engagement-queue', 'Fila de engagement']] },
-  { label: 'Sistema', links: [['/accounts', 'Contas e integrações'], ['/configs', 'Configurações'], ['/source-roi', 'ROI por origem'], ['/notifications', 'Notificações e erros'], ['/system-health', 'Saúde do sistema']] },
+  { label: 'Sistema', links: [['/accounts', 'Contas e integrações'], ['/ai-settings', 'Modelos de IA'], ['/configs', 'Configurações'], ['/source-roi', 'ROI por origem'], ['/notifications', 'Notificações e erros'], ['/system-health', 'Saúde do sistema']] },
 ] as const
 
 function relativePath(pathname: string) {

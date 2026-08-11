@@ -1,6 +1,6 @@
-import { createDatabase } from '@plataforma/db'
+import { createDatabase, loadLlmRuntimeConfig } from '@plataforma/db'
 import { humanize } from '@plataforma/humanizer'
-import { HttpJsonLlmClient, LocalEmbeddingsClient } from '@plataforma/nlp'
+import { ConfigurableLlmClient, LocalEmbeddingsClient } from '@plataforma/nlp'
 import { runWorker } from '@plataforma/queue/runtime'
 import { Redis } from 'ioredis'
 import { createThreadsAdapter, spec, threadsPrompt, type ThreadsAdapterRepository } from './index.js'
@@ -9,15 +9,12 @@ const databaseUrl = process.env.DATABASE_URL
 const redisUrl = process.env.REDIS_URL
 const embeddingEndpoint = process.env.EMBEDDINGS_ENDPOINT
 const embeddingModel = process.env.EMBEDDINGS_MODEL
-const llmModel = process.env.LLM_MODEL
-const llmEndpoint = process.env.LLM_ENDPOINT
-const provider = process.env.LLM_PROVIDER === 'anthropic' ? 'anthropic' : 'openai-compatible'
-if (!databaseUrl || !redisUrl || !embeddingEndpoint || !embeddingModel || !llmModel || (provider !== 'anthropic' && !llmEndpoint)) throw new Error('Threads runtime configuration is incomplete')
+if (!databaseUrl || !redisUrl || !embeddingEndpoint || !embeddingModel) throw new Error('Threads runtime configuration is incomplete')
 const { pool } = createDatabase(databaseUrl)
 const redis = new Redis(redisUrl, { maxRetriesPerRequest: null })
 const embeddings = new LocalEmbeddingsClient(embeddingEndpoint, embeddingModel, redis)
 await embeddings.assertDimension()
-const llm = new HttpJsonLlmClient(llmEndpoint, llmModel, process.env.LLM_API_KEY, provider)
+const llm = new ConfigurableLlmClient(() => loadLlmRuntimeConfig(pool))
 
 const repository: ThreadsAdapterRepository = {
   async get(id) { const result = await pool.query<{ id: string; campaign_id: string; angle: string; hook: string; arguments: unknown; brand_voice_version: string }>('SELECT id,campaign_id,angle,hook,arguments,brand_voice_version FROM content_items WHERE id=$1', [id]); const row = result.rows[0]; return row ? { id: row.id, campaignId: row.campaign_id, angle: row.angle, hook: row.hook, arguments: row.arguments, brandVoiceVersion: row.brand_voice_version } : null },

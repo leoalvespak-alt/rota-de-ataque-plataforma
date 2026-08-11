@@ -1,5 +1,5 @@
-import { createDatabase } from '@plataforma/db'
-import { HttpJsonLlmClient, LocalEmbeddingsClient } from '@plataforma/nlp'
+import { createDatabase, loadLlmRuntimeConfig } from '@plataforma/db'
+import { ConfigurableLlmClient, LocalEmbeddingsClient } from '@plataforma/nlp'
 import { runWorker } from '@plataforma/queue/runtime'
 import { Redis } from 'ioredis'
 import { createCompetitiveIntelProcessor, spec, type CompetitiveRepository } from './index.js'
@@ -8,16 +8,14 @@ const databaseUrl = process.env.DATABASE_URL
 const redisUrl = process.env.REDIS_URL
 const embeddingsEndpoint = process.env.EMBEDDINGS_ENDPOINT
 const embeddingsModel = process.env.EMBEDDINGS_MODEL
-const llmEndpoint = process.env.LLM_ENDPOINT
-const llmModel = process.env.LLM_MODEL
-if (!databaseUrl || !redisUrl || !embeddingsEndpoint || !embeddingsModel || !llmEndpoint || !llmModel) {
+if (!databaseUrl || !redisUrl || !embeddingsEndpoint || !embeddingsModel) {
   throw new Error('Competitive intelligence runtime configuration is incomplete')
 }
 const { pool } = createDatabase(databaseUrl)
 const redis = new Redis(redisUrl, { maxRetriesPerRequest: null })
 const embeddings = new LocalEmbeddingsClient(embeddingsEndpoint, embeddingsModel, redis)
 await embeddings.assertDimension()
-const llm = new HttpJsonLlmClient(llmEndpoint, llmModel, process.env.LLM_API_KEY)
+const llm = new ConfigurableLlmClient(() => loadLlmRuntimeConfig(pool))
 
 const repository: CompetitiveRepository = {
   async documents(payload) {
