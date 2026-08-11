@@ -3,6 +3,7 @@
 import { HealthDial, IntegrationState, KpiCard, KpiRow, PageHeader, RoleBadge } from '@plataforma/ui-bridge'
 import { useEffect, useState } from 'react'
 import type { IntegrationCapability } from '@/lib/integration-capabilities'
+import { appPath } from '@/lib/base-path'
 
 interface Policy { action_type:string; enabled:boolean; daily_limit:number; hourly_limit:number; required_role:'collector'|'actor' }
 interface Account { id:string; username:string; role:'collector'|'actor'; status:string; health_score:string|null; meta_token_expires_at:string|null; policies:Policy[] }
