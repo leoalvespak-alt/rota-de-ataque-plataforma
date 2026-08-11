@@ -1,6 +1,8 @@
 # Plano completo — melhoria de UI/UX do Prospector
 
-Status: **planejado, ainda não executado**  
+Status: **executado e validado em 2026-08-11**
+
+Registro de conclusão: as fases abaixo foram implementadas na PR #2; o inventário executável está em `docs/inventario-ui-ux-prospector.md`. Os checkboxes permanecem como critérios permanentes de regressão e rollout, cobertos pela CI e pelo smoke de produção.
 Escopo: todas as páginas, abas, estados, componentes e integrações do Prospector em `/prospector`  
 Princípio central: interface clean, densa na medida certa, previsível, acessível, sem dados simulados e sem ações decorativas.
 
