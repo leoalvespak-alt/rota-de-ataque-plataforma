@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
 import { JSDOM } from 'jsdom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { LeadsClient } from './app/leads/LeadsClient'
 import { ReviewInboxClient } from './app/review-inbox/ReviewInboxClient'
 import { AccountsClient } from './app/accounts/AccountsClient'
@@ -10,11 +10,13 @@ import { SystemHealthClient } from './app/system-health/SystemHealthClient'
 import { EngagementClient } from './app/engagement-queue/EngagementClient'
 import { NotificationsClient } from './app/notifications/NotificationsClient'
 
+vi.mock('next/navigation',()=>({useRouter:()=>({replace:vi.fn(),push:vi.fn(),refresh:vi.fn()}),usePathname:()=>'/leads',useSearchParams:()=>new URLSearchParams()}))
+
 const pages = [
-  createElement(LeadsClient, { initialRows: [] }),
+  createElement(LeadsClient, { initialRows: [], initialView: 'Todos' }),
   createElement(ReviewInboxClient, { initialItems: [], decidedToday: 0 }),
-  createElement(AccountsClient, { accounts: [], competitors: [], campaigns: [] }),
-  createElement(SystemHealthClient, { heartbeats: [], alerts: [], healthScore: 100 }),
+  createElement(AccountsClient, { accounts: [], competitors: [], campaigns: [], capabilities: [] }),
+createElement(SystemHealthClient, { heartbeats: [], alerts: [], healthScore: 100, canaries: [], capabilities: [], killSwitchEnabled: false }),
   createElement(EngagementClient, { actions: [], policies: [] }),
   createElement(NotificationsClient, { triggers: [], alerts: [], deliveries: [] }),
 ]

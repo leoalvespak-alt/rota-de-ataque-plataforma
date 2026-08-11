@@ -1,2 +1,3 @@
-import { OperationalDashboard } from '@/components/OperationalDashboard'
-export default function Page() { return <OperationalDashboard view="timeline" title="Timeline" subtitle="Histórico unificado de descoberta, ações, reciprocidade e conversão" /> }
+import { DashboardPage } from '@/components/DashboardPage'
+export const dynamic = 'force-dynamic'
+export default function Page() { return <DashboardPage view="timeline" title="Timeline" subtitle="Histórico unificado de descoberta, ações, reciprocidade e conversão" /> }

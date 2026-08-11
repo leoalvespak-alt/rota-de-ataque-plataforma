@@ -1,5 +1,7 @@
 import { createDatabase } from '@plataforma/db'
-import { EmptyState, MarketSignalCard, PageHeader } from '@plataforma/ui-bridge'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { getIntegrationCapabilities } from '@/lib/integration-capabilities'
+import { MarketRadarClient } from './MarketRadarClient'
 
-export const dynamic = 'force-dynamic'
-export default async function MarketRadarPage(){const {pool}=createDatabase(process.env.DATABASE_URL!);try{const signals=(await pool.query<{id:string;label:string;kind:string;velocity_7d:string|null;evidence_refs:unknown[]}>(`SELECT id,label,kind,velocity_7d,evidence_refs FROM market_signals ORDER BY velocity_7d DESC NULLS LAST,last_seen_at DESC LIMIT 100`)).rows;return <main className="page"><PageHeader title="Radar de mercado" subtitle="Sinais passivos do Reddit ordenados por velocidade e evidências."/>{signals.length?<section className="feature-grid">{signals.map((signal)=><MarketSignalCard key={signal.id} label={signal.label} kind={signal.kind} velocity={Number(signal.velocity_7d??0)} evidenceCount={signal.evidence_refs.length}/>)}</section>:<EmptyState message="Ainda não há sinais. Adicione um watch Reddit para iniciar a coleta passiva."/>}</main>}finally{await pool.end()}}
+export const dynamic='force-dynamic'
+export default async function MarketRadarPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const[signals,watches,capabilities]=await Promise.all([pool.query(`SELECT id,label,kind,velocity_7d,velocity_30d,volume_current,status,last_seen_at,evidence_refs FROM market_signals WHERE ($1::uuid IS NULL OR campaign_id=$1) ORDER BY velocity_7d DESC NULLS LAST,last_seen_at DESC LIMIT 200`,[selected?.id??null]),pool.query(`SELECT id,kind,value,active,last_run_at,next_run_at FROM reddit_watches WHERE ($1::uuid IS NULL OR campaign_id=$1) ORDER BY active DESC,next_run_at NULLS FIRST`,[selected?.id??null]),getIntegrationCapabilities(pool)]);return <MarketRadarClient initialSignals={signals.rows} initialWatches={watches.rows} redditStatus={capabilities.find((item)=>item.id==='reddit')??null}/>}finally{await pool.end()}}

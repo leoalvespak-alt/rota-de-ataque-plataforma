@@ -1,15 +1,17 @@
 import { createDatabase } from '@plataforma/db'
 import { ChannelTimeline, EmptyState, PageHeader, ThreePaneLayout, VariantPreview } from '@plataforma/ui-bridge'
 import { ContentItemActions } from './ContentItemActions'
+import { getCampaignContext } from '@/lib/campaign-context'
 
 export const dynamic = 'force-dynamic'
 export default async function ContentItemDetail({params}:{params:Promise<{id:string}>}) {
   const { id } = await params
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {
-    const item = (await pool.query<{id:string;hook:string;angle:string;status:string;brand_voice_version:string}>(`SELECT id,hook,angle,status,brand_voice_version FROM content_items WHERE id=$1`, [id])).rows[0]
+    const { selected } = await getCampaignContext(pool)
+    const item = (await pool.query<{id:string;hook:string;angle:string;status:string;brand_voice_version:string}>(`SELECT id,hook,angle,status,brand_voice_version FROM content_items WHERE id=$1 AND ($2::uuid IS NULL OR campaign_id=$2)`, [id,selected?.id??null])).rows[0]
     if (!item) return <main className="page"><EmptyState message="Content item não encontrado."/></main>
-    const variants = (await pool.query<{id:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';status:string;payload:Record<string,unknown>}>(`SELECT id,channel,status,payload FROM content_variants WHERE content_item_id=$1 ORDER BY channel`, [id])).rows
+    const variants = (await pool.query<{id:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';status:string;payload:Record<string,unknown>}>(`SELECT variant.id,variant.channel,variant.status,variant.payload,COALESCE(performance.impressions,0) impressions,COALESCE(performance.engagements,0) engagements,COALESCE(performance.conversions,0) conversions FROM content_variants variant LEFT JOIN content_performance performance ON performance.variant_id=variant.id WHERE variant.content_item_id=$1 ORDER BY variant.channel`, [id])).rows
     const events = (await pool.query<{id:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';event_type:string;at:Date}>(`SELECT id::text,channel,event_type,at FROM timeline_events WHERE content_item_id=$1 ORDER BY at DESC LIMIT 30`, [id])).rows
     return <main className="page">
       <PageHeader title={item.hook} subtitle={`${item.angle} · voz ${item.brand_voice_version}`}/>

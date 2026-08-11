@@ -1,11 +1,6 @@
 import { createDatabase } from '@plataforma/db'
-import { ContentItemCard, EmptyState, PageHeader } from '@plataforma/ui-bridge'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ThesesClient } from './ThesesClient'
 
-export const dynamic = 'force-dynamic'
-export default async function ThesesPage() {
-  const { pool } = createDatabase(process.env.DATABASE_URL!)
-  try {
-    const theses = (await pool.query<{id:string;title:string;description:string;active:boolean;count:string}>(`SELECT thesis.id,thesis.title,thesis.description,thesis.active,count(item.id)::text count FROM theses thesis LEFT JOIN content_items item ON item.thesis_id=thesis.id GROUP BY thesis.id ORDER BY thesis.active DESC,thesis.title LIMIT 7`)).rows
-    return <main className="page"><PageHeader title="Teses" subtitle="Até sete teses ativas por campanha, com impacto rastreável em conteúdo."/><section className="feature-grid">{theses.map((thesis)=><ContentItemCard key={thesis.id} title={thesis.title} status={`${thesis.active?'ativa':'inativa'} · ${thesis.count} items`}/>) }{theses.length < 7 && <EmptyState message="Slot livre para nova tese ativa."/>}</section></main>
-  } finally { await pool.end() }
-}
+export const dynamic='force-dynamic'
+export default async function ThesesPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const theses=(await pool.query(`SELECT thesis.id,thesis.title,thesis.description,thesis.tenets,thesis.forbidden_angles,thesis.tone_guidelines,thesis.example_hooks,thesis.version,thesis.active,count(DISTINCT item.id)::int content_count,COALESCE(sum(performance.impressions),0)::int impressions,COALESCE(sum(performance.engagements),0)::int engagements,COALESCE(sum(performance.conversions),0)::int conversions FROM theses thesis LEFT JOIN content_items item ON item.thesis_id=thesis.id LEFT JOIN content_variants variant ON variant.content_item_id=item.id LEFT JOIN content_performance performance ON performance.variant_id=variant.id WHERE ($1::uuid IS NULL OR thesis.campaign_id=$1) GROUP BY thesis.id ORDER BY thesis.active DESC,thesis.title`,[selected?.id??null])).rows;return <ThesesClient initialTheses={theses}/>}finally{await pool.end()}}
