@@ -13,14 +13,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @plataforma/design-system exec playwright install --with-deps chromium
       - run: pnpm --filter @plataforma/design-system exec vitest run --maxWorkers=1
@@ -39,12 +39,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:runtime-deps
       - run: pnpm lint
@@ -82,14 +82,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @plataforma/db migrate
       - run: pnpm --filter @plataforma/worker-meta-sync test:integration
