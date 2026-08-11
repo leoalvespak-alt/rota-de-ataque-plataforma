@@ -152,6 +152,7 @@ ensure_env WORKER_IDENTITY_RESOLVER_ENABLED false
 ensure_env WORKER_NEXT_BEST_CHANNEL_ENABLED false
 ensure_env WORKER_CONTACT_POLICY_ENGINE_ENABLED false
 ensure_env SOURCE_ROI_AUTOAPPLY false
+ensure_env AUTH_BOOTSTRAP_VIEWER true
 grep -q '^PII_HASH_SALT=.' "$shared/.env" || sed -i "s/^PII_HASH_SALT=.*/PII_HASH_SALT=$(openssl rand -hex 32)/" "$shared/.env"
 ln -sfn "$shared/.env" "$release/.env"
 cd "$release"

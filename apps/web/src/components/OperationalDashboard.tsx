@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChannelBadge, DataTable, EmptyState, KpiCard, KpiRow, PageHeader, ThreePaneLayout } from '@plataforma/ui-bridge'
 import { MultichannelActions } from './MultichannelActions'
+import { appPath } from '@/lib/base-path'
 
 type Item = Record<string, unknown>
 const settings:Record<string,{empty:string;fields:string[];primary:string;secondary?:string}>={
@@ -21,7 +22,7 @@ const display=(value:unknown)=>{if(value===null||value===undefined)return '—';
 
 export function OperationalDashboard({view,title,subtitle,pane=false}:{view:string;title:string;subtitle:string;pane?:boolean}){
   const[items,setItems]=useState<Item[]|null>(null),[error,setError]=useState<string|null>(null),[selected,setSelected]=useState(0)
-  useEffect(()=>{setItems(null);setError(null);void fetch(`/api/dashboard/${view}`,{cache:'no-store'}).then(async response=>{if(!response.ok)throw new Error('Não foi possível carregar os dados reais');return response.json() as Promise<{items:Item[]}>}).then(body=>setItems(body.items)).catch(cause=>setError(cause instanceof Error?cause.message:'Erro inesperado'))},[view])
+  useEffect(()=>{setItems(null);setError(null);void fetch(appPath(`/api/dashboard/${view}`),{cache:'no-store'}).then(async response=>{if(!response.ok)throw new Error('Não foi possível carregar os dados reais');return response.json() as Promise<{items:Item[]}>}).then(body=>setItems(body.items)).catch(cause=>setError(cause instanceof Error?cause.message:'Erro inesperado'))},[view])
   const config=settings[view]??{empty:'Nenhum dado disponível.',fields:[],primary:'id'}
   const totals=useMemo(()=>{const rows=items??[];const numeric=config.fields.filter(field=>rows.some(row=>typeof row[field]==='number')).slice(0,4);return [{label:'Registros reais',value:rows.length},...numeric.map(field=>({label:labels[field]??field,value:rows.reduce((sum,row)=>sum+Number(row[field]??0),0).toLocaleString('pt-BR',{maximumFractionDigits:2})}))]},[items,config.fields])
   const table=!items?<div className="skeleton"><span/><span/><span/></div>:!items.length?<EmptyState message={error??config.empty}/>:<DataTable rows={items} rowKey={(row)=>String(row.id??row[config.primary]??JSON.stringify(row))} renderRow={(row)=><button className="operational-row" type="button" onClick={()=>setSelected(items.indexOf(row))}>{config.fields.map(field=><span key={field}><small>{labels[field]??field}</small><strong>{field==='channel'&&typeof row[field]==='string'?<ChannelBadge channel={row[field] as 'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group'}/>:display(row[field])}</strong></span>)}</button>}/>

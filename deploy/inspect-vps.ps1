@@ -17,6 +17,8 @@ echo '--- imagem do container ---'
 cid="$(docker ps -q --filter name=prospector-platform-web)"
 docker inspect -f 'container_image={{.Image}}' "$cid"
 docker image inspect -f 'latest_image={{.Id}}' prospector-platform-web:latest
+echo '--- erros recentes do web ---'
+docker logs --since 20m "$cid" 2>&1 | tail -n 200 || true
 echo '--- página direta 3010 ---'
 curl -fsS http://127.0.0.1:3010/prospector/content-items | grep -oE 'Content items|Nada aqui ainda|Teses|Identidades' | sort -u || true
 echo '--- página pública ---'
