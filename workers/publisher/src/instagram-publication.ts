@@ -10,7 +10,7 @@ export async function recordPublishedInstagram(database: Queryable, variantId: s
     [variantId, igMediaId],
   )
   await database.query(
-    `UPDATE content_variants SET status='published',published_at=now(),external_ref=jsonb_build_object('id',$2) WHERE id=$1`,
+    `UPDATE content_variants SET status='published',published_at=now(),external_ref=jsonb_build_object('id',$2::text) WHERE id=$1`,
     [variantId, igMediaId],
   )
 }

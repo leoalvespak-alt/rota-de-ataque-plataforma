@@ -25,7 +25,6 @@ dist-ssr
 *.sw?
 
 # Artefatos de teste visual (gerados localmente, não fazem parte do código-fonte)
-tests/visual/baseline
 tests/visual/diff
 tests/visual/e2e
 tests/visual/*.png
