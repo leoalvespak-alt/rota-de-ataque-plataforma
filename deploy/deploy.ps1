@@ -192,8 +192,11 @@ test "${latest_migration//[[:space:]]/}" = 0006_humanization_feedback
 campaigns="$(dc exec -T postgres psql -U prospector -d prospector -tAc "SELECT count(*) FROM campaigns WHERE name IN ('Rota de Ataque','Gazeta Concursos')" </dev/null)"
 test "${campaigns//[[:space:]]/}" = 2
 
-dc up -d web
+web_image="$(docker image inspect -f '{{.Id}}' prospector-platform-web:latest)"
+dc up -d --force-recreate --no-deps web
 wait_healthy web 300
+web_container="$(dc ps -q web)"
+test "$(docker inspect -f '{{.Image}}' "$web_container")" = "$web_image"
 curl --fail --silent --show-error http://127.0.0.1:3010/prospector/api/health | grep -q '"ok":true'
 
 nginx_file=/etc/nginx/sites-available/design.rotadeataque.com.br

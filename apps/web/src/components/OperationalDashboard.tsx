@@ -1,35 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { DataTable, EmptyState, ThreePaneLayout } from '@plataforma/ui-bridge'
+import { useEffect, useMemo, useState } from 'react'
+import { ChannelBadge, DataTable, EmptyState, KpiCard, KpiRow, PageHeader, ThreePaneLayout } from '@plataforma/ui-bridge'
 import { MultichannelActions } from './MultichannelActions'
 
 type Item = Record<string, unknown>
-export function OperationalDashboard({ view, title, subtitle, pane = false }: { view: string; title: string; subtitle: string; pane?: boolean }) {
-  const [items, setItems] = useState<Item[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  useEffect(() => { void fetch(`/api/dashboard/${view}`).then(async (response) => {
-    if (!response.ok) throw new Error('Não foi possível carregar os dados')
-    return response.json() as Promise<{ items: Item[] }>
-  }).then((body) => setItems(body.items)).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Erro inesperado')) }, [view])
-  const openCreative = async (id: string) => {
-    const bridge = window.open('/creative-bridge', 'creative-bridge')
-    if (!bridge) return
-    const state: { message: unknown; ready: boolean } = { message: null, ready: false }
-    const deliver = (event: MessageEvent) => {
-      if (event.origin === location.origin && event.data?.type === 'creative-bridge-ready') {
-        state.ready = true
-        if (state.message) {
-          bridge.postMessage(state.message, location.origin)
-          window.removeEventListener('message', deliver)
-        }
-      }
-    }
-    window.addEventListener('message', deliver)
-    state.message = await fetch(`/api/content-opportunities/${id}/creative`).then(async (response) => response.ok ? response.json() as Promise<unknown> : null)
-    if (!state.message) { window.removeEventListener('message', deliver); return }
-    if (state.ready) { bridge.postMessage(state.message, location.origin); window.removeEventListener('message', deliver) }
-  }
-  const table = !items?.length ? <EmptyState message={error ?? 'Nenhum dado disponível ainda.'} /> : <DataTable rows={items} rowKey={(row) => String(row.id ?? JSON.stringify(row))} renderRow={(row) => <div className="data-row">{Object.entries(row).slice(0, 7).map(([key, value]) => <span key={key}><strong>{key}</strong> {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}</span>)}{view === 'content-opportunity' && typeof row.id === 'string' && <button onClick={() => void openCreative(String(row.id))}>Gerar criativo</button>}</div>} />
-  return <section className="page"><header><h1>{title}</h1><p>{subtitle}</p></header><MultichannelActions view={view}/>{pane ? <ThreePaneLayout list={<p>{items?.length ?? 0} registros</p>} detail={table} context={<p>Dados atualizados sob demanda.</p>} /> : table}</section>
+const settings:Record<string,{empty:string;fields:string[];primary:string;secondary?:string}>={
+  overview:{empty:'Nenhum desempenho consolidado. Cadastre uma campanha e aguarde a primeira coleta.',fields:['name','leads','conversions','completed_actions','recommendations'],primary:'name'},
+  radar:{empty:'Nenhuma oportunidade detectada no radar.',fields:['competitor','opportunity_score','velocity','new_leads','avg_intent','post_url'],primary:'competitor',secondary:'post_url'},
+  'competitive-intel':{empty:'A inteligência competitiva aparecerá após a primeira coleta.',fields:['topic','competitor','momentum_7d','momentum_30d','pain_points','questions'],primary:'topic',secondary:'competitor'},
+  'content-opportunity':{empty:'Nenhuma oportunidade editorial calculada.',fields:['thesis','campaign','angle','hook','opportunity_score','status','created_at'],primary:'thesis',secondary:'hook'},
+  conversations:{empty:'Nenhuma conversa recebida nos canais conectados.',fields:['participant','channel','account','unread_count','stage','detected_intent','requires_human_review','last_message_at'],primary:'participant',secondary:'detected_intent'},
+  timeline:{empty:'A timeline será preenchida conforme eventos reais forem recebidos.',fields:['lead','channel','event_type','source','at'],primary:'event_type',secondary:'lead'},
+  'contact-policies':{empty:'Nenhuma política de contato configurada.',fields:['campaign','channel','cadence_seconds','enabled','rules'],primary:'channel',secondary:'campaign'},
+  'source-roi':{empty:'Ainda não há janela de ROI calculada.',fields:['source_type','source_id','campaign','window_days','unique_leads','followback_rate','conversion_rate','source_score','computed_at'],primary:'source_id',secondary:'source_type'},
+  configs:{empty:'Nenhuma configuração de scoring encontrada.',fields:['campaign','p0_threshold','p1_threshold','p2_threshold','lambda_freshness','source_weights'],primary:'campaign'},
+}
+const labels:Record<string,string>={name:'Campanha',leads:'Leads',conversions:'Conversões',completed_actions:'Ações concluídas',recommendations:'Recomendações',competitor:'Concorrente',opportunity_score:'Oportunidade',velocity:'Velocidade',new_leads:'Novos leads',avg_intent:'Intenção média',post_url:'Publicação',topic:'Tema',momentum_7d:'Momentum 7d',momentum_30d:'Momentum 30d',pain_points:'Dores',questions:'Perguntas',thesis:'Tese',campaign:'Campanha',angle:'Ângulo',hook:'Hook',status:'Status',created_at:'Criado em',participant:'Contato',channel:'Canal',account:'Conta',unread_count:'Não lidas',stage:'Etapa',detected_intent:'Intenção',requires_human_review:'Revisão humana',last_message_at:'Última mensagem',lead:'Lead',event_type:'Evento',source:'Origem',at:'Data',cadence_seconds:'Cadência',enabled:'Ativa',rules:'Regras',source_type:'Tipo de origem',source_id:'Origem',window_days:'Janela',unique_leads:'Leads únicos',followback_rate:'Followback',conversion_rate:'Conversão',source_score:'Score',computed_at:'Calculado em',p0_threshold:'Limite P0',p1_threshold:'Limite P1',p2_threshold:'Limite P2',lambda_freshness:'Frescor',source_weights:'Pesos'}
+const display=(value:unknown)=>{if(value===null||value===undefined)return '—';if(typeof value==='boolean')return value?'Sim':'Não';if(typeof value==='object')return JSON.stringify(value);if(typeof value==='string'&&/^\d{4}-\d\d-\d\dT/.test(value))return new Date(value).toLocaleString('pt-BR');return String(value)}
+
+export function OperationalDashboard({view,title,subtitle,pane=false}:{view:string;title:string;subtitle:string;pane?:boolean}){
+  const[items,setItems]=useState<Item[]|null>(null),[error,setError]=useState<string|null>(null),[selected,setSelected]=useState(0)
+  useEffect(()=>{setItems(null);setError(null);void fetch(`/api/dashboard/${view}`,{cache:'no-store'}).then(async response=>{if(!response.ok)throw new Error('Não foi possível carregar os dados reais');return response.json() as Promise<{items:Item[]}>}).then(body=>setItems(body.items)).catch(cause=>setError(cause instanceof Error?cause.message:'Erro inesperado'))},[view])
+  const config=settings[view]??{empty:'Nenhum dado disponível.',fields:[],primary:'id'}
+  const totals=useMemo(()=>{const rows=items??[];const numeric=config.fields.filter(field=>rows.some(row=>typeof row[field]==='number')).slice(0,4);return [{label:'Registros reais',value:rows.length},...numeric.map(field=>({label:labels[field]??field,value:rows.reduce((sum,row)=>sum+Number(row[field]??0),0).toLocaleString('pt-BR',{maximumFractionDigits:2})}))]},[items,config.fields])
+  const table=!items?<div className="skeleton"><span/><span/><span/></div>:!items.length?<EmptyState message={error??config.empty}/>:<DataTable rows={items} rowKey={(row)=>String(row.id??row[config.primary]??JSON.stringify(row))} renderRow={(row)=><button className="operational-row" type="button" onClick={()=>setSelected(items.indexOf(row))}>{config.fields.map(field=><span key={field}><small>{labels[field]??field}</small><strong>{field==='channel'&&typeof row[field]==='string'?<ChannelBadge channel={row[field] as 'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group'}/>:display(row[field])}</strong></span>)}</button>}/>
+  const detail=items?.[selected]
+  return <section className="page"><PageHeader title={title} subtitle={`${subtitle} · dados consultados diretamente do banco`}/><KpiRow>{totals.map(metric=><KpiCard key={metric.label} label={metric.label} value={metric.value}/>)}</KpiRow><MultichannelActions view={view}/>{pane?<ThreePaneLayout list={<div><h2>Conversas</h2><p>{items?.length??0} registros</p></div>} detail={table} context={<div><h2>Detalhes</h2>{detail?config.fields.map(field=><p key={field}><strong>{labels[field]??field}:</strong> {display(detail[field])}</p>):<p>Selecione um registro.</p>}</div>}/>:<section className="operational-section"><header><h2>{title}</h2><span>{items?.length??0} registros</span></header>{table}</section>}</section>
 }
