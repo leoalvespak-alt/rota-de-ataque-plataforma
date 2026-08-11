@@ -3,6 +3,7 @@ name: plataforma-ci
 on:
   pull_request:
   push:
+  workflow_dispatch:
 
 jobs:
   design-system-no-regression:
