@@ -3,6 +3,7 @@ name: plataforma-ci
 on:
   pull_request:
   push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -11,16 +12,14 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
-          submodules: recursive
+          version: 9.15.9
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @plataforma/design-system exec playwright install --with-deps chromium
       - run: pnpm --filter @plataforma/design-system exec vitest run --maxWorkers=1
@@ -37,14 +36,12 @@ jobs:
       TURBO_CONCURRENCY: 4
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:runtime-deps
       - run: pnpm lint
@@ -80,17 +77,17 @@ jobs:
       REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
-          submodules: recursive
+          version: 9.15.9
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @plataforma/shared build
       - run: pnpm --filter @plataforma/db migrate
+      - run: pnpm --filter @plataforma/worker-meta-sync test:integration
       - run: pnpm --filter @plataforma/db migrate:down
       - run: pnpm --filter @plataforma/db migrate

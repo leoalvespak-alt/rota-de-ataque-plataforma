@@ -1,0 +1,45 @@
+{
+  "font": {
+    "family": {
+      "heading": { "$value": "'Rajdhani', sans-serif", "$type": "fontFamily" },
+      "body": { "$value": "'IBM Plex Sans', sans-serif", "$type": "fontFamily" },
+      "mono": { "$value": "'IBM Plex Mono', monospace", "$type": "fontFamily" },
+      "numeral": { "$value": "'Space Grotesk', sans-serif", "$type": "fontFamily" }
+    },
+    "weight": {
+      "light": { "$value": "300", "$type": "fontWeight" },
+      "regular": { "$value": "400", "$type": "fontWeight" },
+      "medium": { "$value": "500", "$type": "fontWeight" },
+      "semibold": { "$value": "600", "$type": "fontWeight" },
+      "bold": { "$value": "700", "$type": "fontWeight" }
+    },
+    "size": {
+      "xs": { "$value": "11px", "$type": "dimension" },
+      "sm": { "$value": "13px", "$type": "dimension" },
+      "base": { "$value": "15px", "$type": "dimension" },
+      "md": { "$value": "17px", "$type": "dimension" },
+      "lg": { "$value": "20px", "$type": "dimension" },
+      "xl": { "$value": "24px", "$type": "dimension" },
+      "2xl": { "$value": "30px", "$type": "dimension" },
+      "3xl": { "$value": "36px", "$type": "dimension" },
+      "4xl": { "$value": "48px", "$type": "dimension" },
+      "5xl": { "$value": "60px", "$type": "dimension" },
+      "6xl": { "$value": "72px", "$type": "dimension" },
+      "7xl": { "$value": "96px", "$type": "dimension" }
+    },
+    "lineHeight": {
+      "tight": { "$value": "1.1", "$type": "number" },
+      "snug": { "$value": "1.2", "$type": "number" },
+      "normal": { "$value": "1.4", "$type": "number" },
+      "relaxed": { "$value": "1.6", "$type": "number" },
+      "loose": { "$value": "1.8", "$type": "number" }
+    },
+    "letterSpacing": {
+      "tight": { "$value": "-0.02em", "$type": "dimension" },
+      "normal": { "$value": "0em", "$type": "dimension" },
+      "wide": { "$value": "0.04em", "$type": "dimension" },
+      "wider": { "$value": "0.08em", "$type": "dimension" },
+      "widest": { "$value": "0.16em", "$type": "dimension" }
+    }
+  }
+}

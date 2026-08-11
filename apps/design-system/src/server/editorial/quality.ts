@@ -1,0 +1,10 @@
+import type { QualityScore } from '@/domain/editorial/types'
+
+const clamp = (n: number) => Math.max(0, Math.min(1, n))
+export function evaluateQuality(input: { text: string; coreStatement: string; forbiddenWords?: string[]; cta?: string | null; format: string; similarity?: number; hook?: string }) : QualityScore {
+  const text = input.text.trim(); const words = text.split(/\s+/).filter(Boolean); const normalized = text.toLocaleLowerCase('pt-BR'); const forbidden = (input.forbiddenWords ?? []).some((word) => normalized.includes(word.toLocaleLowerCase('pt-BR'))); const thesisTokens = input.coreStatement.toLocaleLowerCase('pt-BR').split(/\s+/).filter((word) => word.length > 3); const alignment = thesisTokens.length ? thesisTokens.filter((word) => normalized.includes(word)).length / thesisTokens.length : .7
+  const clarity = clamp(words.length >= 15 && words.length <= 450 ? 1 : words.length < 15 ? words.length / 15 : 450 / words.length); const specificity = clamp((text.match(/\d|%|exemplo|porque|como|quando/gi)?.length ?? 0) / 4); const hookStrength = clamp((input.hook?.trim().length ?? 0) / 30); const formatFit = input.format === 'carousel' ? clamp(words.length / 80) : input.format === 'story' ? clamp(120 / Math.max(words.length, 1)) : clarity
+  const repetitionRisk = clamp(1 - (input.similarity ?? 0)); const thesisAlignment = forbidden ? 0 : clamp(alignment + .35); const novelty = repetitionRisk
+  const values = { thesisAlignment, novelty, clarity, specificity, hookStrength, formatFit, voiceConsistency: forbidden ? 0 : .8, factualGrounding: .75, repetitionRisk }; const weights: Record<keyof typeof values, number> = { thesisAlignment: 2, novelty: 2, clarity: 1.5, specificity: 1, hookStrength: 1, formatFit: 1.5, voiceConsistency: 1, factualGrounding: 1, repetitionRisk: 2 }; const overall = Object.entries(values).reduce((sum, [key, value]) => sum + value * weights[key as keyof typeof values], 0) / Object.values(weights).reduce((a, b) => a + b, 0)
+  return { ...values, overall }
+}

@@ -1,0 +1,35 @@
+{
+  "color": {
+    "red": {
+      "500": { "$value": "#C1121F", "$type": "color" },
+      "600": { "$value": "#A00F1A", "$type": "color" },
+      "700": { "$value": "#8B0000", "$type": "color" },
+      "400": { "$value": "#E33640", "$type": "color" }
+    },
+    "gold": {
+      "500": { "$value": "#D4A017", "$type": "color" }
+    },
+    "neutral": {
+      "0": { "$value": "#FFFFFF", "$type": "color" },
+      "50": { "$value": "#F5F5F0", "$type": "color" },
+      "100": { "$value": "#EAEAE5", "$type": "color" },
+      "200": { "$value": "#D9D9D4", "$type": "color" },
+      "300": { "$value": "#D4D4CF", "$type": "color" },
+      "400": { "$value": "#B0B0B0", "$type": "color" },
+      "500": { "$value": "#888888", "$type": "color" },
+      "600": { "$value": "#3D3D3D", "$type": "color" },
+      "700": { "$value": "#262626", "$type": "color" },
+      "750": { "$value": "#1F1F1F", "$type": "color" },
+      "800": { "$value": "#171717", "$type": "color" },
+      "850": { "$value": "#151515", "$type": "color" },
+      "900": { "$value": "#0A0A0A", "$type": "color" },
+      "1000": { "$value": "#000000", "$type": "color" }
+    },
+    "semantic": {
+      "success": { "$value": "#22C55E", "$type": "color" },
+      "warning": { "$value": "#F59E0B", "$type": "color" },
+      "danger": { "$value": "#EF4444", "$type": "color" },
+      "info": { "$value": "#3B82F6", "$type": "color" }
+    }
+  }
+}

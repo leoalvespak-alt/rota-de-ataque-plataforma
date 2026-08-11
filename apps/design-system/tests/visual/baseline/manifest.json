@@ -1,0 +1,135 @@
+{
+  "generatedAt": "2026-07-31T18:09:35.003Z",
+  "templates": [
+    {
+      "id": "sq-cover",
+      "light": "sq-cover--light.png",
+      "dark": "sq-cover--dark.png"
+    },
+    {
+      "id": "sq-text-image",
+      "light": "sq-text-image--light.png",
+      "dark": "sq-text-image--dark.png"
+    },
+    {
+      "id": "sq-content",
+      "light": "sq-content--light.png",
+      "dark": "sq-content--dark.png"
+    },
+    {
+      "id": "sq-quote",
+      "light": "sq-quote--light.png",
+      "dark": "sq-quote--dark.png"
+    },
+    {
+      "id": "sq-tip",
+      "light": "sq-tip--light.png",
+      "dark": "sq-tip--dark.png"
+    },
+    {
+      "id": "sq-two-images",
+      "light": "sq-two-images--light.png",
+      "dark": "sq-two-images--dark.png"
+    },
+    {
+      "id": "sq-steps",
+      "light": "sq-steps--light.png",
+      "dark": "sq-steps--dark.png"
+    },
+    {
+      "id": "sq-stats",
+      "light": "sq-stats--light.png",
+      "dark": "sq-stats--dark.png"
+    },
+    {
+      "id": "sq-profile",
+      "light": "sq-profile--light.png",
+      "dark": "sq-profile--dark.png"
+    },
+    {
+      "id": "sq-tweet",
+      "light": "sq-tweet--light.png",
+      "dark": "sq-tweet--dark.png"
+    },
+    {
+      "id": "sq-table",
+      "light": "sq-table--light.png",
+      "dark": "sq-table--dark.png"
+    },
+    {
+      "id": "sq-checklist",
+      "light": "sq-checklist--light.png",
+      "dark": "sq-checklist--dark.png"
+    },
+    {
+      "id": "pt-cover",
+      "light": "pt-cover--light.png",
+      "dark": "pt-cover--dark.png"
+    },
+    {
+      "id": "pt-content",
+      "light": "pt-content--light.png",
+      "dark": "pt-content--dark.png"
+    },
+    {
+      "id": "pt-image",
+      "light": "pt-image--light.png",
+      "dark": "pt-image--dark.png"
+    },
+    {
+      "id": "pt-quote",
+      "light": "pt-quote--light.png",
+      "dark": "pt-quote--dark.png"
+    },
+    {
+      "id": "pt-list",
+      "light": "pt-list--light.png",
+      "dark": "pt-list--dark.png"
+    },
+    {
+      "id": "pt-cta",
+      "light": "pt-cta--light.png",
+      "dark": "pt-cta--dark.png"
+    },
+    {
+      "id": "cr-cover",
+      "light": "cr-cover--light.png",
+      "dark": "cr-cover--dark.png"
+    },
+    {
+      "id": "cr-cover-dark",
+      "light": "cr-cover-dark--light.png",
+      "dark": "cr-cover-dark--dark.png"
+    },
+    {
+      "id": "cr-slide",
+      "light": "cr-slide--light.png",
+      "dark": "cr-slide--dark.png"
+    },
+    {
+      "id": "cr-text-image",
+      "light": "cr-text-image--light.png",
+      "dark": "cr-text-image--dark.png"
+    },
+    {
+      "id": "cr-list",
+      "light": "cr-list--light.png",
+      "dark": "cr-list--dark.png"
+    },
+    {
+      "id": "cr-fact",
+      "light": "cr-fact--light.png",
+      "dark": "cr-fact--dark.png"
+    },
+    {
+      "id": "cr-comparison",
+      "light": "cr-comparison--light.png",
+      "dark": "cr-comparison--dark.png"
+    },
+    {
+      "id": "cr-cta",
+      "light": "cr-cta--light.png",
+      "dark": "cr-cta--dark.png"
+    }
+  ]
+}

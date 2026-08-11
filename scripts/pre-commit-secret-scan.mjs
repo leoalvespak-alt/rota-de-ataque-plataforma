@@ -8,7 +8,7 @@ const files = execFileSync('git', ['diff', '--cached', '--name-only', '--diff-fi
 const violations = []
 for (const file of files) {
   const content = execFileSync('git', ['show', `:${file}`], { encoding: 'utf8' })
-  if (file !== '.env.example') violations.push(`${file}: arquivos .env reais não podem ser versionados`)
+  if (!file.endsWith('.example')) violations.push(`${file}: arquivos .env reais não podem ser versionados`)
   for (const line of content.split(/\r?\n/)) if (sensitive.test(line)) violations.push(`${file}: valor sensível preenchido`)
 }
 

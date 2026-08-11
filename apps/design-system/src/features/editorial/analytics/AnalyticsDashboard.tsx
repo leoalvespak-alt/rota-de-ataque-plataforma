@@ -1,0 +1,3 @@
+import { useEffect, useState } from 'react'
+import { apiFetch } from '@/lib/api/client'
+export function AnalyticsDashboard() { const [data, setData] = useState<Record<string, unknown> | null>(null); useEffect(() => { apiFetch<Record<string, unknown>>('/api/metrics').then(setData).catch(() => undefined) }, []); return <section className="mx-auto max-w-5xl"><h1 className="font-heading text-2xl font-bold text-ui-text">Métricas editoriais</h1><p className="mt-1 text-sm text-ui-muted">Qualidade, aprovação, custo e distribuição de uso.</p>{data ? <pre className="mt-5 overflow-auto rounded-lg border border-ui-border bg-ui-panel p-5 text-sm text-ui-muted">{JSON.stringify(data, null, 2)}</pre> : <p className="mt-5 text-sm text-ui-muted">Carregando métricas…</p>}</section> }

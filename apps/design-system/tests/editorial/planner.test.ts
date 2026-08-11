@@ -1,0 +1,3 @@
+import { describe, expect, it } from 'vitest'
+import { generatePlan } from '@/server/editorial/planner'
+describe('generatePlan', () => { it('distribui teses e produz todos os slots', () => { const items = generatePlan({ theses: [{ id: 'a', priority: 1, weight: '2', depthLevel: null, audienceStage: null, allowedCta: [], recommendedFormats: [] }, { id: 'b', priority: 0, weight: '1', depthLevel: null, audienceStage: null, allowedCta: [], recommendedFormats: [] }], intents: [{ id: 'i', name: 'educar' }], angles: [{ id: 'g', name: 'mito' }], quantities: { post: 6 }, start: '2026-08-01', end: '2026-08-31' }); expect(items).toHaveLength(6); expect(new Set(items.map((item) => item.thesisId)).size).toBe(2) }) })

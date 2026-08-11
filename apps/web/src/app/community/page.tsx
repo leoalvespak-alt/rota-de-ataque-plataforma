@@ -1,2 +1,5 @@
-import { EmptyState, GroupPolicyForm, PageHeader } from '@plataforma/ui-bridge'
-export default function CommunityPage(){return <main className="page"><PageHeader title="Comunidades" subtitle="Canal reservado para WhatsApp Groups"/><EmptyState message="WhatsApp Groups aguardando liberação da conta Meta — ver docs/compliance/whatsapp-groups-availability.md."/><GroupPolicyForm available={false}/></main>}
+import { OperationalDashboard } from '@/components/OperationalDashboard'
+
+export default function CommunityPage() {
+  return <OperationalDashboard view="community" title="Mapa de comunidades" subtitle="Clusters e relações entre leads identificados pela inteligência da campanha" />
+}

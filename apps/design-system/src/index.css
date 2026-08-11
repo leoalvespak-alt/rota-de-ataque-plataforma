@@ -1,0 +1,301 @@
+@layer reset, tokens, base, utilities, components, templates, overrides;
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Fontes self-hosted (necessario para document.fonts.ready ser confiavel no export) */
+@import "@fontsource/ibm-plex-sans/300.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/rajdhani/600.css";
+@import "@fontsource/rajdhani/700.css";
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Design tokens gerados por Style Dictionary — fonte unica de verdade.
+   Os valores originais abaixo sao mantidos para compatibilidade com
+   as 26 templates existentes que referenciam --red, --light-bg, etc. */
+:root {
+  /* Marca — vermelho de ação primária */
+  --red: #C1121F;
+  --red-hover: #A00F1A;
+  --red-pressed: #8B0000;
+  --red-light: #E33640;
+  --gold: #D4A017;
+
+  /* Card — modo light (padrão dos criativos) */
+  --light-bg: #F5F5F0;
+  --light-bg-alt: #EAEAE5;
+  --light-border: #D4D4CF;
+  --light-text: #0A0A0A;
+  --light-muted: #3D3D3D;
+  --light-slot: #D9D9D4;
+  --light-box: rgba(224, 224, 219, 0.88);
+
+  /* Card — modo dark */
+  --dark-bg: #0A0A0A;
+  --dark-ink: #151515;
+  --dark-s1: #171717;
+  --dark-s2: #1F1F1F;
+  --dark-border: #262626;
+  --dark-text: #F0F0F0;
+  --dark-muted: #B0B0B0;
+  --dark-box: rgba(31, 31, 31, 0.88);
+
+  /* Chrome da UI do app (não confundir com o card) */
+  --ui-bg: #1a1a1a;
+  --ui-panel: #242424;
+  --ui-panel2: #2e2e2e;
+  --ui-border: #3a3a3a;
+  --ui-text: #e0e0e0;
+  --ui-muted: #888;
+  --ui-accent: var(--red);
+  --workspace-bg: #111111;
+  --workspace-dot: rgba(255, 255, 255, 0.05);
+
+  /* Cores semânticas (usadas no guia de marca) */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #3B82F6;
+
+  /* Radii (seção 06 do guia de marca) */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-card: 12px;
+  --radius-marketing: 16px;
+  --radius-pill: 9999px;
+
+  /* shadcn/ui radius base (Radix primitives usam --radius) */
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+html[data-ui-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-ui-theme='light'] {
+  color-scheme: light;
+  --ui-bg: #e9edf1;
+  --ui-panel: #ffffff;
+  --ui-panel2: #f3f5f7;
+  --ui-border: #d5dbe2;
+  --ui-text: #171a1f;
+  --ui-muted: #667085;
+  --workspace-bg: #dfe4e9;
+  --workspace-dot: rgba(18, 24, 33, 0.1);
+
+  --background: oklch(0.965 0.006 250);
+  --foreground: oklch(0.19 0.012 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.012 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.012 255);
+  --primary: oklch(0.48 0.2 25);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.94 0.008 250);
+  --secondary-foreground: oklch(0.24 0.014 255);
+  --muted: oklch(0.94 0.008 250);
+  --muted-foreground: oklch(0.48 0.016 255);
+  --accent: oklch(0.93 0.018 25);
+  --accent-foreground: oklch(0.42 0.18 25);
+  --border: oklch(0.86 0.012 250);
+  --input: oklch(0.86 0.012 250);
+  --ring: oklch(0.48 0.2 25);
+}
+
+html[data-ui-theme='light'] body,
+html[data-ui-theme='light'] #root {
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+/* Mapeamento para os tokens semânticos que o shadcn/ui espera */
+@theme inline {
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-heading: 'Rajdhani', sans-serif;
+  --font-mono: 'Space Grotesk', sans-serif;
+
+  --color-brand-red: var(--red);
+  --color-brand-red-hover: var(--red-hover);
+  --color-brand-red-pressed: var(--red-pressed);
+  --color-brand-red-light: var(--red-light);
+  --color-brand-gold: var(--gold);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --color-ui-bg: var(--ui-bg);
+  --color-ui-panel: var(--ui-panel);
+  --color-ui-panel2: var(--ui-panel2);
+  --color-ui-border: var(--ui-border);
+  --color-ui-text: var(--ui-text);
+  --color-ui-muted: var(--ui-muted);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ui-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ui-muted); }
+
+/* FASE 12 — acessibilidade: respeita a preferência do usuário por menos movimento.
+   O app original (HTML) não tinha nenhuma animação além de CSS transitions simples;
+   como agora há spring physics (motion) e fade de abas, isso precisa de guarda. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Foco visível consistente para navegação por teclado (a11y). */
+button:focus-visible,
+a:focus-visible,
+[contenteditable="true"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

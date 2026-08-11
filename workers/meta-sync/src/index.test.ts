@@ -12,4 +12,11 @@ describe('meta-sync', () => {
     expect(result.event.kind).toBe('meta-sync.completed')
     expect(extraction).toHaveBeenCalledWith('post', 'run', expect.objectContaining({ campaignId: 'campaign', accountId: 'collector', accountRole: 'collector' }))
   })
+  it('collects per-media insights for owned Instagram media', async () => {
+    const saveOwnSnapshot = vi.fn(async () => undefined)
+    const repository: MetaSyncRepository = { activeCompetitors: async () => [], updateCompetitor: async () => undefined, upsertPost: async () => ({ id: 'post', inserted: false }), saveOwnSnapshot, incrementRateLimit: async () => undefined }
+    const api = { businessDiscovery: async () => ({}), self: { profile: async () => ({ id: 'ig' }), media: async () => ({ data: [{ id: 'media-1', like_count: 3, comments_count: 2 }] }), mediaInsights: async () => ({ data: [{ name: 'reach', values: [{ value: 10 }] }] }), mentions: async () => ({ data: [] }), dms: async () => ({ data: [] }) } } satisfies MetaSyncApi
+    await createMetaSyncProcessor(repository, { extraction: async () => undefined }, api)({ id: 'job', payload: { kind: 'own', accountId: 'actor', igUserId: 'ig' }, preflight })
+    expect(saveOwnSnapshot).toHaveBeenCalledWith('actor', { id: 'ig' }, expect.any(Array), [{ mediaId: 'media-1', data: [{ name: 'reach', values: [{ value: 10 }] }] }], [], [])
+  })
 })

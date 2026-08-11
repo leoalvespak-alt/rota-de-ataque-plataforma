@@ -4,6 +4,7 @@ import { runWorker } from '@plataforma/queue/runtime'
 import { Client } from 'minio'
 import { Readable } from 'node:stream'
 import { createPublisherProcessor, spec, type PublisherRepository } from './index.js'
+import { recordPublishedInstagram } from './instagram-publication.js'
 
 const databaseUrl = process.env.DATABASE_URL
 const token = process.env.META_ACCESS_TOKEN
@@ -28,9 +29,9 @@ const readObject = async (key: string) => {
 const repository: PublisherRepository = {
   async due(payload) {
     const result = await pool.query<{
-      id: string; account_id: string; role: 'collector' | 'actor'; status: string; approved_by: string | null; meta_ig_user_id: string; caption: string; media_asset_ref: string
+      id: string; variant_id: string | null; account_id: string; role: 'collector' | 'actor'; status: string; approved_by: string | null; meta_ig_user_id: string; caption: string; media_asset_ref: string
     }>(
-      `SELECT publication.id, account.id account_id, account.role, publication.status, publication.approved_by,
+      `SELECT publication.id, publication.variant_id, account.id account_id, account.role, publication.status, publication.approved_by,
               account.meta_ig_user_id, publication.caption, publication.media_asset_ref
        FROM scheduled_publications publication
        JOIN content_opportunities opportunity ON opportunity.id = publication.content_opportunity_id
@@ -44,13 +45,19 @@ const repository: PublisherRepository = {
       [payload.publicationId ?? null, payload.accountId ?? null],
     )
     return Promise.all(result.rows.map(async (row) => ({
-      id: row.id, accountId: row.account_id, role: row.role, status: row.status === 'approved' ? 'approved' : 'awaiting_approval', approvedBy: row.approved_by ?? undefined,
+      id: row.id, variantId: row.variant_id ?? undefined, accountId: row.account_id, role: row.role, status: row.status === 'approved' ? 'approved' : 'awaiting_approval', approvedBy: row.approved_by ?? undefined,
       igUserId: row.meta_ig_user_id, caption: row.caption ?? '', key: `published/${row.id}.png`, png: await readObject(row.media_asset_ref),
     })))
   },
-  async complete(id, igMediaId, storageRef, traceId) {
-    await pool.query(`UPDATE scheduled_publications SET status = 'published', ig_media_id = $2, media_asset_ref = $3, error = NULL, published_at = now() WHERE id = $1`, [id, igMediaId, storageRef])
-    await pool.query(`INSERT INTO audit_log(actor_id, action, target, after) VALUES('publisher', 'publication.published', $1, $2::jsonb)`, [id, JSON.stringify({ igMediaId, storageRef, traceId })])
+  async complete(id, variantId, igMediaId, storageRef, traceId) {
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(`UPDATE scheduled_publications SET status = 'published', ig_media_id = $2, media_asset_ref = $3, error = NULL, published_at = now() WHERE id = $1`, [id, igMediaId, storageRef])
+      if (variantId) await recordPublishedInstagram(client, variantId, igMediaId)
+      await client.query(`INSERT INTO audit_log(actor_id, action, target, after) VALUES('publisher', 'publication.published', $1, $2::jsonb)`, [id, JSON.stringify({ variantId, igMediaId, storageRef, traceId })])
+      await client.query('COMMIT')
+    } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
   },
   async fail(id, error, traceId) {
     await pool.query(`UPDATE scheduled_publications SET status = 'failed', error = $2 WHERE id = $1`, [id, error])
