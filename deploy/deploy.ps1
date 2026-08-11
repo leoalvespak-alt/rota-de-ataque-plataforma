@@ -191,7 +191,9 @@ wait_healthy embeddings 900
 
 dc run --rm -T migrate </dev/null
 latest_migration="$(dc exec -T postgres psql -U prospector -d prospector -tAc "SELECT max(version) FROM schema_migrations" </dev/null)"
-test "${latest_migration//[[:space:]]/}" = 0006_humanization_feedback
+expected_migration="$(find packages/db/migrations -maxdepth 1 -type f -name '*.up.sql' -printf '%f\n' | sort | tail -n 1 | sed 's/\.up\.sql$//')"
+test -n "$expected_migration"
+test "${latest_migration//[[:space:]]/}" = "$expected_migration"
 
 campaigns="$(dc exec -T postgres psql -U prospector -d prospector -tAc "SELECT count(*) FROM campaigns WHERE name IN ('Rota de Ataque','Gazeta Concursos')" </dev/null)"
 test "${campaigns//[[:space:]]/}" = 2
