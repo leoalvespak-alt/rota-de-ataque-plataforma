@@ -42,7 +42,8 @@ $Remote = "$VpsUser@$VpsHost"
 $SshOptions = @('-i', $IdentityFile, '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20')
 
 function Invoke-Remote([string]$Script, [string[]]$Arguments) {
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Script))
+    $normalizedScript = $Script.Replace("`r`n", "`n").Replace("`r", "`n")
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($normalizedScript))
     $quoted = ($Arguments | ForEach-Object { "'$_'" }) -join ' '
     & ssh @SshOptions $Remote "printf '%s' '$encoded' | base64 --decode | bash -s -- $quoted"
     if ($LASTEXITCODE -ne 0) { Fail 'Deploy remoto falhou; o cutover não foi concluído.' }
