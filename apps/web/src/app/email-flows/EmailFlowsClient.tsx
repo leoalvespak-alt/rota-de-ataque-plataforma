@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { EmptyState, FlowCanvas, IntegrationState, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
 import { appPath } from '@/lib/base-path'
 import type { IntegrationCapability } from '@/lib/integration-capabilities'
-type Step={id:string;type:'send'|'wait_seconds'|'wait_until_event'|'branch_on'|'exit_flow'|'end';[key:string]:unknown}
+type Step={id:string;type:string;[key:string]:unknown}
 type Flow={id:string;name:string;description:string|null;active:boolean;version:number;steps:Step[];subscribers:number}
 export function EmailFlowsClient({initialFlows,campaignId,stats,capability}:{initialFlows:Flow[];campaignId:string;stats:{subscribers:number;confirmed:number;suppressed:number};capability:IntegrationCapability|null}){
  const[flows,setFlows]=useState(initialFlows),[busy,setBusy]=useState(''),[message,setMessage]=useState(''),[stepType,setStepType]=useState<'send'|'wait_seconds'|'end'>('send')

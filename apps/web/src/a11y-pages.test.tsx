@@ -11,10 +11,10 @@ import { EngagementClient } from './app/engagement-queue/EngagementClient'
 import { NotificationsClient } from './app/notifications/NotificationsClient'
 
 const pages = [
-  createElement(LeadsClient, { initialRows: [] }),
+  createElement(LeadsClient, { initialRows: [], initialView: 'Todos' }),
   createElement(ReviewInboxClient, { initialItems: [], decidedToday: 0 }),
-  createElement(AccountsClient, { accounts: [], competitors: [], campaigns: [] }),
-  createElement(SystemHealthClient, { heartbeats: [], alerts: [], healthScore: 100 }),
+  createElement(AccountsClient, { accounts: [], competitors: [], campaigns: [], capabilities: [] }),
+createElement(SystemHealthClient, { heartbeats: [], alerts: [], healthScore: 100, canaries: [], capabilities: [], killSwitchEnabled: false }),
   createElement(EngagementClient, { actions: [], policies: [] }),
   createElement(NotificationsClient, { triggers: [], alerts: [], deliveries: [] }),
 ]
