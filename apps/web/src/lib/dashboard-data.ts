@@ -62,11 +62,13 @@ const queries: Record<DashboardView, string> = {
             WHERE ($1::uuid IS NULL OR config.campaign_id=$1) ORDER BY campaign.name`,
 }
 
-export async function loadDashboardView(view: DashboardView) {
+import { cache } from 'react'
+
+export const loadDashboardView = cache(async (view: DashboardView) => {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {
     const { selected } = await getCampaignContext(pool)
     const items = (await pool.query(queries[view], [selected?.id ?? null])).rows as Array<Record<string, unknown>>
     return { items, campaign: selected, generatedAt: new Date().toISOString() }
   } finally { await pool.end() }
-}
+})

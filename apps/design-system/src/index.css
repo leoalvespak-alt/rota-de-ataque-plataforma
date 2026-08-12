@@ -233,6 +233,19 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--ui-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--ui-muted); }
 
+/* Tokens de perfil dinâmico — aplicados apenas dentro do canvas de criativos.
+   Os tokens --ui-* (chrome da app) nunca são afetados por este scope. */
+.profile-canvas-scope {
+  --red: var(--profile-primary, #C1121F);
+  --red-hover: color-mix(in srgb, var(--profile-primary, #C1121F) 85%, black);
+  --light-bg: var(--profile-bg, #F5F5F0);
+  --light-text: var(--profile-text, #0A0A0A);
+  --dark-bg: var(--profile-bg, #0A0A0A);
+  --dark-text: var(--profile-text, #F0F0F0);
+  --font-heading: var(--profile-font-heading, 'Rajdhani'), sans-serif;
+  --font-sans: var(--profile-font-body, 'IBM Plex Sans'), sans-serif;
+}
+
 /* FASE 12 — acessibilidade: respeita a preferência do usuário por menos movimento.
    O app original (HTML) não tinha nenhuma animação além de CSS transitions simples;
    como agora há spring physics (motion) e fade de abas, isso precisa de guarda. */

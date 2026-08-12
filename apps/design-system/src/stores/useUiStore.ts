@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type AppTab = 'create' | 'brand' | 'ai-config' | 'renders' | 'history' | 'editorial'
+export type AppTab = 'dashboard' | 'brand' | 'ai-config' | 'renders' | 'history' | 'editorial' | 'create' | 'wizard'
 export type UiTheme = 'light' | 'dark'
 
 const getInitialTheme = (): UiTheme => {
@@ -9,9 +9,10 @@ const getInitialTheme = (): UiTheme => {
     if (current === 'light' || current === 'dark') return current
   }
   if (typeof localStorage !== 'undefined') {
-    return localStorage.getItem('rota-design-ui-theme') === 'light' ? 'light' : 'dark'
+    const stored = localStorage.getItem('rota-design-ui-theme')
+    if (stored === 'dark') return 'dark'
   }
-  return 'dark'
+  return 'light'
 }
 
 interface UiState {
@@ -26,9 +27,8 @@ interface UiState {
   closePanels: () => void
 }
 
-/** Espelha setTab()/activeFilter do Gerador/index.html original (linhas 3445, 2890). */
 export const useUiStore = create<UiState>()((set) => ({
-  activeTab: 'create',
+  activeTab: 'dashboard',
   theme: getInitialTheme(),
   leftPanelOpen: false,
   rightPanelOpen: false,

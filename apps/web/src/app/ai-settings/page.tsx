@@ -1,8 +1,6 @@
 import { createDatabase } from '@plataforma/db'
 import { AISettingsClient, type AIModelRow, type AIProviderRow } from './AISettingsClient'
 
-export const dynamic = 'force-dynamic'
-
 export default async function AISettingsPage() {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {

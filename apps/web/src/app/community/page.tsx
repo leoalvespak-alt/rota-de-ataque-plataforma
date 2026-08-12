@@ -1,6 +1,21 @@
-import { DashboardPage } from '@/components/DashboardPage'
-export const dynamic = 'force-dynamic'
+import { Suspense } from 'react'
+import { CommunityClient } from './CommunityClient'
 
-export default function CommunityPage() {
-  return <DashboardPage view="community" title="Mapa de comunidades" subtitle="Clusters e relações entre leads identificados pela inteligência da campanha" />
+function TableSkeleton() {
+  return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Carregando dados...</div>
+}
+
+export default async function CommunityPage() {
+  return (
+    <Suspense fallback={<TableSkeleton />}>
+      <CommunityData />
+    </Suspense>
+  )
+}
+
+async function CommunityData() {
+  // Dummy SQL query mock
+  await new Promise(resolve => setTimeout(resolve, 500))
+  const data: any[] = []
+  return <CommunityClient data={data} />
 }

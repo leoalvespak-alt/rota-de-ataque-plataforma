@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createDatabase } from '@plataforma/db'
 import { Redis } from 'ioredis'
 
-export const dynamic = 'force-dynamic'
-
 export async function GET() {
   const databaseUrl = process.env.DATABASE_URL
   const redisUrl = process.env.REDIS_URL

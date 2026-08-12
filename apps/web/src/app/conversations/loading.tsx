@@ -1,1 +1,1 @@
-import{LoadingSkeleton}from'@plataforma/ui-bridge';export default function Loading(){return <div className="page"><LoadingSkeleton lines={8}/></div>}
+export default function Loading() { return <div className="page"><div className="bridge-skeleton bridge-loading-skeleton" style={{ minHeight: '300px', width: '100%', borderRadius: '8px' }}></div></div> }

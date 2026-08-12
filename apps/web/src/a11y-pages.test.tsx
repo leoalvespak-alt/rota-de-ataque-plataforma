@@ -13,7 +13,7 @@ import { NotificationsClient } from './app/notifications/NotificationsClient'
 vi.mock('next/navigation',()=>({useRouter:()=>({replace:vi.fn(),push:vi.fn(),refresh:vi.fn()}),usePathname:()=>'/leads',useSearchParams:()=>new URLSearchParams()}))
 
 const pages = [
-  createElement(LeadsClient, { initialRows: [], initialView: 'Todos' }),
+  createElement(LeadsClient, { initialRows: [] }),
   createElement(ReviewInboxClient, { initialItems: [], decidedToday: 0 }),
   createElement(AccountsClient, { accounts: [], competitors: [], campaigns: [], capabilities: [] }),
 createElement(SystemHealthClient, { heartbeats: [], alerts: [], healthScore: 100, canaries: [], capabilities: [], killSwitchEnabled: false }),

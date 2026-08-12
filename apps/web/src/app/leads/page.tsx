@@ -2,7 +2,6 @@ import { createDatabase } from '@plataforma/db'
 import { getCampaignContext } from '@/lib/campaign-context'
 import { LeadsClient, type LeadRow } from './LeadsClient'
 
-export const dynamic = 'force-dynamic'
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ priority?: string }> }) {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {
@@ -19,6 +18,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       FROM leads l JOIN lead_scores ls ON ls.lead_id=l.id LEFT JOIN lead_profile lp ON lp.lead_id=l.id
       WHERE ($1::uuid IS NULL OR ls.campaign_id=$1) AND l.merged_into IS NULL
       ORDER BY ls.final_score DESC,CASE ls.priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END,l.id LIMIT 300`, [selected?.id ?? null])
-    return <LeadsClient initialRows={result.rows} initialView={initialView}/>
+    return <LeadsClient initialRows={result.rows} />
   } finally { await pool.end() }
 }

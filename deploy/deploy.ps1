@@ -107,7 +107,7 @@ PII_HASH_SALT=$pii_hash_salt
 NODE_ENV=production
 LOG_LEVEL=info
 TZ=America/Sao_Paulo
-WORKERS_DEFAULT_ENABLED=false
+WORKERS_DEFAULT_ENABLED=true
 MIGRATIONS_CURRENT=true
 META_TOKEN_VALID=false
 LLM_PROVIDER=anthropic
@@ -205,6 +205,9 @@ wait_healthy web 300
 web_container="$(dc ps -q web)"
 test "$(docker inspect -f '{{.Image}}' "$web_container")" = "$web_image"
 curl --fail --silent --show-error http://127.0.0.1:3010/prospector/api/health | grep -q '"ok":true'
+
+printf 'Subindo workers da Plataforma Prospector...\n'
+dc up -d
 
 nginx_file=/etc/nginx/sites-available/design.rotadeataque.com.br
 if ! grep -q 'prospector-platform' "$nginx_file"; then

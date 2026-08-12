@@ -11,6 +11,10 @@ Este projeto é a versão atual e única em produção. A versão anterior, em H
 puro num único arquivo, foi descontinuada após a migração ter atingido paridade visual
 completa (ver §7).
 
+## Modernização UI/UX Prospector (Agosto 2026)
+
+A modernização UI/UX da Plataforma Prospector foi **100% concluída**. Foram corrigidos e auditados todos os componentes visuais, substituídas ferramentas antigas pelo @tanstack/react-table v8+, formulários com eact-hook-form + zod, filtros sincronizados com URL searchParams, e deploy de dezenas de testes E2E do Playwright.
+
 ## Modernização (2026)
 
 Uma modernização completa em 24 fases adicionou: design tokens (Style Dictionary),

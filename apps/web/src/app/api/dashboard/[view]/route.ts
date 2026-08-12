@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { DashboardViewSchema, loadDashboardView } from '@/lib/dashboard-data'
 import { requireRole } from '@/lib/permissions'
 
-export const dynamic = 'force-dynamic'
-
 export async function GET(_request: Request, { params }: { params: Promise<{ view: string }> }) {
   await requireRole('viewer')
   const view = DashboardViewSchema.safeParse((await params).view)

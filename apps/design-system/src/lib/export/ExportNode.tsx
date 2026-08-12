@@ -1,8 +1,10 @@
 import { forwardRef } from 'react'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { useDecorStore, BG_LIBRARY } from '@/stores/useDecorStore'
+import { useWizardStore } from '@/stores/useWizardStore'
 import { getTemplateById } from '@/features/templates/registry'
 import { CanvasFrame } from '@/features/templates/primitives'
+import { ProfileCanvasWrapper } from '@/features/templates/ProfileCanvasWrapper'
 import { TextureLayer } from '@/features/editor/Canvas/TextureLayer'
 import { WatermarkLayer } from '@/features/editor/Canvas/WatermarkLayer'
 
@@ -21,6 +23,7 @@ export const ExportNode = forwardRef<HTMLDivElement>(function ExportNode(_props,
   const darkMode = useEditorStore((s) => s.darkMode)
   const format = useEditorStore((s) => s.format)
   const bgLibrarySelected = useDecorStore((s) => s.bgLibrarySelected)
+  const profileId = useWizardStore((s) => s.profileId)
 
   const tpl = activeTemplateId ? getTemplateById(activeTemplateId) : undefined
   const bg = BG_LIBRARY.find((b) => b.id === bgLibrarySelected)
@@ -33,16 +36,18 @@ export const ExportNode = forwardRef<HTMLDivElement>(function ExportNode(_props,
       style={{ position: 'fixed', top: 0, left: -99999, pointerEvents: 'none' }}
       aria-hidden
     >
-      <div ref={ref}>
-        <CanvasFrame id="card-canvas" format={format} dark={darkMode}>
-          {!hasUserBg && bg && bg.type !== 'none' && (
-            <div className="pointer-events-none absolute inset-0 z-0" style={{ background: bg.value }} />
-          )}
-          <tpl.Render elements={elements as never} dark={darkMode} exportMode />
-          <TextureLayer dark={darkMode} />
-          <WatermarkLayer dark={darkMode} />
-        </CanvasFrame>
-      </div>
+      <ProfileCanvasWrapper profileId={profileId}>
+        <div ref={ref}>
+          <CanvasFrame id="card-canvas" format={format} dark={darkMode}>
+            {!hasUserBg && bg && bg.type !== 'none' && (
+              <div className="pointer-events-none absolute inset-0 z-0" style={{ background: bg.value }} />
+            )}
+            <tpl.Render elements={elements as never} dark={darkMode} exportMode />
+            <TextureLayer dark={darkMode} />
+            <WatermarkLayer dark={darkMode} />
+          </CanvasFrame>
+        </div>
+      </ProfileCanvasWrapper>
     </div>
   )
 })

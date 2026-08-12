@@ -6,6 +6,7 @@ export * from './content.js'
 export * from './theses.js'
 export * from './multichannel-scoring.js'
 export * from './timeline.js'
+export * from './creative-job-schema.js'
 
 export const ActionTypeSchema = z.enum(['follow', 'like_post', 'like_comment', 'reply_public', 'reply_private', 'dm', 'view_story', 'publish', 'scrape'])
 export type ActionType = z.infer<typeof ActionTypeSchema>

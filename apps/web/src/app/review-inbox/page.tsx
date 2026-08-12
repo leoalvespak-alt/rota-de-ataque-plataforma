@@ -2,7 +2,6 @@ import { createDatabase } from '@plataforma/db'
 import { getCampaignContext } from '@/lib/campaign-context'
 import { ReviewInboxClient } from './ReviewInboxClient'
 
-export const dynamic = 'force-dynamic'
 export default async function ReviewInboxPage() {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {
