@@ -32,6 +32,7 @@ export function WizardStep3Content() {
   const [loadingTheses, setLoadingTheses] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingTheses(true)
     fetch(`${API_BASE}/api/theses`)
       .then((r) => (r.ok ? r.json() : []))

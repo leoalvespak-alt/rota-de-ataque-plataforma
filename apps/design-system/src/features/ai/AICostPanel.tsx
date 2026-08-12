@@ -65,6 +65,7 @@ export function AICostPanel() {
     }
   }, [period])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData() }, [fetchData])
 
   return (
