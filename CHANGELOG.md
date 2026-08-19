@@ -4,8 +4,23 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 
 ## [Unreleased]
 
+### Fixed
+
+- **Prospector — hotfix auth/basePath** (19/08/2026): corrigidos 5 bugs críticos que impediam login e causavam loop de redirect com 502:
+  - Middleware: `NextURL.clone()` duplicava `/prospector` no header `Location` → trocado por `new URL()` puro.
+  - Middleware: `/login` não era isento, causando loop infinito de redirect.
+  - Middleware: matcher não cobria a raiz `/prospector` → bypass de autenticação silencioso.
+  - Login: `signIn()` do next-auth apontava para `/api/auth` (app errado no nginx) → `SessionProvider basePath={appPath('/api/auth')}` via `NextAuthBasePath`.
+  - `NEXTAUTH_URL` corrigido para terminar em `/api/auth` (contrato do next-auth v4).
+  - `appPath()` removido de `router.push`/`<Link href>` em `ContentItemsClient` e `ContentItemActions`.
+
 ### Added
 
+- Baseline editorial manual da campanha Rota de Ataque, derivado do documento
+  canônico de crescimento: 6 teses, 7 ideias de calendário e 20 sugestões
+  prioritárias, com migrations idempotentes e correção de escopo.
+- Endpoint administrativo para criação e edição humana de publicações manuais,
+  com transação, auditoria e contexto da campanha ativa.
 - Monorepo pnpm/Turborepo para Design System, dashboard, packages e 29 workers.
 - Baseline SHA-256 e logs de não regressão do Design System.
 - Infra Docker Compose com Postgres/pgvector, Redis, embeddings, Caddy, observabilidade, web, cron de backup e todos os workers.
@@ -18,6 +33,28 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 
 ### Changed
 
+- O layout usa o papel real da sessão; viewers não consultam nem exibem o
+  contador administrativo de notificações. A rota protegida responde 401/403
+  em falhas de autorização, em vez de propagar erro 500.
+- O calendário respeita o `basePath` do Prospector, edita o slot correto e
+  inclui publicações manuais autônomas nas consultas por campanha.
+- Sem preferência salva, o contexto abre Rota de Ataque como campanha inicial;
+  seleções explícitas continuam persistidas normalmente.
+- O deploy integral de 18/08/2026 aplicou as migrations `0020` e `0021`,
+  publicou Design System e Prospector completos e confirmou o baseline `6/7/20`
+  somente na campanha Rota de Ataque.
+- `@plataforma/ui-bridge` passou a exportar sua camada visual completa; o
+  Prospector agora consome botões, KPIs, campos, tabelas, drawers e gráficos com
+  raios e bordas suaves, além de todos os aliases semânticos necessários.
+- O tema ECharts resolve variáveis CSS para cores concretas antes de desenhar no
+  canvas. O Overview ganhou funil, comparação por campanha e mix operacional
+  baseados em dados reais, com estados vazios sem números simulados.
+- O deploy integral de 17/08/2026 reconstruiu Design System, API, Prospector,
+  scheduler e os 40 workers; backups, migrations e health checks passaram.
+- O Prospector agora aplica `check:runtime-deps` dentro dos Dockerfiles, cria
+  backup PostgreSQL antes de migrations e valida o ledger até `0019` no deploy.
+- Migrations 0011/0014 ficaram compatíveis com instalações Prospector-only e
+  schemas legados de `candidate_sources`, sem exigir marcação manual no ledger.
 - WhatsApp individual mantém resposta escrita por humano, validada por `validateChannelText('whatsapp_dm', ...)`; o copiloto automático foi adiado conscientemente para reduzir risco operacional e o `conversation-agent` permanece exclusivo de Instagram DM.
 - Insights cumulativos de publicações Instagram passam a alimentar `content_performance` sem duplicar métricas entre sincronizações.
 
