@@ -64,11 +64,20 @@ const queries: Record<DashboardView, string> = {
 
 import { cache } from 'react'
 
+// PG error codes that indicate a view/table isn't ready yet (not a real server fault)
+const STALE_PG_CODES = new Set(['55000', '42P01'])
+
 export const loadDashboardView = cache(async (view: DashboardView) => {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
+  const { selected } = await getCampaignContext(pool)
   try {
-    const { selected } = await getCampaignContext(pool)
     const items = (await pool.query(queries[view], [selected?.id ?? null])).rows as Array<Record<string, unknown>>
     return { items, campaign: selected, generatedAt: new Date().toISOString() }
-  } finally { await pool.end() }
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code
+    if (code && STALE_PG_CODES.has(code)) {
+      return { items: [] as Array<Record<string, unknown>>, campaign: selected, generatedAt: new Date().toISOString(), stale: true as const }
+    }
+    throw err
+  }
 })
