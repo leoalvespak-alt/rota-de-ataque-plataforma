@@ -34,5 +34,5 @@ export async function GET(request: Request) {
     const items = result.rows.slice(0, limit)
     const last = items.at(-1)
     return NextResponse.json({ items, nextCursor: hasMore && last ? encodeCursor({ score: Number(last.final_score), rank: last.priority_rank, id: last.id }) : null })
-  } finally { await pool.end() }
+  } finally {}
 }

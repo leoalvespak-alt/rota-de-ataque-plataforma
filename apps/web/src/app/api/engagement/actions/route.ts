@@ -18,8 +18,7 @@ export async function GET() {
     )
     return NextResponse.json(actions.rows)
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 })
-  } finally {
-    await pool.end()
-  }
+    console.error('Failed to list engagement actions', error)
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 })
+  } finally {}
 }
