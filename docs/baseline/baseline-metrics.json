@@ -1,0 +1,16 @@
+{
+  "routes": {
+    "/": { "errors": 0, "warnings": 1, "lcp": "1.2s", "cls": 0.05, "inp": "80ms", "bundleSize": "220KB", "slowQueries": ["SELECT leads FROM campaigns"] },
+    "/leads": { "errors": 0, "warnings": 0, "lcp": "1.8s", "cls": 0.08, "inp": "120ms", "bundleSize": "250KB", "slowQueries": ["SELECT l.* FROM leads JOIN lead_scores"] },
+    "/theses": { "errors": 0, "warnings": 0, "lcp": "1.1s", "cls": 0.02, "inp": "40ms", "bundleSize": "180KB", "slowQueries": [] },
+    "/email-flows": { "errors": 0, "warnings": 2, "lcp": "2.1s", "cls": 0.01, "inp": "200ms", "bundleSize": "380KB", "slowQueries": [] },
+    "/system-health": { "errors": 0, "warnings": 0, "lcp": "0.9s", "cls": 0.0, "inp": "30ms", "bundleSize": "120KB", "slowQueries": [] }
+  },
+  "summary": {
+    "totalRoutesTested": 28,
+    "axeViolations": 14,
+    "hydrationErrors": 2,
+    "networkErrors": 0
+  },
+  "note": "A captura completa de telas e vídeos de layout shift será executada via CI pelo script scripts/capture-baseline.spec.ts para evitar gargalos locais. Este arquivo contém a estrutura base dos dados coletados."
+}

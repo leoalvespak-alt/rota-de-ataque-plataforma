@@ -15,6 +15,20 @@
       "when": 1785807014020,
       "tag": "0001_safe_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786523132620,
+      "tag": "0002_creative_projects_and_token_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786559698932,
+      "tag": "0003_last_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

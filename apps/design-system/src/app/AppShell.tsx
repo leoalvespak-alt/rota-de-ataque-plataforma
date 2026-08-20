@@ -15,7 +15,11 @@ import { cn } from '@/lib/utils'
 import { CommandPalette } from '@/features/commands/CommandPalette'
 import { useTemplateLibraryStore } from '@/stores/useTemplateLibraryStore'
 
-const TAB_ORDER: AppTab[] = ['create', 'brand', 'ai-config', 'renders', 'history']
+const TAB_ORDER: AppTab[] = ['dashboard', 'brand', 'ai-config', 'renders', 'history', 'editorial']
+
+const DashboardView = lazy(() =>
+  import('@/features/dashboard/DashboardView').then((module) => ({ default: module.DashboardView })),
+)
 const BrandView = lazy(() =>
   import('@/features/brand/BrandView').then((module) => ({ default: module.BrandView })),
 )
@@ -33,11 +37,14 @@ const EditorialView = lazy(() =>
     default: module.EditorialView,
   })),
 )
+const WizardView = lazy(() =>
+  import('@/features/wizard/WizardView').then((module) => ({ default: module.WizardView })),
+)
+
 const TabLoading = () => (
   <div className="flex flex-1 items-center justify-center text-sm text-ui-muted">Carregando…</div>
 )
 
-/** Espelha <div class="app-body"> + as 5 abas do Gerador/index.html (linhas 1270-1855). */
 export function AppShell() {
   const activeTab = useUiStore((s) => s.activeTab)
   const theme = useUiStore((s) => s.theme)
@@ -54,7 +61,6 @@ export function AppShell() {
   const { downloadPNG } = useExportCard()
   const { saveCurrentArt } = useSaveArt()
 
-  // Espelha init(): seleciona o primeiro template por padrão (linha 3544).
   useEffect(() => {
     if (!activeTemplateId && TEMPLATES.length > 0) {
       selectTemplate(TEMPLATES[0]!.id)
@@ -73,8 +79,6 @@ export function AppShell() {
     localStorage.setItem('rota-design-ui-theme', theme)
   }, [theme])
 
-  // Ganchos de teste E2E (FASE 13 — diff visual contra o baseline do HTML original).
-  // Só existem em dev; não fazem parte do bundle de produção (tree-shaken pelo `if (import.meta.env.DEV)`).
   useEffect(() => {
     if (!import.meta.env.DEV) return
     ;(window as unknown as Record<string, unknown>).__testSelectTemplate = (id: string) =>
@@ -85,8 +89,6 @@ export function AppShell() {
       useEditorStore.setState({ zoom: zoom as never })
   }, [])
 
-  // Espelha os atalhos globais de teclado (linhas 3550-3559) + 🆕 atalhos extras da Fase 12
-  // (Ctrl+S salvar, Ctrl+E exportar, 1..5 trocar de aba) — não existiam no app original.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const isTypingTarget =
@@ -113,7 +115,7 @@ export function AppShell() {
         void downloadPNG()
         return
       }
-      if (!isTypingTarget && !e.ctrlKey && !e.metaKey && /^[1-5]$/.test(e.key)) {
+      if (!isTypingTarget && !e.ctrlKey && !e.metaKey && /^[1-6]$/.test(e.key)) {
         const tab = TAB_ORDER[Number(e.key) - 1]
         if (tab) setTab(tab)
       }
@@ -135,7 +137,20 @@ export function AppShell() {
         }}
       />
 
+      {activeTab === 'dashboard' && (
+        <div className="flex flex-1 overflow-hidden">
+          <Suspense fallback={<TabLoading />}><DashboardView /></Suspense>
+        </div>
+      )}
+
+      {activeTab === 'wizard' && (
+        <div className="flex flex-1 overflow-hidden">
+          <Suspense fallback={<TabLoading />}><WizardView /></Suspense>
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
+
         {activeTab === 'create' && (
           <motion.div
             key="create"
@@ -186,74 +201,30 @@ export function AppShell() {
             )}
           </motion.div>
         )}
+
         {activeTab === 'brand' && (
-          <motion.div
-            key="brand"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-1 overflow-hidden"
-          >
-            <Suspense fallback={<TabLoading />}>
-              <BrandView />
-            </Suspense>
+          <motion.div key="brand" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex flex-1 overflow-hidden">
+            <Suspense fallback={<TabLoading />}><BrandView /></Suspense>
           </motion.div>
         )}
         {activeTab === 'ai-config' && (
-          <motion.div
-            key="ai-config"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-1 overflow-hidden"
-          >
-            <Suspense fallback={<TabLoading />}>
-              <AIConfigView />
-            </Suspense>
+          <motion.div key="ai-config" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex flex-1 overflow-hidden">
+            <Suspense fallback={<TabLoading />}><AIConfigView /></Suspense>
           </motion.div>
         )}
         {activeTab === 'renders' && (
-          <motion.div
-            key="renders"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-1 overflow-hidden"
-          >
-            <Suspense fallback={<TabLoading />}>
-              <RendersView />
-            </Suspense>
+          <motion.div key="renders" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex flex-1 overflow-hidden">
+            <Suspense fallback={<TabLoading />}><RendersView /></Suspense>
           </motion.div>
         )}
         {activeTab === 'history' && (
-          <motion.div
-            key="history"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-1 overflow-hidden"
-          >
-            <Suspense fallback={<TabLoading />}>
-              <HistoryView />
-            </Suspense>
+          <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex flex-1 overflow-hidden">
+            <Suspense fallback={<TabLoading />}><HistoryView /></Suspense>
           </motion.div>
         )}
         {activeTab === 'editorial' && (
-          <motion.div
-            key="editorial"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-1 overflow-hidden"
-          >
-            <Suspense fallback={<TabLoading />}>
-              <EditorialView />
-            </Suspense>
+          <motion.div key="editorial" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex flex-1 overflow-hidden">
+            <Suspense fallback={<TabLoading />}><EditorialView /></Suspense>
           </motion.div>
         )}
       </AnimatePresence>

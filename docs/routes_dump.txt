@@ -1,0 +1,661 @@
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\layout.tsx ---
+
+import type { Metadata } from 'next'
+import { createDatabase } from '@plataforma/db'
+import { AppShell } from '@/components/AppShell'
+import { getCampaignContext } from '@/lib/campaign-context'
+import './globals.css'
+
+export const metadata: Metadata = { title: 'Plataforma Rota de Ataque', description: 'Gestão de redes sociais e prospecção ativa' }
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  let context: Awaited<ReturnType<typeof getCampaignContext>> = { campaigns: [], selected: null }
+  if (process.env.DATABASE_URL) {
+    const { pool } = createDatabase(process.env.DATABASE_URL)
+    try { context = await getCampaignContext(pool) } catch { context = { campaigns: [], selected: null } } finally { await pool.end() }
+  }
+  return <html lang="pt-BR"><body><a className="skip" href="#content">Pular para o conteúdo</a><AppShell campaigns={context.campaigns} selectedCampaignId={context.selected?.id ?? null}>{children}</AppShell></body></html>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\page.tsx ---
+
+import { DashboardPage } from '@/components/DashboardPage'
+export const dynamic = 'force-dynamic'
+export default function Page() { return <DashboardPage view="overview" title="Overview" subtitle="Aquisição, funil, relacionamento e saúde da campanha ativa" /> }
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\accounts\AccountsClient.tsx ---
+
+'use client'
+
+import { HealthDial, IntegrationState, KpiCard, KpiRow, PageHeader, RoleBadge } from '@plataforma/ui-bridge'
+import { useEffect, useState } from 'react'
+import type { IntegrationCapability } from '@/lib/integration-capabilities'
+import { appPath } from '@/lib/base-path'
+
+interface Policy { action_type:string; enabled:boolean; daily_limit:number; hourly_limit:number; required_role:'collector'|'actor' }
+interface Account { id:string; username:string; role:'collector'|'actor'; status:string; health_score:string|null; meta_token_expires_at:string|null; policies:Policy[] }
+interface Competitor { id:string; username:string; campaign_id:string; campaign_name:string; weight:string; campaign_status:'active'|'paused'|'archived'; followers_count:number|null; last_synced_via_api_at:string|null }
+interface Campaign { id:string; name:string }
+
+export function AccountsClient({ accounts:initialAccounts, competitors:initialCompetitors, campaigns, capabilities, notice }:{ accounts:Account[]; competitors:Competitor[]; campaigns:Campaign[]; capabilities:IntegrationCapability[]; notice?:string }) {
+  const [accounts, setAccounts] = useState(initialAccounts)
+  const [competitors, setCompetitors] = useState(initialCompetitors)
+  const [username, setUsername] = useState('')
+  const [campaignId, setCampaignId] = useState(campaigns[0]?.id ?? '')
+  const [validation, setValidation] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (username.length < 2) { setValidation(''); return }
+      const normalized = username.replace(/^@/, '')
+      const response = await fetch(`/prospector/api/admin/competitors/validate?username=${encodeURIComponent(normalized)}`)
+      const data = await response.json() as { valid?: boolean }
+      setValidation(data.valid === true ? '✅ Conta encontrada' : data.valid === false ? '⚠ Conta não encontrada' : '⚠ Validação Meta indisponível')
+    }, username.length < 2 ? 0 : 500)
+    return () => clearTimeout(timer)
+  }, [username])
+
+  async function togglePolicy(account:Account, policy:Policy) {
+    const enabled = !policy.enabled
+    const response = await fetch(`/prospector/api/admin/accounts/${account.id}/policies`, { method:'PATCH', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ actionType:policy.action_type, enabled, dailyLimit:policy.daily_limit, hourlyLimit:policy.hourly_limit }) })
+    if (response.ok) setAccounts((items) => items.map((item) => item.id === account.id ? { ...item, policies:item.policies.map((current) => current.action_type === policy.action_type ? { ...current, enabled } : current) } : item))
+  }
+
+  async function addCompetitor(event:React.FormEvent) {
+    event.preventDefault()
+    const response = await fetch('/prospector/api/admin/competitors', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ campaignId, username, weight:1 }) })
+    if (response.ok) location.reload()
+  }
+
+  async function updateCompetitor(item:Competitor, patch:{ status?:string; weight?:number }) {
+    const response = await fetch('/prospector/api/admin/competitors', { method:'PATCH', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ campaignId:item.campaign_id, competitorId:item.id, ...patch }) })
+    if (response.ok) setCompetitors((items) => items.map((value) => value.id === item.id && value.campaign_id === item.campaign_id ? { ...value, ...patch, weight:String(patch.weight ?? value.weight), campaign_status:(patch.status ?? value.campaign_status) as Competitor['campaign_status'] } : value))
+  }
+
+  return <div className="page">
+    <PageHeader title="Contas Meta" subtitle="Papéis fixos, políticas, saúde e concorrentes monitorados" />
+    {notice && <p className="banner" role="status">{notice}</p>}
+    <section><h2>Integrações</h2><div className="integration-grid">{capabilities.map((capability)=><IntegrationState key={capability.id} name={capability.name} status={capability.status} detail={capability.detail}/>)}</div></section>
+    <div className="account-grid">{(['collector','actor'] as const).map((role) => {
+      const account = accounts.find((item) => item.role === role)
+      return <section className="card account-large" key={role}>
+        {account && ['CHECKPOINT','STOPPED'].includes(account.status) && <div className="danger-banner">Conta interrompida · <a href={appPath('/docs/runbooks/accounts')}>Ver runbook</a></div>}
+        <header><RoleBadge role={role}/><HealthDial value={Math.round(Number(account?.health_score ?? 0))} state={account?.status ?? 'AUTH_REQUIRED'}/></header>
+        <h2>{account?.username ? `@${account.username}` : 'Não vinculada'}</h2>
+        <KpiRow><KpiCard label="Status" value={account?.status ?? 'AUTH_REQUIRED'}/><KpiCard label="Token" value={account?.meta_token_expires_at ? new Date(account.meta_token_expires_at).toLocaleDateString('pt-BR') : 'ausente'}/></KpiRow>
+        <a className="runbook" href={`/prospector/api/meta/oauth/start?role=${role}`}>{account?.meta_token_expires_at ? 'Renovar vínculo Meta' : 'Vincular Meta'}</a>
+        <h3>Políticas</h3>
+        {account?.policies.map((policy) => {
+          const compatible = policy.required_role === role
+          return <label className="policy-row" title={compatible ? '' : 'Incompatível com o papel da conta'} key={policy.action_type}><input type="checkbox" checked={policy.enabled} disabled={!compatible} onChange={() => void togglePolicy(account, policy)}/><span>{policy.action_type}</span><small>{policy.daily_limit}/dia</small></label>
+        })}
+      </section>
+    })}</div>
+    <section className="card competitors">
+      <h2>Concorrentes</h2>
+      <form onSubmit={addCompetitor}><select aria-label="Campanha" value={campaignId} onChange={(event) => setCampaignId(event.target.value)}>{campaigns.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><input aria-label="Username do concorrente" value={username} onChange={(event) => setUsername(event.target.value)} placeholder="@username" required/><span>{validation}</span><button>Adicionar</button></form>
+      {competitors.map((item) => <div className="competitor-row" key={`${item.campaign_id}:${item.id}`}><strong>@{item.username}</strong><span>{item.campaign_name}</span><span>{item.followers_count ?? '—'} seguidores</span><select aria-label={`Status de @${item.username}`} value={item.campaign_status} onChange={(event) => void updateCompetitor(item, { status:event.target.value })}><option value="active">Ativo</option><option value="paused">Pausado</option><option value="archived">Arquivado</option></select><label>Peso <input type="range" min="0" max="5" step="0.1" value={item.weight} onChange={(event) => void updateCompetitor(item, { weight:Number(event.target.value) })}/>{Number(item.weight).toFixed(1)}</label></div>)}
+    </section>
+  </div>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\accounts\page.tsx ---
+
+import{createDatabase}from'@plataforma/db';import{getIntegrationCapabilities}from'@/lib/integration-capabilities';import{AccountsClient}from'./AccountsClient';export const dynamic='force-dynamic';export default async function AccountsPage({searchParams}:{searchParams:Promise<{meta?:string;role?:string}>}){const params=await searchParams;const{pool}=createDatabase(process.env.DATABASE_URL!);try{const[accounts,policies,competitors,campaigns,capabilities]=await Promise.all([pool.query(`SELECT a.id,a.username,a.role,a.status,a.meta_token_expires_at,(SELECT health_score FROM account_health h WHERE h.account_id=a.id ORDER BY captured_at DESC LIMIT 1) health_score FROM accounts a ORDER BY role`),pool.query('SELECT account_id,action_type,enabled,daily_limit,hourly_limit,required_role FROM action_policies ORDER BY action_type'),pool.query(`SELECT c.id,c.username,c.followers_count,c.last_synced_via_api_at,cc.campaign_id,cc.weight,cc.status campaign_status,ca.name campaign_name FROM competitors c JOIN campaign_competitors cc ON cc.competitor_id=c.id JOIN campaigns ca ON ca.id=cc.campaign_id ORDER BY ca.name,c.username`),pool.query(`SELECT id,name FROM campaigns WHERE status='active' ORDER BY name`),getIntegrationCapabilities(pool)]);const rows=accounts.rows.map((account)=>({...account,policies:policies.rows.filter((policy)=>policy.account_id===account.id)}));const notice=params.meta==='linked'?`Conta ${params.role} vinculada com sucesso.`:params.meta==='error'?'A vinculação Meta falhou. Verifique as permissões do aplicativo.':undefined;return <AccountsClient accounts={rows} competitors={competitors.rows} campaigns={campaigns.rows} capabilities={capabilities} notice={notice}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\ai-settings\AISettingsClient.tsx ---
+
+'use client'
+
+import { useState } from 'react'
+import { KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { appPath } from '@/lib/base-path'
+
+export type AIProviderRow={id:string;name:string;kind:'openai-compatible'|'anthropic'|'local';base_url:string;enabled:boolean;has_api_key:boolean;updated_at:string}
+export type AIModelRow={id:string;provider_id:string;provider_name:string;label:string;model_id:string;enabled:boolean;is_default:boolean;supports_json:boolean;max_output_tokens:number;temperature:number;updated_at:string}
+
+export function AISettingsClient({initialProviders,initialModels}:{initialProviders:AIProviderRow[];initialModels:AIModelRow[]}){
+ const[providers,setProviders]=useState(initialProviders),[models,setModels]=useState(initialModels),[editingProvider,setEditingProvider]=useState<AIProviderRow|null>(null),[editingModel,setEditingModel]=useState<AIModelRow|null>(null),[busy,setBusy]=useState(''),[message,setMessage]=useState('')
+ async function refresh(){const response=await fetch(appPath('/api/admin/ai'),{cache:'no-store'});if(response.ok){const body=await response.json() as{providers:AIProviderRow[];models:AIModelRow[]};setProviders(body.providers);setModels(body.models)}}
+ async function action(payload:Record<string,unknown>,label:string){setBusy(label);setMessage('');try{const response=await fetch(appPath('/api/admin/ai'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const body=await response.json() as{ok?:boolean;error?:string;latencyMs?:number;model?:string};if(!response.ok)throw new Error(body.error??'Não foi possível salvar');setMessage(label==='test'?`Conexão aprovada com ${body.model} em ${body.latencyMs} ms.`:'Configuração salva e auditada.');await refresh()}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}
+ const active=models.find(item=>item.is_default)
+ return <main className="page"><PageHeader title="Modelos de IA" subtitle="Provedores externos e modelos locais usados pelos workers do Prospector"/><KpiRow><KpiCard label="Provedores" value={providers.length}/><KpiCard label="Conectados" value={providers.filter(item=>item.enabled&&(item.has_api_key||item.kind==='local')).length}/><KpiCard label="Modelos ativos" value={models.filter(item=>item.enabled).length}/><KpiCard label="Modelo padrão" value={active?.label??'Nenhum'}/></KpiRow><section className="banner ai-runtime-note"><strong>Execução no VPS</strong><span>APIs externas consomem apenas rede. Modelos locais consomem CPU/RAM do VPS e devem usar um endpoint OpenAI-compatible já instalado.</span></section><p className="action-message" role="status">{message}</p><div className="ai-settings-layout"><section><div className="action-heading"><div><h2>Provedores</h2><p>As chaves são criptografadas; depois de salvas, nunca voltam para o navegador.</p></div><button type="button" onClick={()=>setEditingProvider({id:'',name:'',kind:'openai-compatible',base_url:'https://api.deepseek.com',enabled:false,has_api_key:false,updated_at:''})}>Adicionar provedor</button></div><div className="ai-provider-list">{providers.map(provider=><article className="card" key={provider.id}><header><div><h3>{provider.name}</h3><small>{provider.kind} · {provider.base_url}</small></div><StatusBadge status={provider.enabled?(provider.has_api_key||provider.kind==='local')?'Configurada':'Parcial':'Desativada'}/></header><p>{provider.kind==='local'?'Sem chave obrigatória':'Chave '+(provider.has_api_key?'protegida e presente':'não informada')}</p><div className="action-row"><button type="button" onClick={()=>setEditingProvider(provider)}>Editar</button><button type="button" disabled={busy==='test'} onClick={()=>void action({action:'test',providerId:provider.id},'test')}>Testar</button></div></article>)}</div></section><section><div className="action-heading"><div><h2>Modelos</h2><p>O padrão é recarregado automaticamente pelos workers em até 30 segundos.</p></div><button type="button" disabled={!providers.length} onClick={()=>setEditingModel({id:'',provider_id:providers[0]?.id??'',provider_name:providers[0]?.name??'',label:'',model_id:'',enabled:true,is_default:false,supports_json:true,max_output_tokens:2048,temperature:0,updated_at:''})}>Adicionar modelo</button></div><div className="ai-model-list">{models.map(model=><article className="card" key={model.id}><header><div><h3>{model.label}</h3><code>{model.model_id}</code></div>{model.is_default&&<StatusBadge status="Padrão"/>}</header><p>{model.provider_name} · até {model.max_output_tokens} tokens · temperatura {model.temperature}</p><div className="action-row"><button type="button" onClick={()=>setEditingModel(model)}>Editar</button><button type="button" disabled={model.is_default||!model.enabled||busy==='default'} onClick={()=>void action({action:'set-default',modelId:model.id},'default')}>Usar como padrão</button><button type="button" disabled={busy==='test'} onClick={()=>void action({action:'test',modelId:model.id},'test')}>Testar</button></div></article>)}</div></section></div>{editingProvider&&<ProviderEditor value={editingProvider} busy={busy} onClose={()=>setEditingProvider(null)} onSave={payload=>void action(payload,'provider').then(()=>setEditingProvider(null))}/>} {editingModel&&<ModelEditor value={editingModel} providers={providers} busy={busy} onClose={()=>setEditingModel(null)} onSave={payload=>void action(payload,'model').then(()=>setEditingModel(null))}/>}</main>
+}
+
+function ProviderEditor({value,busy,onClose,onSave}:{value:AIProviderRow;busy:string;onClose:()=>void;onSave:(payload:Record<string,unknown>)=>void}){return <div className="command-backdrop"><form className="command-palette stack-form" onSubmit={event=>{event.preventDefault();const form=new FormData(event.currentTarget);onSave({action:'save-provider',id:value.id||undefined,name:form.get('name'),kind:form.get('kind'),baseUrl:form.get('baseUrl'),apiKey:form.get('apiKey'),enabled:form.get('enabled')==='on'})}}><h2>{value.id?'Editar provedor':'Adicionar provedor'}</h2><label>Nome<input name="name" defaultValue={value.name} required/></label><label>Formato<select name="kind" defaultValue={value.kind}><option value="openai-compatible">OpenAI-compatible</option><option value="anthropic">Anthropic</option><option value="local">Local OpenAI-compatible</option></select></label><label>URL base<input name="baseUrl" type="url" defaultValue={value.base_url} required/></label><label>Chave da API<input name="apiKey" type="password" autoComplete="new-password" placeholder={value.has_api_key?'Deixe vazio para manter a atual':'Cole a chave'}/></label><label className="check-row"><input name="enabled" type="checkbox" defaultChecked={value.enabled}/> Provedor habilitado</label><div className="action-row"><button type="button" onClick={onClose}>Cancelar</button><button type="submit" disabled={busy==='provider'}>{busy==='provider'?'Salvando…':'Salvar'}</button></div></form></div>}
+
+function ModelEditor({value,providers,busy,onClose,onSave}:{value:AIModelRow;providers:AIProviderRow[];busy:string;onClose:()=>void;onSave:(payload:Record<string,unknown>)=>void}){return <div className="command-backdrop"><form className="command-palette stack-form" onSubmit={event=>{event.preventDefault();const form=new FormData(event.currentTarget);onSave({action:'save-model',id:value.id||undefined,providerId:form.get('providerId'),label:form.get('label'),modelId:form.get('modelId'),maxOutputTokens:Number(form.get('maxOutputTokens')),temperature:Number(form.get('temperature')),supportsJson:form.get('supportsJson')==='on',enabled:form.get('enabled')==='on',isDefault:form.get('isDefault')==='on'})}}><h2>{value.id?'Editar modelo':'Adicionar modelo'}</h2><label>Provedor<select name="providerId" defaultValue={value.provider_id}>{providers.map(provider=><option value={provider.id} key={provider.id}>{provider.name}</option>)}</select></label><label>Nome de exibição<input name="label" defaultValue={value.label} required/></label><label>Identificador do modelo<input name="modelId" defaultValue={value.model_id} placeholder="deepseek-v4-flash" required/></label><label>Máximo de tokens<input name="maxOutputTokens" type="number" min="64" max="32768" defaultValue={value.max_output_tokens}/></label><label>Temperatura<input name="temperature" type="number" min="0" max="2" step="0.1" defaultValue={value.temperature}/></label><label className="check-row"><input name="supportsJson" type="checkbox" defaultChecked={value.supports_json}/> Suporta resposta JSON</label><label className="check-row"><input name="enabled" type="checkbox" defaultChecked={value.enabled}/> Modelo habilitado</label><label className="check-row"><input name="isDefault" type="checkbox" defaultChecked={value.is_default}/> Tornar modelo padrão</label><div className="action-row"><button type="button" onClick={onClose}>Cancelar</button><button type="submit" disabled={busy==='model'}>{busy==='model'?'Salvando…':'Salvar'}</button></div></form></div>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\ai-settings\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { AISettingsClient, type AIModelRow, type AIProviderRow } from './AISettingsClient'
+
+export const dynamic = 'force-dynamic'
+
+export default async function AISettingsPage() {
+  const { pool } = createDatabase(process.env.DATABASE_URL!)
+  try {
+    const [providers, models] = await Promise.all([
+      pool.query<AIProviderRow>(`SELECT id,name,kind,base_url,enabled,api_key_encrypted IS NOT NULL has_api_key,updated_at FROM ai_providers ORDER BY name`),
+      pool.query<AIModelRow>(`SELECT model.id,model.provider_id,provider.name provider_name,model.label,model.model_id,model.enabled,model.is_default,model.supports_json,model.max_output_tokens,model.temperature::float8 temperature,model.updated_at FROM ai_models model JOIN ai_providers provider ON provider.id=model.provider_id ORDER BY model.is_default DESC,provider.name,model.label`),
+    ])
+    return <AISettingsClient initialProviders={providers.rows} initialModels={models.rows}/>
+  } finally { await pool.end() }
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\communities\page.tsx ---
+
+import { EmptyState, PageHeader } from '@plataforma/ui-bridge'
+import { CommunitiesAvailability } from './CommunitiesAvailability'
+
+export default function CommunitiesPage() {
+  return <main className="page">
+    <PageHeader title="Grupos de WhatsApp" subtitle="Espaço reservado para a operação de comunidades quando a Meta liberar a Groups API." />
+    <EmptyState
+      message="Grupos de WhatsApp aguardando liberação da Groups API para esta conta Meta. Consulte docs/compliance/whatsapp-groups-availability.md."
+      action={<CommunitiesAvailability />}
+    />
+  </main>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\community\page.tsx ---
+
+import { DashboardPage } from '@/components/DashboardPage'
+export const dynamic = 'force-dynamic'
+
+export default function CommunityPage() {
+  return <DashboardPage view="community" title="Mapa de comunidades" subtitle="Clusters e relações entre leads identificados pela inteligência da campanha" />
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\competitive-intel\page.tsx ---
+
+import { DashboardPage } from '@/components/DashboardPage'
+export const dynamic = 'force-dynamic'
+export default function Page() { return <DashboardPage view="competitive-intel" title="Inteligência competitiva" subtitle="Temas, dores, perguntas e hooks por concorrente" /> }
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\configs\ConfigsClient.tsx ---
+
+'use client'
+import { useState } from 'react'
+import { EmptyState, KpiCard, KpiRow, PageHeader } from '@plataforma/ui-bridge'
+import { appPath } from '@/lib/base-path'
+type Config={campaign_id:string;campaign:string;p0_threshold:number;p1_threshold:number;p2_threshold:number;lambda_freshness:number;source_weights:Record<string,number>}
+const sources=['instagram_comment','instagram_follower','instagram_dm','threads','reddit','email','whatsapp']
+export function ConfigsClient({config}:{config:Config}){
+ const[busy,setBusy]=useState(''),[message,setMessage]=useState(''),[impact,setImpact]=useState<{total:number;priority_changes:number}|null>(null)
+ if(!config)return <main className="page"><PageHeader title="Configurações" subtitle="Scoring e prioridade por campanha"/><EmptyState message="Selecione uma campanha com configuração de scoring."/></main>
+ async function submit(formElement:HTMLFormElement,preview:boolean){setBusy(preview?'preview':'save');setMessage('');const form=new FormData(formElement);const payload={campaignId:config.campaign_id,weights:Object.fromEntries(sources.map(source=>[source,Number(form.get(source)??1)])),thresholds:{p0:Number(form.get('p0')),p1:Number(form.get('p1')),p2:Number(form.get('p2'))},preview};try{const response=await fetch(appPath('/api/admin/configs'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const body=await response.json() as {impact?:{total:number;priority_changes:number};error?:string};if(!response.ok)throw new Error(body.error??'Não foi possível aplicar');if(preview&&body.impact){setImpact(body.impact);setMessage('Prévia calculada com os scores reais da campanha.')}else setMessage('Configuração salva e auditada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}
+ return <main className="page"><PageHeader title="Configurações" subtitle={`Scoring e prioridade · ${config.campaign}`}/><KpiRow><KpiCard label="Limite P0" value={config.p0_threshold}/><KpiCard label="Limite P1" value={config.p1_threshold}/><KpiCard label="Limite P2" value={config.p2_threshold}/><KpiCard label="Decaimento" value={config.lambda_freshness}/></KpiRow><form className="config-form" onSubmit={event=>{event.preventDefault();void submit(event.currentTarget,false)}}><section className="card"><h2>Faixas de prioridade</h2><p>Os limites precisam permanecer em ordem decrescente.</p><div className="threshold-grid"><label>P0<input name="p0" type="number" min="0" max="100" defaultValue={config.p0_threshold}/></label><label>P1<input name="p1" type="number" min="0" max="100" defaultValue={config.p1_threshold}/></label><label>P2<input name="p2" type="number" min="0" max="100" defaultValue={config.p2_threshold}/></label></div></section><section className="card"><h2>Peso por origem</h2><div className="weight-grid">{sources.map(source=><label key={source}>{source.replace(/_/g,' ')}<input name={source} type="number" min="0" max="10" step="0.1" defaultValue={config.source_weights?.[source]??1}/></label>)}</div></section>{impact&&<section className="card impact-preview"><h2>Impacto da prévia</h2><strong>{impact.priority_changes} de {impact.total}</strong><p>leads mudariam de prioridade com os novos limites. Os pesos serão aplicados no próximo recálculo do worker.</p></section>}<div className="action-row"><button type="button" disabled={Boolean(busy)} onClick={event=>event.currentTarget.form&&void submit(event.currentTarget.form,true)}>{busy==='preview'?'Calculando…':'Calcular prévia'}</button><button disabled={Boolean(busy)}>{busy==='save'?'Salvando…':'Salvar configuração'}</button></div><p role="status">{message}</p></form></main>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\configs\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ConfigsClient } from './ConfigsClient'
+export const dynamic='force-dynamic'
+export default async function Page(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const config=selected?(await pool.query(`SELECT config.campaign_id,campaign.name campaign,config.p0_threshold,config.p1_threshold,config.p2_threshold,config.lambda_freshness,config.source_weights FROM campaign_scoring_config config JOIN campaigns campaign ON campaign.id=config.campaign_id WHERE config.campaign_id=$1`,[selected.id])).rows[0]:null;if(!config)return null;return <ConfigsClient config={config}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\contact-policies\ContactPoliciesClient.tsx ---
+
+'use client'
+import { useMemo, useState } from 'react'
+import { EmptyState, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { appPath } from '@/lib/base-path'
+
+type Policy={id:string;campaign_id:string|null;campaign:string;channel:string|null;cadence_seconds:number;enabled:boolean;rules:Record<string,unknown>}
+type Campaign={id:string;name:string}
+type Lead={id:string;username_current:string}
+export function ContactPoliciesClient({initialPolicies,campaigns,selectedCampaignId,leads}:{initialPolicies:Policy[];campaigns:Campaign[];selectedCampaignId:string;leads:Lead[]}){const[policies,setPolicies]=useState(initialPolicies),[editing,setEditing]=useState<Policy|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[decision,setDecision]=useState('');const active=useMemo(()=>policies.filter(item=>item.enabled).length,[policies]);async function save(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setBusy(true);setMessage('');const form=new FormData(event.currentTarget);const rules={respectOptOut:true,requireHumanReview:form.get('humanReview')==='on',businessHoursOnly:form.get('businessHours')==='on'};try{const response=await fetch(appPath('/api/contact-policies'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:editing?.id,campaignId:form.get('scope')==='global'?null:form.get('scope'),channel:form.get('channel')||null,cadenceSeconds:Number(form.get('cadenceHours'))*3600,enabled:form.get('enabled')==='on',rules})});const body=await response.json() as {item?:Policy;error?:string};if(!response.ok||!body.item)throw new Error(body.error??'Não foi possível salvar');setPolicies(items=>[body.item!,...items.filter(item=>item.id!==body.item!.id)]);setEditing(null);setMessage('Política salva e auditada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}}async function simulate(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setBusy(true);setDecision('');const form=new FormData(event.currentTarget);try{const response=await fetch(appPath('/api/contact-policies/evaluate'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({leadId:form.get('leadId'),campaignId:selectedCampaignId||undefined,channel:form.get('channel')})});if(!response.ok)throw new Error('Não foi possível avaliar');setDecision('Avaliação enfileirada. A decisão aparecerá na timeline e na fila operacional.')}catch(error){setDecision(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}}return <main className="page"><PageHeader title="Políticas de contato" subtitle="Cadência, consentimento e revisão humana por canal e campanha"/><KpiRow><KpiCard label="Políticas" value={policies.length}/><KpiCard label="Ativas" value={active}/><KpiCard label="Globais" value={policies.filter(item=>!item.campaign_id).length}/><KpiCard label="Canais cobertos" value={new Set(policies.map(item=>item.channel).filter(Boolean)).size}/></KpiRow><div className="policy-layout"><section className="card"><h2>{editing?'Editar política':'Nova política'}</h2><form className="stack-form" onSubmit={save} key={editing?.id??'new'}><label>Escopo<select name="scope" defaultValue={editing?.campaign_id??selectedCampaignId??'global'}><option value="global">Global</option>{campaigns.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Canal<select name="channel" defaultValue={editing?.channel??''}><option value="">Todos</option><option value="instagram">Instagram</option><option value="threads">Threads</option><option value="email">E-mail</option><option value="whatsapp">WhatsApp</option></select></label><label>Intervalo mínimo (horas)<input name="cadenceHours" type="number" min="1" max="720" defaultValue={Math.round((editing?.cadence_seconds??86400)/3600)}/></label><label><input name="enabled" type="checkbox" defaultChecked={editing?.enabled??true}/> Política ativa</label><label><input name="humanReview" type="checkbox" defaultChecked={Boolean(editing?.rules?.requireHumanReview)}/> Exigir revisão humana</label><label><input name="businessHours" type="checkbox" defaultChecked={Boolean(editing?.rules?.businessHoursOnly)}/> Somente horário comercial</label><div className="action-row"><button disabled={busy}>{busy?'Salvando…':'Salvar política'}</button>{editing&&<button type="button" onClick={()=>setEditing(null)}>Cancelar</button>}</div></form><p role="status">{message}</p></section><section className="card"><h2>Simular elegibilidade</h2>{leads.length?<form className="stack-form" onSubmit={simulate}><label>Lead<select name="leadId">{leads.map(item=><option key={item.id} value={item.id}>@{item.username_current}</option>)}</select></label><label>Canal<select name="channel"><option value="instagram">Instagram</option><option value="threads">Threads</option><option value="email">E-mail</option><option value="whatsapp">WhatsApp</option></select></label><button disabled={busy}>Avaliar agora</button></form>:<EmptyState message="Não há leads na campanha para simular."/>}<p role="status">{decision}</p></section></div><section><h2>Políticas vigentes</h2>{policies.length?<div className="policy-grid">{policies.map(item=><article className="card" key={item.id}><header><StatusBadge status={item.enabled?'Ativa':'Pausada'}/><span>{item.campaign}</span></header><h3>{item.channel??'Todos os canais'}</h3><p>Intervalo mínimo de {Math.round(item.cadence_seconds/3600)} horas.</p><ul><li>Opt-out sempre respeitado</li><li>{item.rules?.requireHumanReview?'Com':'Sem'} revisão humana obrigatória</li><li>{item.rules?.businessHoursOnly?'Somente horário comercial':'Qualquer horário permitido'}</li></ul><button onClick={()=>setEditing(item)}>Editar</button></article>)}</div>:<EmptyState message="Nenhuma política cadastrada."/>}</section></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\contact-policies\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ContactPoliciesClient } from './ContactPoliciesClient'
+
+export const dynamic = 'force-dynamic'
+export default async function Page(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{campaigns,selected}=await getCampaignContext(pool);const[policies,leads]=await Promise.all([
+pool.query(`SELECT policy.id,policy.campaign_id,COALESCE(campaign.name,'Global') campaign,policy.channel,policy.cadence_seconds,policy.enabled,policy.rules FROM contact_policies policy LEFT JOIN campaigns campaign ON campaign.id=policy.campaign_id WHERE policy.campaign_id IS NULL OR $1::uuid IS NULL OR policy.campaign_id=$1 ORDER BY policy.enabled DESC,campaign NULLS FIRST,policy.channel NULLS FIRST`,[selected?.id??null]),
+pool.query(`SELECT lead.id,lead.username_current FROM leads lead JOIN lead_scores score ON score.lead_id=lead.id WHERE ($1::uuid IS NULL OR score.campaign_id=$1) ORDER BY score.final_score DESC LIMIT 100`,[selected?.id??null])]);return <ContactPoliciesClient initialPolicies={policies.rows} campaigns={campaigns} selectedCampaignId={selected?.id??''} leads={leads.rows}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\content-items\ContentItemsClient.tsx ---
+
+'use client'
+import Link from'next/link'
+import{EmptyState,KpiCard,KpiRow,PageHeader,SavedViewTabs,StatusBadge}from'@plataforma/ui-bridge'
+import{useMemo,useState}from'react'
+import{usePathname,useRouter}from'next/navigation'
+type Item={id:string;hook:string;angle:string;status:string;funnel_stage:string;created_at:string;thesis:string|null;channels:string[];variants:number;impressions:number;conversions:number}
+const statuses=['Todos','draft','approved','producing','published','archived','forked']
+export function ContentItemsClient({initialItems,initialStatus}:{initialItems:Item[];initialStatus:string}){const router=useRouter(),pathname=usePathname();const[status,setStatus]=useState(initialStatus),[search,setSearch]=useState('');const items=useMemo(()=>initialItems.filter((item)=>(status==='Todos'||item.status===status)&&(!search||`${item.hook} ${item.angle} ${item.thesis??''}`.toLowerCase().includes(search.toLowerCase()))),[initialItems,status,search]);function change(next:string){setStatus(next);router.replace(`${pathname}${next==='Todos'?'':`?status=${encodeURIComponent(next)}`}`,{scroll:false})}return <main className="page"><PageHeader title="Conteúdos" subtitle="Briefing canônico, variantes, publicação e desempenho rastreáveis"/><KpiRow><KpiCard label="Conteúdos" value={initialItems.length}/><KpiCard label="Publicados" value={initialItems.filter((item)=>item.status==='published').length}/><KpiCard label="Variantes" value={initialItems.reduce((sum,item)=>sum+item.variants,0)}/><KpiCard label="Conversões" value={initialItems.reduce((sum,item)=>sum+item.conversions,0)}/></KpiRow><SavedViewTabs views={statuses} active={status} onChange={change}/><div className="toolbar"><label>Buscar conteúdo<input type="search" value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Hook, ângulo ou tese"/></label><span>{items.length} itens</span></div>{items.length?<section className="content-grid">{items.map((item)=><Link className="content-link card" href={`/content-items/${item.id}`} key={item.id}><header><StatusBadge status={item.status}/><time>{new Date(item.created_at).toLocaleDateString('pt-BR')}</time></header><h2>{item.hook}</h2><p>{item.angle}</p><small>{item.thesis??'Sem tese'} · {item.funnel_stage??'sem etapa'}</small><footer><span>{item.variants} variantes</span><span>{item.impressions} impressões</span><span>{item.conversions} conversões</span></footer></Link>)}</section>:<EmptyState message={search||status!=='Todos'?'Nenhum conteúdo corresponde aos filtros.':'Nenhum conteúdo ainda. Aprove uma oportunidade para criar o primeiro.'}/>}</main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\content-items\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ContentItemsClient } from './ContentItemsClient'
+
+export const dynamic='force-dynamic'
+export default async function ContentItemsPage({searchParams}:{searchParams:Promise<{status?:string}>}){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const requested=(await searchParams).status;const initialStatus=['draft','approved','producing','published','archived','forked'].includes(requested??'')?requested!:'Todos';const items=(await pool.query(`SELECT item.id,item.hook,item.angle,item.status,item.funnel_stage,item.created_at,thesis.title thesis,COALESCE(array_agg(DISTINCT variant.channel) FILTER(WHERE variant.channel IS NOT NULL),'{}') channels,count(DISTINCT variant.id)::int variants,COALESCE(sum(performance.impressions),0)::int impressions,COALESCE(sum(performance.conversions),0)::int conversions FROM content_items item LEFT JOIN theses thesis ON thesis.id=item.thesis_id LEFT JOIN content_variants variant ON variant.content_item_id=item.id LEFT JOIN content_performance performance ON performance.variant_id=variant.id WHERE ($1::uuid IS NULL OR item.campaign_id=$1) GROUP BY item.id,thesis.title ORDER BY item.created_at DESC LIMIT 300`,[selected?.id??null])).rows;return <ContentItemsClient initialItems={items} initialStatus={initialStatus}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\content-items\[id]\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { ChannelTimeline, EmptyState, PageHeader, ThreePaneLayout, VariantPreview } from '@plataforma/ui-bridge'
+import { ContentItemActions } from './ContentItemActions'
+import { getCampaignContext } from '@/lib/campaign-context'
+
+export const dynamic = 'force-dynamic'
+export default async function ContentItemDetail({params}:{params:Promise<{id:string}>}) {
+  const { id } = await params
+  const { pool } = createDatabase(process.env.DATABASE_URL!)
+  try {
+    const { selected } = await getCampaignContext(pool)
+    const item = (await pool.query<{id:string;hook:string;angle:string;status:string;brand_voice_version:string}>(`SELECT id,hook,angle,status,brand_voice_version FROM content_items WHERE id=$1 AND ($2::uuid IS NULL OR campaign_id=$2)`, [id,selected?.id??null])).rows[0]
+    if (!item) return <main className="page"><EmptyState message="Content item não encontrado."/></main>
+    const variants = (await pool.query<{id:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';status:string;payload:Record<string,unknown>}>(`SELECT variant.id,variant.channel,variant.status,variant.payload,COALESCE(performance.impressions,0) impressions,COALESCE(performance.engagements,0) engagements,COALESCE(performance.conversions,0) conversions FROM content_variants variant LEFT JOIN content_performance performance ON performance.variant_id=variant.id WHERE variant.content_item_id=$1 ORDER BY variant.channel`, [id])).rows
+    const events = (await pool.query<{id:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';event_type:string;at:Date}>(`SELECT id::text,channel,event_type,at FROM timeline_events WHERE content_item_id=$1 ORDER BY at DESC LIMIT 30`, [id])).rows
+    return <main className="page">
+      <PageHeader title={item.hook} subtitle={`${item.angle} · voz ${item.brand_voice_version}`}/>
+      <ContentItemActions id={item.id} status={item.status}/>
+      <ThreePaneLayout list={<section><h2>Canônico</h2><p>Status: {item.status}</p><p>Antes de aprovar: tese ativa, voz definida e ao menos uma variante pronta.</p></section>} detail={<section><h2>Previews por canal</h2>{variants.map((variant)=><VariantPreview key={variant.id} channel={variant.channel} status={variant.status} text={String(variant.payload.text ?? variant.payload.subject ?? JSON.stringify(variant.payload))}/>)}</section>} context={<section><h2>Publicações</h2><ChannelTimeline events={events.map((event)=>({id:event.id,channel:event.channel,event:event.event_type,at:event.at.toISOString()}))}/></section>}/>
+    </main>
+  } finally { await pool.end() }
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\content-opportunity\ContentOpportunityClient.tsx ---
+
+'use client'
+import { useMemo, useState } from 'react'
+import { EmptyState, KpiCard, KpiRow, PageHeader, ScoreBadge, StatusBadge } from '@plataforma/ui-bridge'
+import { appPath } from '@/lib/base-path'
+type Item={id:string;thesis:string;angle:string|null;hook:string|null;evidence:Record<string,unknown>;opportunity_score:number;status:string;created_at:string}
+export function ContentOpportunityClient({initialItems}:{initialItems:Item[]}){const[items,setItems]=useState(initialItems),[selectedId,setSelectedId]=useState(initialItems[0]?.id??''),[search,setSearch]=useState(''),[editing,setEditing]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState('');const visible=useMemo(()=>items.filter(item=>!search||`${item.thesis} ${item.angle??''} ${item.hook??''}`.toLowerCase().includes(search.toLowerCase())),[items,search]),selected=items.find(item=>item.id===selectedId)??visible[0];async function decide(decision:'approve'|'reject'|'update',form?:HTMLFormElement){if(!selected)return;setBusy(true);setMessage('');const data=form?new FormData(form):null;try{const response=await fetch(appPath(`/api/content-opportunities/${selected.id}`),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({decision,thesis:data?.get('thesis'),angle:data?.get('angle'),hook:data?.get('hook')})});const body=await response.json() as {item?:Item;contentItemId?:string;error?:string};if(!response.ok||!body.item)throw new Error(body.error??'Não foi possível atualizar');setItems(current=>current.map(item=>item.id===selected.id?body.item!:item));setEditing(false);setMessage(decision==='approve'?`Aprovada${body.contentItemId?' e convertida em conteúdo':''}.`:decision==='reject'?'Oportunidade rejeitada.':'Oportunidade atualizada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}}function creative(){if(!selected)return;window.open(appPath(`/creative-bridge?opportunity=${selected.id}`),'creative-editor','popup,width=1440,height=960')}return <main className="page"><PageHeader title="Oportunidades de conteúdo" subtitle="Sinais priorizados, evidências e passagem rastreável para produção"/><KpiRow><KpiCard label="Oportunidades" value={items.length}/><KpiCard label="Novas" value={items.filter(item=>item.status==='new').length}/><KpiCard label="Aprovadas" value={items.filter(item=>item.status==='approved').length}/><KpiCard label="Score médio" value={items.length?Math.round(items.reduce((sum,item)=>sum+Number(item.opportunity_score),0)/items.length):0}/></KpiRow><div className="toolbar"><label>Buscar<input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tese, ângulo ou hook"/></label></div><p role="status">{message}</p><div className="opportunity-layout"><section className="opportunity-list">{visible.length?visible.map(item=><button className="card" key={item.id} aria-pressed={selected?.id===item.id} onClick={()=>setSelectedId(item.id)}><header><ScoreBadge score={Math.round(Number(item.opportunity_score))}/><StatusBadge status={item.status}/></header><strong>{item.thesis}</strong><p>{item.hook||item.angle||'Sem hook definido'}</p></button>):<EmptyState message="Nenhuma oportunidade corresponde à busca."/>}</section><aside className="card opportunity-detail">{selected?<>{editing?<form className="stack-form" onSubmit={event=>{event.preventDefault();void decide('update',event.currentTarget)}}><label>Tese<textarea name="thesis" defaultValue={selected.thesis} required/></label><label>Ângulo<textarea name="angle" defaultValue={selected.angle??''}/></label><label>Hook<textarea name="hook" defaultValue={selected.hook??''}/></label><div className="action-row"><button disabled={busy}>Salvar</button><button type="button" onClick={()=>setEditing(false)}>Cancelar</button></div></form>:<><header><StatusBadge status={selected.status}/><ScoreBadge score={Math.round(Number(selected.opportunity_score))}/></header><h2>{selected.thesis}</h2><h3>Hook</h3><p>{selected.hook||'Não definido'}</p><h3>Ângulo</h3><p>{selected.angle||'Não definido'}</p><details><summary>Evidências</summary><dl>{Object.entries(selected.evidence??{}).map(([key,value])=><div key={key}><dt>{key.replace(/_/g,' ')}</dt><dd>{typeof value==='object'?JSON.stringify(value):String(value)}</dd></div>)}</dl></details><div className="action-row"><button disabled={busy} onClick={()=>void decide('approve')}>Aprovar e criar conteúdo</button><button disabled={busy} onClick={()=>setEditing(true)}>Editar</button><button disabled={busy} onClick={()=>void decide('reject')}>Rejeitar</button><button onClick={creative}>Abrir no editor visual</button></div></>}</>:<EmptyState message="Selecione uma oportunidade."/>}</aside></div></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\content-opportunity\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ContentOpportunityClient } from './ContentOpportunityClient'
+export const dynamic='force-dynamic'
+export default async function Page(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const items=(await pool.query(`SELECT id,thesis,angle,hook,evidence,opportunity_score,status,created_at FROM content_opportunities WHERE ($1::uuid IS NULL OR campaign_id=$1) ORDER BY opportunity_score DESC,created_at DESC LIMIT 200`,[selected?.id??null])).rows;return <ContentOpportunityClient initialItems={items}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\conversations\ConversationsClient.tsx ---
+
+'use client'
+import { useMemo, useState } from 'react'
+import { ChannelBadge as UiChannelBadge, EmptyState, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { appPath } from '@/lib/base-path'
+type Conversation={id:string;channel:'instagram'|'whatsapp';participant:string;unread_count:number;last_message_at:string|null;stage:string|null;detected_intent:string|null;requires_human_review:boolean;session_window_expires_at:string|null}
+type Message={id:string;conversation_id:string;direction:string;kind:string;text:string|null;template_ref:string|null;status:string;created_at:string}
+type Template={id:string;name:string;language:string;status:string;external_template_id:string|null}
+function ChannelBadge({channel}:{channel:string}){return <UiChannelBadge channel={channel==='whatsapp'?'whatsapp_dm':'instagram'}/>}
+export function ConversationsClient({initialConversations,messages,templates}:{initialConversations:Conversation[];messages:Message[];templates:Template[]}){const[search,setSearch]=useState(''),[selectedId,setSelectedId]=useState(initialConversations[0]?.id??''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');const visible=useMemo(()=>initialConversations.filter(item=>!search||`${item.participant} ${item.channel} ${item.stage??''} ${item.detected_intent??''}`.toLowerCase().includes(search.toLowerCase())),[initialConversations,search]);const selected=initialConversations.find(item=>item.id===selectedId)??visible[0];const thread=messages.filter(item=>item.conversation_id===selected?.id);const windowOpen=selected?.channel==='whatsapp'&&selected.session_window_expires_at?new Date(selected.session_window_expires_at)>new Date():false;async function send(event:React.FormEvent<HTMLFormElement>){event.preventDefault();if(!selected)return;setBusy(true);setMessage('');const form=new FormData(event.currentTarget);const kind=windowOpen?'text':'template';try{const response=await fetch(appPath('/api/whatsapp/messages'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({conversationId:selected.id,kind,text:kind==='text'?form.get('text'):undefined,templateRef:kind==='template'?form.get('templateRef'):undefined})});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error??'Não foi possível preparar a mensagem');setMessage('Mensagem enviada para revisão humana antes do disparo.');event.currentTarget.reset()}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}}return <main className="page"><PageHeader title="Conversas" subtitle="Caixa unificada com contexto, janela de atendimento e revisão humana"/><KpiRow><KpiCard label="Conversas" value={initialConversations.length}/><KpiCard label="Não lidas" value={initialConversations.reduce((sum,item)=>sum+item.unread_count,0)}/><KpiCard label="Revisão humana" value={initialConversations.filter(item=>item.requires_human_review).length}/><KpiCard label="Janela WhatsApp aberta" value={initialConversations.filter(item=>item.channel==='whatsapp'&&item.session_window_expires_at&&new Date(item.session_window_expires_at)>new Date()).length}/></KpiRow><div className="conversation-shell"><aside className="card conversation-list"><label>Buscar<input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Pessoa, canal ou intenção"/></label>{visible.map(item=><button key={item.id} aria-pressed={selected?.id===item.id} onClick={()=>setSelectedId(item.id)}><ChannelBadge channel={item.channel}/><span><strong>{item.participant||'Contato sem identificador'}</strong><small>{item.detected_intent??item.stage??'Sem classificação'}</small></span>{item.unread_count>0&&<b>{item.unread_count}</b>}</button>)}</aside><section className="card conversation-thread">{selected?<><header><div><h2>{selected.participant}</h2><p>{selected.stage??'Sem etapa'} · {selected.detected_intent??'Intenção não detectada'}</p></div><StatusBadge status={selected.requires_human_review?'Revisão necessária':'Acompanhamento'}/></header>{thread.length?<div className="message-list">{thread.map(item=><article className={`message ${item.direction}`} key={item.id}><p>{item.text??`Template: ${item.template_ref}`}</p><small>{item.status} · {new Date(item.created_at).toLocaleString('pt-BR')}</small></article>)}</div>:<EmptyState message={selected.channel==='instagram'?'As mensagens do Instagram permanecem disponíveis no histórico da Meta; este painel exibe o estado operacional.':'Nenhuma mensagem persistida nesta conversa.'}/>} {selected.channel==='whatsapp'?<form className="composer" onSubmit={send}>{windowOpen?<label>Mensagem<textarea name="text" required maxLength={4096} placeholder="Escreva uma resposta para revisão"/></label>:<label>Template aprovado<select name="templateRef" required><option value="">Selecione</option>{templates.filter(item=>item.status==='approved').map(item=><option key={item.id} value={item.external_template_id??item.name}>{item.name} ({item.language})</option>)}</select></label>}<button disabled={busy||(!windowOpen&&!templates.some(item=>item.status==='approved'))}>{busy?'Preparando…':'Enviar para revisão'}</button><p role="status">{message}</p></form>:<p className="info-banner">Respostas do Instagram são preparadas pela fila de engajamento e aprovadas na Caixa de revisão.</p>}</>:<EmptyState message="Nenhuma conversa corresponde aos filtros."/>}</section></div></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\conversations\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ConversationsClient } from './ConversationsClient'
+
+export const dynamic='force-dynamic'
+export default async function Page(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const conversations=(await pool.query(`SELECT * FROM (SELECT thread.id,'instagram' channel,thread.participant_username participant,thread.unread_count,thread.last_message_at,state.current_stage stage,state.detected_intent,state.requires_human_review,NULL::timestamptz session_window_expires_at FROM own_dm_threads thread LEFT JOIN conversation_state state ON state.thread_id=thread.id WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM leads lead JOIN lead_scores score ON score.lead_id=lead.id WHERE score.campaign_id=$1 AND lead.username_current=thread.participant_username) UNION ALL SELECT conversation.id,'whatsapp' channel,COALESCE(identity.external_handle,lead.username_current) participant,0 unread_count,COALESCE(conversation.last_inbound_at,conversation.last_outbound_at) last_message_at,conversation.stage,NULL detected_intent,conversation.requires_human_review,conversation.session_window_expires_at FROM whatsapp_conversations conversation JOIN leads lead ON lead.id=conversation.lead_id LEFT JOIN identities identity ON identity.lead_id=conversation.lead_id AND identity.channel='whatsapp' WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.lead_id=conversation.lead_id AND score.campaign_id=$1)) all_conversations ORDER BY last_message_at DESC NULLS LAST LIMIT 200`,[selected?.id??null])).rows;const ids=conversations.map(item=>item.id);const[messages,templates]=await Promise.all([ids.length?pool.query(`SELECT id,conversation_id,direction,kind,text,template_ref,status,created_at FROM whatsapp_messages WHERE conversation_id=ANY($1::uuid[]) ORDER BY created_at`,[ids]):Promise.resolve({rows:[]}),pool.query(`SELECT id,name,language,lower(approval_status) status,name external_template_id FROM whatsapp_templates ORDER BY name`)]);return <ConversationsClient initialConversations={conversations} messages={messages.rows} templates={templates.rows}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\creative-bridge\page.tsx ---
+
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import { EmptyState, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { appPath } from '@/lib/base-path'
+export default function CreativeBridge(){
+ const[payload,setPayload]=useState<Record<string,unknown>|null>(null),[status,setStatus]=useState('Carregando oportunidade…'),editor=useRef<Window|null>(null)
+ useEffect(()=>{const opportunity=new URLSearchParams(location.search).get('opportunity');if(opportunity)fetch(appPath(`/api/content-opportunities/${opportunity}/creative`)).then(async response=>{const body=await response.json() as {payload?:Record<string,unknown>;error?:string};if(!response.ok||!body.payload)throw new Error(body.error??'Oportunidade indisponível');setPayload(body.payload);setStatus('Criativo preparado para o editor')}).catch(error=>setStatus(error instanceof Error?error.message:'Erro ao carregar'));window.opener?.postMessage({type:'creative-bridge-ready'},location.origin)},[])
+ useEffect(()=>{const receive=(event:MessageEvent)=>{if(event.origin!==location.origin)return;if(event.data?.type==='content-opportunity'&&event.data.payload&&typeof event.data.payload==='object'){setPayload(event.data.payload as Record<string,unknown>);setStatus('Criativo preparado para o editor')}if(event.data?.type==='design-system-ready'&&payload){(event.source as Window|null)?.postMessage({type:'editor-prefill',payload},{targetOrigin:location.origin});setStatus('Conteúdo entregue ao editor')}if(event.data?.type==='editor-prefill-received')setStatus('Editor carregou o conteúdo')};window.addEventListener('message',receive);return()=>window.removeEventListener('message',receive)},[payload])
+ function openEditor(){if(!payload)return;editor.current=window.open('/design-system','design-system');setStatus(editor.current?'Abrindo editor…':'O navegador bloqueou a nova janela. Libere pop-ups e tente novamente.')}
+ return <main className="page"><PageHeader title="Ponte criativa" subtitle="Transferência segura da oportunidade para o editor visual"/><section className="card creative-preview"><StatusBadge status={status}/>{payload?<><p className="eyebrow">{String(payload.eyebrow??'Oportunidade')}</p><h2>{String(payload.title??'Sem título')}</h2><p>{String(payload.body??'Sem texto principal')}</p><details><summary>Legenda e evidências</summary><p>{String(payload.caption??'Nenhuma evidência')}</p></details><button onClick={openEditor}>Abrir no editor visual</button></>:<EmptyState message={status}/>}</section></main>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\docs\runbooks\[slug]\page.tsx ---
+
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+const runbooks:Record<string,{title:string;checks:string[];recovery:string[]}>= {
+ 'system-health':{title:'Saúde do sistema',checks:['Confirme quais workers estão atrasados e o tamanho real do backlog.','Verifique canários com falha e integrações em estado parcial.','Consulte o incidente aberto antes de reprocessar qualquer item.'],recovery:['Ative o kill-switch se houver risco de envio externo indevido.','Corrija a dependência ou variável indicada pela tela.','Reative o sistema e acompanhe dois ciclos de heartbeat.']},
+ accounts:{title:'Contas Meta',checks:['Confirme o estado, a validade do token e o papel da conta.','Verifique checkpoint ou bloqueio no painel da Meta.','Não troque o papel de collector e actor durante uma fila em execução.'],recovery:['Renove o vínculo OAuth pela tela de Contas.','Execute uma sincronização e valide o novo heartbeat.','Libere a fila apenas quando a saúde voltar ao estado operacional.']},
+ web:{title:'Interface web',checks:['Copie o identificador exibido no erro.','Confira Saúde do sistema e a campanha ativa.','Tente novamente uma única vez para descartar falha transitória.'],recovery:['Se persistir, preserve o identificador e o horário.','Valide banco, Redis e o container web.','Depois da correção, recarregue a rota e confirme que os dados permanecem estáveis.']}
+}
+export default async function Runbook({params}:{params:Promise<{slug:string}>}){const{slug}=await params,item=runbooks[slug.replace(/\.md$/,'')];if(!item)notFound();return <main className="page"><p className="eyebrow">Runbook operacional</p><h1>{item.title}</h1><section className="card"><h2>Diagnóstico</h2><ol>{item.checks.map(step=><li key={step}>{step}</li>)}</ol></section><section className="card"><h2>Recuperação segura</h2><ol>{item.recovery.map(step=><li key={step}>{step}</li>)}</ol></section><Link href="/system-health">Voltar para Saúde do sistema</Link></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\email-flows\EmailFlowsClient.tsx ---
+
+'use client'
+import { useState } from 'react'
+import { EmptyState, FlowCanvas, IntegrationState, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { appPath } from '@/lib/base-path'
+import type { IntegrationCapability } from '@/lib/integration-capabilities'
+type Step={id:string;type:string;[key:string]:unknown}
+type Flow={id:string;name:string;description:string|null;active:boolean;version:number;steps:Step[];subscribers:number}
+export function EmailFlowsClient({initialFlows,campaignId,stats,capability}:{initialFlows:Flow[];campaignId:string;stats:{subscribers:number;confirmed:number;suppressed:number};capability:IntegrationCapability|null}){
+ const[flows,setFlows]=useState(initialFlows),[busy,setBusy]=useState(''),[message,setMessage]=useState(''),[stepType,setStepType]=useState<'send'|'wait_seconds'|'end'>('send')
+ async function create(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setBusy('create');setMessage('');const form=new FormData(event.currentTarget);const step:Step=stepType==='send'?{id:'send-1',type:'send',message:{subject:String(form.get('subject')),plain:String(form.get('body')),html:`<p>${String(form.get('body'))}</p>`,kind:'transactional'}}:stepType==='wait_seconds'?{id:'wait-1',type:'wait_seconds',seconds:Number(form.get('waitHours'))*3600}:{id:'end-1',type:'end'};const steps=stepType==='end'?[step]:[step,{id:'end-1',type:'end'}];try{const response=await fetch(appPath('/api/email/flows'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({campaignId,name:form.get('name'),description:form.get('description'),entryCondition:{doubleOptIn:true},steps,active:false})});const body=await response.json() as {id?:string;error?:string};if(!response.ok||!body.id)throw new Error(body.error??'Não foi possível criar');setFlows(items=>[{id:body.id!,name:String(form.get('name')),description:String(form.get('description')),active:false,version:1,steps,subscribers:0},...items]);event.currentTarget.reset();setMessage('Fluxo criado como rascunho.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}
+ async function toggle(flow:Flow){setBusy(flow.id);setMessage('');try{const response=await fetch(appPath('/api/email/flows'),{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:flow.id,active:!flow.active})});if(!response.ok)throw new Error('Não foi possível alterar o fluxo');setFlows(items=>items.map(item=>item.id===flow.id?{...item,active:!item.active}:item));setMessage(flow.active?'Fluxo pausado.':'Fluxo ativado.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}
+ return <main className="page"><PageHeader title="Fluxos de e-mail" subtitle="Double opt-in, nutrição por eventos e supressões"/><KpiRow><KpiCard label="Fluxos ativos" value={flows.filter(item=>item.active).length}/><KpiCard label="Inscritos" value={stats.subscribers}/><KpiCard label="Confirmados" value={stats.confirmed}/><KpiCard label="Suprimidos" value={stats.suppressed}/></KpiRow>{capability&&<IntegrationState name={capability.name} status={capability.status} detail={capability.detail}/>}<section className="card"><h2>Novo fluxo</h2><form className="flow-form" onSubmit={create}><label>Nome<input name="name" required maxLength={160}/></label><label>Descrição<input name="description" maxLength={1000}/></label><label>Primeiro passo<select value={stepType} onChange={event=>setStepType(event.target.value as typeof stepType)}><option value="send">Enviar e-mail</option><option value="wait_seconds">Aguardar</option><option value="end">Encerrar</option></select></label>{stepType==='send'&&<><label>Assunto<input name="subject" required/></label><label>Mensagem<textarea name="body" required/></label></>}{stepType==='wait_seconds'&&<label>Aguardar horas<input name="waitHours" type="number" min="1" defaultValue="24"/></label>}<button disabled={busy==='create'||!campaignId}>{busy==='create'?'Criando…':'Criar rascunho'}</button></form><p role="status">{message}</p></section>{flows.length?<div className="flow-list">{flows.map(flow=><section className="card" key={flow.id}><header><div><h2>{flow.name}</h2><p>{flow.description||'Sem descrição'} · versão {flow.version} · {flow.subscribers} inscritos</p></div><StatusBadge status={flow.active?'Ativo':'Rascunho'}/></header><FlowCanvas nodes={flow.steps.map(step=>({id:step.id,type:step.type==='send'?'Send':step.type.startsWith('wait')?'Wait':step.type==='branch_on'?'Branch':'Exit',label:step.type.replace(/_/g,' ')}))}/><button disabled={busy===flow.id} onClick={()=>void toggle(flow)}>{flow.active?'Pausar':'Ativar'}</button></section>)}</div>:<EmptyState message="Nenhum fluxo configurado. Crie o primeiro rascunho acima."/>}</main>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\email-flows\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { getIntegrationCapabilities } from '@/lib/integration-capabilities'
+import { EmailFlowsClient } from './EmailFlowsClient'
+export const dynamic='force-dynamic'
+export default async function Page(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const[flows,stats,capabilities]=await Promise.all([pool.query(`SELECT flow.id,flow.name,flow.description,flow.active,flow.version,flow.steps,count(state.subscriber_id)::int subscribers FROM email_flows flow LEFT JOIN email_flow_state state ON state.flow_id=flow.id WHERE ($1::uuid IS NULL OR flow.campaign_id=$1) GROUP BY flow.id ORDER BY flow.active DESC,flow.name,flow.version DESC`,[selected?.id??null]),pool.query(`SELECT count(*)::int subscribers,count(*) FILTER(WHERE double_optin_at IS NOT NULL AND unsubscribed_at IS NULL)::int confirmed,count(*) FILTER(WHERE unsubscribed_at IS NOT NULL)::int suppressed FROM email_subscribers WHERE ($1::uuid IS NULL OR campaign_of_entry=$1)`,[selected?.id??null]),getIntegrationCapabilities(pool)]);return <EmailFlowsClient initialFlows={flows.rows} campaignId={selected?.id??''} stats={stats.rows[0]} capability={capabilities.find(item=>item.id==='resend')??null}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\engagement-queue\EngagementClient.tsx ---
+
+'use client'
+import { HealthDial, KpiCard, KpiRow, LiveBadge, PageHeader, PriorityChip, QuotaMeter, RoleBadge, StatusBadge } from '@plataforma/ui-bridge'
+import { useEffect, useMemo, useState } from 'react'
+import { appPath } from '@/lib/base-path'
+interface Action{id:string;action_type:string;target_ref_id:string;status:string;priority:'P0'|'P1'|'P2'|'P3';role:'collector'|'actor';username:string;created_at:string;reason_code:string|null}
+interface Policy{action_type:string;daily_limit:number;used_today?:number;enabled:boolean;role:'collector'|'actor';health_score:number|string|null}
+export function EngagementClient({actions:initialActions,policies}:{actions:Action[];policies:Policy[]}){const[actions,setActions]=useState(initialActions),[connected,setConnected]=useState(false),[lastUpdate,setLastUpdate]=useState('inicial'),[busy,setBusy]=useState(''),[message,setMessage]=useState('');useEffect(()=>{const source=new EventSource(appPath('/api/engagement/stream'));source.onopen=()=>setConnected(true);source.addEventListener('action',event=>{const data=JSON.parse((event as MessageEvent).data) as Partial<Action>&{id:string};setActions(items=>items.map(item=>item.id===data.id?{...item,...data}:item));setLastUpdate(new Date().toLocaleTimeString('pt-BR'))});source.onerror=()=>setConnected(false);return()=>source.close()},[]);const grouped=useMemo(()=>['pending','awaiting_approval','approved','running','done','failed','blocked'].map(status=>({status,items:actions.filter(item=>item.status===status)})).filter(group=>group.items.length),[actions]);async function decide(item:Action,decision:'approve'|'reject'|'retry'){setBusy(item.id);setMessage('');try{const response=await fetch(appPath(`/api/engagement/actions/${item.id}`),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({decision})});const body=await response.json() as {status?:string;error?:string};if(!response.ok||!body.status)throw new Error(body.error??'Não foi possível atualizar');setActions(items=>items.map(action=>action.id===item.id?{...action,status:body.status!}:action));setMessage('Ação atualizada e auditada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}return <main className="page"><PageHeader title="Fila de engajamento" subtitle="Aprovação, execução, limites e falhas por conta" actions={<LiveBadge connected={connected} lastUpdate={lastUpdate}/>}/><KpiRow><KpiCard label="Aguardando aprovação" value={actions.filter(item=>item.status==='awaiting_approval').length}/><KpiCard label="Em execução" value={actions.filter(item=>['approved','running','pending'].includes(item.status)).length}/><KpiCard label="Concluídas" value={actions.filter(item=>item.status==='done').length}/><KpiCard label="Falhas" value={actions.filter(item=>item.status==='failed').length}/></KpiRow><p role="status">{message}</p><div className="engagement-layout"><section className="queue-board">{grouped.map(group=><div className="queue-column" key={group.status}><header><h2>{group.status.replace(/_/g,' ')}</h2><span>{group.items.length}</span></header>{group.items.map(item=><article className="card" key={item.id}><div className="action-heading"><PriorityChip priority={item.priority}/><StatusBadge status={item.status}/></div><strong>{item.action_type.replace(/_/g,' ')}</strong><p>@{item.username} · <RoleBadge role={item.role}/></p><small>{new Date(item.created_at).toLocaleString('pt-BR')}{item.reason_code?` · ${item.reason_code}`:''}</small><div className="action-row">{item.status==='awaiting_approval'&&<><button disabled={busy===item.id} onClick={()=>void decide(item,'approve')}>Aprovar</button><button disabled={busy===item.id} onClick={()=>void decide(item,'reject')}>Rejeitar</button></>}{['failed','blocked'].includes(item.status)&&<button disabled={busy===item.id} onClick={()=>void decide(item,'retry')}>Tentar novamente</button>}</div></article>)}</div>)}</section><aside className="quota-panel card"><h2>Limites de hoje</h2>{policies.map(policy=><div key={`${policy.role}:${policy.action_type}`}><RoleBadge role={policy.role}/><strong>{policy.action_type}</strong><QuotaMeter used={policy.used_today??0} limit={policy.daily_limit||1}/><HealthDial value={Math.round(Number(policy.health_score??100))} state={policy.enabled?'Ativa':'Desativada'}/></div>)}</aside></div></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\engagement-queue\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { EngagementClient } from './EngagementClient'
+export const dynamic='force-dynamic'
+export default async function EngagementQueuePage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const[actions,policies]=await Promise.all([pool.query(`SELECT e.*,a.role,a.username,e.id::text trace_id FROM engagement_actions e JOIN accounts a ON a.id=e.account_id WHERE ($1::uuid IS NULL OR e.campaign_id=$1) AND (e.status IN ('pending','awaiting_approval','approved','running','blocked') OR e.created_at>now()-interval '24 hours') ORDER BY e.created_at DESC LIMIT 500`,[selected?.id??null]),pool.query(`SELECT p.action_type,p.daily_limit,p.enabled,a.role,(SELECT health_score FROM account_health h WHERE h.account_id=a.id ORDER BY captured_at DESC LIMIT 1) health_score,(SELECT count(*)::int FROM engagement_actions e WHERE e.account_id=p.account_id AND e.action_type=p.action_type AND e.created_at>=current_date AND e.status IN ('done','running','approved')) used_today FROM action_policies p JOIN accounts a ON a.id=p.account_id ORDER BY a.role,p.action_type`)]);return <EngagementClient actions={actions.rows} policies={policies.rows}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\identities\IdentitiesClient.tsx ---
+
+'use client'
+
+import { ChannelBadge, ConfidencePill, EmptyState, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { useMemo, useState } from 'react'
+import { appPath } from '@/lib/base-path'
+
+type Identity={id:string;lead_id:string;lead:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'reddit';external_handle:string;verified:boolean;verified_via:string|null;evidence:Record<string,unknown>}
+type Candidate={id:string;reason:string;confidence:string;evidence:Record<string,unknown>;status:string;created_at:string;lead_a:string;lead_b:string}
+type Snapshot={id:string;survivor:string;merged:string;created_at:string;expires_at:string;reverted_at:string|null}
+function Evidence({value}:{value:Record<string,unknown>}){return <ul className="evidence-list">{Object.entries(value).map(([key,item])=><li key={key}><strong>{key.replace(/_/g,' ')}</strong><span>{String(item)}</span></li>)}</ul>}
+
+export function IdentitiesClient({identities,initialCandidates,snapshots}:{identities:Identity[];initialCandidates:Candidate[];snapshots:Snapshot[]}){const[candidates,setCandidates]=useState(initialCandidates),[busy,setBusy]=useState(''),[message,setMessage]=useState(''),[search,setSearch]=useState('');const grouped=useMemo(()=>{const result=new Map<string,Identity[]>();for(const identity of identities){if(search&&!`${identity.lead} ${identity.external_handle} ${identity.channel}`.toLowerCase().includes(search.toLowerCase()))continue;result.set(identity.lead,[...(result.get(identity.lead)??[]),identity])}return [...result.entries()]},[identities,search]);async function decide(id:string,action:'approve'|'reject'){setBusy(id);setMessage('');try{const response=await fetch(appPath(`/api/identities/candidates/${id}/${action}`),{method:'POST'});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error??'Não foi possível enfileirar a decisão');setCandidates((items)=>items.filter((item)=>item.id!==id));setMessage(action==='approve'?'Merge enviado para processamento.':'Candidato rejeitado.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}async function rollback(id:string){setBusy(id);setMessage('');try{const response=await fetch(appPath(`/api/identities/rollback/${id}`),{method:'POST'});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error??'Não foi possível solicitar rollback');setMessage('Rollback enfileirado com auditoria.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}return <main className="page"><PageHeader title="Identidades e merges" subtitle="Evidências por canal, decisão humana e rollback por 30 dias"/><KpiRow><KpiCard label="Identidades" value={identities.length}/><KpiCard label="Verificadas" value={identities.filter((item)=>item.verified).length}/><KpiCard label="Candidatos" value={candidates.length}/><KpiCard label="Rollbacks disponíveis" value={snapshots.filter((item)=>!item.reverted_at).length}/></KpiRow><div className="toolbar"><label>Buscar identidade<input type="search" value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Lead, handle ou canal"/></label></div><p className="action-message" role="status">{message}</p><section><h2>Candidatos pendentes</h2>{candidates.length?<div className="identity-candidates">{candidates.map((candidate)=><article className="card" key={candidate.id}><header><div><h3>@{candidate.lead_a} ↔ @{candidate.lead_b}</h3><time>{new Date(candidate.created_at).toLocaleString('pt-BR')}</time></div><ConfidencePill value={Math.round(Number(candidate.confidence)*100)}/></header><p>{candidate.reason}</p><Evidence value={candidate.evidence}/><div className="action-row"><button disabled={busy===candidate.id} onClick={()=>void decide(candidate.id,'approve')}>Aprovar merge</button><button disabled={busy===candidate.id} onClick={()=>void decide(candidate.id,'reject')}>Rejeitar</button></div></article>)}</div>:<EmptyState message="Nenhum candidato pendente para a campanha."/>}</section><section><h2>Identidades por lead</h2>{grouped.length?<div className="identity-groups">{grouped.map(([lead,items])=><article className="card" key={lead}><h3>@{lead}</h3>{items.map((identity)=><div className="identity-row" key={identity.id}><ChannelBadge channel={identity.channel}/><strong>{identity.external_handle||'sem handle'}</strong><StatusBadge status={identity.verified?'Verificada':'Não verificada'}/><small>{identity.verified_via?`via ${identity.verified_via}`:'sem método de verificação'}</small></div>)}</article>)}</div>:<EmptyState message="Nenhuma identidade corresponde à busca."/>}</section><section><h2>Histórico de merges</h2>{snapshots.length?<div className="snapshot-list">{snapshots.map((snapshot)=><article className="card" key={snapshot.id}><strong>@{snapshot.merged} → @{snapshot.survivor}</strong><span>Criado em {new Date(snapshot.created_at).toLocaleString('pt-BR')}</span><span>Rollback até {new Date(snapshot.expires_at).toLocaleString('pt-BR')}</span>{snapshot.reverted_at?<StatusBadge status="Revertido"/>:<button disabled={busy===snapshot.id} onClick={()=>void rollback(snapshot.id)}>Solicitar rollback</button>}</article>)}</div>:<EmptyState message="Nenhum merge reversível no período."/>}</section></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\identities\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { IdentitiesClient } from './IdentitiesClient'
+
+export const dynamic='force-dynamic'
+export default async function IdentitiesPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const[identities,candidates,snapshots]=await Promise.all([
+  pool.query(`SELECT identity.id,identity.lead_id,lead.username_current lead,CASE identity.channel WHEN 'whatsapp' THEN 'whatsapp_dm' ELSE identity.channel END channel,identity.external_handle,identity.verified,identity.verified_via,identity.evidence FROM identities identity JOIN leads lead ON lead.id=identity.lead_id WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.lead_id=identity.lead_id AND score.campaign_id=$1) ORDER BY identity.verified DESC,identity.created_at DESC LIMIT 300`,[selected?.id??null]),
+  pool.query(`SELECT candidate.id,candidate.reason,candidate.confidence,candidate.evidence,candidate.status,candidate.created_at,a.username_current lead_a,b.username_current lead_b FROM identity_candidates candidate JOIN leads a ON a.id=candidate.lead_id_a JOIN leads b ON b.id=candidate.lead_id_b WHERE candidate.status='pending' AND ($1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.campaign_id=$1 AND score.lead_id IN(candidate.lead_id_a,candidate.lead_id_b))) ORDER BY candidate.confidence DESC LIMIT 100`,[selected?.id??null]),
+  pool.query(`SELECT snapshot.id,survivor.username_current survivor,merged.username_current merged,snapshot.created_at,snapshot.expires_at,snapshot.reverted_at FROM identity_merge_snapshots snapshot JOIN leads survivor ON survivor.id=snapshot.survivor_lead_id JOIN leads merged ON merged.id=snapshot.merged_lead_id WHERE snapshot.expires_at>now() AND ($1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.campaign_id=$1 AND score.lead_id=snapshot.survivor_lead_id)) ORDER BY snapshot.created_at DESC LIMIT 100`,[selected?.id??null])]);return <IdentitiesClient identities={identities.rows} initialCandidates={candidates.rows} snapshots={snapshots.rows}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\leads\LeadsClient.tsx ---
+
+'use client'
+
+import { ChannelBadge, DataTable, EmptyState, FilterBar, KpiCard, KpiRow, PageHeader, PriorityChip, RightDetailPane, SavedViewTabs, ScoreBadge, TimelineFeed } from '@plataforma/ui-bridge'
+import { useMemo, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { appPath } from '@/lib/base-path'
+
+export interface LeadRow { id:string;username_current:string;profile_url:string|null;last_seen_at:string;is_private:boolean|null;is_verified:boolean|null;final_score:string;priority:'P0'|'P1'|'P2'|'P3';intent_score:string;relationship_score:string;freshness_score:string;intents:string[];sources:string[];interactions:Array<{id:string;kind:string;text:string;at:string;direction?:string;source?:string}>;identities:Array<{channel:'instagram'|'threads'|'email'|'whatsapp'|'reddit';handle:string;verified:boolean}>;communities:string[];nba:{id:string;action:string;channel:string|null;rationale:string;confidence:string}|null }
+
+export function LeadsClient({ initialRows, initialView }: { initialRows: LeadRow[]; initialView: string }) {
+  const router=useRouter(),pathname=usePathname()
+  const [selected,setSelected]=useState<LeadRow|null>(initialRows[0]??null),[view,setView]=useState(initialView),[publicOnly,setPublicOnly]=useState(false),[search,setSearch]=useState(''),[selectedIds,setSelectedIds]=useState<string[]>([]),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
+  const rows=useMemo(()=>initialRows.filter((row)=>(!publicOnly||!row.is_private)&&(view==='Todos'||row.priority===view)&&(!search||`${row.username_current} ${row.intents.join(' ')} ${row.sources.join(' ')}`.toLowerCase().includes(search.toLowerCase()))),[initialRows,publicOnly,view,search])
+  const totals=useMemo(()=>({qualified:initialRows.filter((row)=>row.priority==='P0'||row.priority==='P1').length,public:initialRows.filter((row)=>!row.is_private).length,average:initialRows.length?Math.round(initialRows.reduce((sum,row)=>sum+Number(row.final_score),0)/initialRows.length):0}),[initialRows])
+  function changeView(next:string){setView(next);setSelectedIds([]);const params=new URLSearchParams();if(next!=='Todos')params.set('priority',next);router.replace(`${pathname}${params.size?`?${params}`:''}`,{scroll:false})}
+  function toggle(id:string){setSelectedIds((ids)=>ids.includes(id)?ids.filter((item)=>item!==id):[...ids,id])}
+  async function prepare(){if(!selectedIds.length)return;setBusy(true);setMessage('');try{const response=await fetch(appPath('/api/leads/actions'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({leadIds:selectedIds,actionType:'follow'})});const body=await response.json() as {created?:number;error?:string};if(!response.ok)throw new Error(body.error??'Não foi possível preparar as ações');setMessage(`${body.created??0} ações enviadas para aprovação.`);setSelectedIds([])}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}}
+  return <div className="page"><PageHeader title="Leads" subtitle="Prioridade calculada por intenção, relacionamento, origem e recência"/><KpiRow><KpiCard label="Leads" value={initialRows.length}/><KpiCard label="P0 + P1" value={totals.qualified}/><KpiCard label="Perfis públicos" value={totals.public}/><KpiCard label="Score médio" value={totals.average}/></KpiRow><SavedViewTabs views={['Todos','P0','P1','P2','P3']} active={view} onChange={changeView}/><div className="lead-toolbar"><label>Buscar<input type="search" value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Username, intenção ou origem"/></label><label><input type="checkbox" checked={publicOnly} onChange={(event)=>setPublicOnly(event.target.checked)}/> Somente público</label></div><FilterBar filters={publicOnly?['Somente público']:[]} onClear={()=>setPublicOnly(false)}/>{rows.length===0?<EmptyState message="Nenhum lead corresponde aos filtros atuais."/>:<div className="feature-grid"><section className="panel"><div className="table-head" role="row"><span>Lead</span><span>Score</span><span>Prioridade</span><span>Intenção</span><span>Fontes</span><span>Última atividade</span></div><DataTable rows={rows} label="Leads" estimateSize={68} rowKey={(row)=>row.id} renderRow={(row)=><div className="lead-row-wrap"><input type="checkbox" aria-label={`Selecionar @${row.username_current}`} checked={selectedIds.includes(row.id)} onChange={()=>toggle(row.id)}/><button className="lead-row" onClick={()=>setSelected(row)} aria-pressed={selected?.id===row.id} aria-label={`Abrir ${row.username_current}`}><span>{row.is_verified?'✓ ':''}@{row.username_current}</span><ScoreBadge score={Math.round(Number(row.final_score))}/><PriorityChip priority={row.priority}/><span>{row.intents.join(', ')||'—'}</span><span>{row.sources.join(', ')||'—'}</span><time>{new Date(row.last_seen_at).toLocaleDateString('pt-BR')}</time></button></div>}/>{selectedIds.length>0&&<div className="bulk-bar"><button type="button" disabled={busy} onClick={()=>void prepare()}>{busy?'Preparando…':`Preparar follow (${selectedIds.length})`}</button></div>}<p className="action-message" role="status">{message}</p></section>{selected&&<RightDetailPane title={`@${selected.username_current}`} onClose={()=>setSelected(null)}><KpiRow><KpiCard label="Intenção" value={Math.round(Number(selected.intent_score??0))}/><KpiCard label="Relacionamento" value={Math.round(Number(selected.relationship_score??0))}/><KpiCard label="Frescor" value={Math.round(Number(selected.freshness_score??0))}/></KpiRow><h3>Identidades</h3><div className="identity-strip">{selected.identities.length?selected.identities.map((identity)=><span key={`${identity.channel}:${identity.handle}`}><ChannelBadge channel={(identity.channel==='whatsapp'?'whatsapp_dm':identity.channel) as 'instagram'|'threads'|'email'|'whatsapp_dm'|'reddit'}/>{identity.handle}{identity.verified?' ✓':''}</span>):<span>Nenhuma identidade adicional.</span>}</div><h3>Comunidades</h3><p>{selected.communities.join(', ')||'Nenhuma comunidade associada.'}</p>{selected.nba&&<section className="card"><h3>Próxima melhor ação</h3><strong>{selected.nba.action}</strong><p>{selected.nba.rationale}</p><small>Confiança {Math.round(Number(selected.nba.confidence)*100)}%</small></section>}<h3>Últimas interações</h3>{selected.interactions.length?<TimelineFeed events={selected.interactions}/>:<EmptyState message="Nenhuma interação registrada."/>}</RightDetailPane>}</div>}</div>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\leads\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { LeadsClient, type LeadRow } from './LeadsClient'
+
+export const dynamic = 'force-dynamic'
+export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ priority?: string }> }) {
+  const { pool } = createDatabase(process.env.DATABASE_URL!)
+  try {
+    const { selected } = await getCampaignContext(pool)
+    const priority = (await searchParams).priority
+    const initialView = ['P0','P1','P2','P3'].includes(priority ?? '') ? priority! : 'Todos'
+    const result = await pool.query<LeadRow>(`SELECT l.id,l.username_current,l.profile_url,l.last_seen_at,lp.is_private,lp.is_verified,ls.final_score,ls.priority,ls.intent_score,ls.relationship_score,ls.freshness_score,
+      COALESCE((SELECT array_remove(array_agg(DISTINCT cc.intent),NULL) FROM lead_sources src JOIN comment_classification cc ON cc.comment_id=src.comment_id WHERE src.lead_id=l.id AND src.campaign_id=ls.campaign_id),'{}') intents,
+      COALESCE((SELECT array_remove(array_agg(DISTINCT src.source_kind),NULL) FROM lead_sources src WHERE src.lead_id=l.id AND src.campaign_id=ls.campaign_id),'{}') sources,
+      COALESCE((SELECT jsonb_agg(jsonb_build_object('id',i.id,'kind',i.kind,'text',COALESCE(i.payload->>'text',''),'at',i.at,'direction',i.direction,'source',i.source) ORDER BY i.at DESC) FROM (SELECT * FROM lead_interactions WHERE lead_id=l.id AND campaign_id=ls.campaign_id ORDER BY at DESC LIMIT 20) i),'[]') interactions,
+      COALESCE((SELECT jsonb_agg(jsonb_build_object('channel',identity.channel,'handle',identity.external_handle,'verified',identity.verified) ORDER BY identity.verified DESC) FROM identities identity WHERE identity.lead_id=l.id),'[]') identities,
+      COALESCE((SELECT array_agg(community.name ORDER BY membership.membership_strength DESC) FROM lead_community_membership membership JOIN communities community ON community.id=membership.community_id WHERE membership.lead_id=l.id),'{}') communities,
+      (SELECT jsonb_build_object('id',nba.id,'action',nba.suggested_action,'channel',nba.chosen_channel,'rationale',nba.rationale,'confidence',nba.confidence) FROM nba_recommendations nba WHERE nba.lead_id=l.id AND nba.campaign_id=ls.campaign_id AND nba.status='pending' ORDER BY nba.confidence DESC,nba.suggested_at DESC LIMIT 1) nba
+      FROM leads l JOIN lead_scores ls ON ls.lead_id=l.id LEFT JOIN lead_profile lp ON lp.lead_id=l.id
+      WHERE ($1::uuid IS NULL OR ls.campaign_id=$1) AND l.merged_into IS NULL
+      ORDER BY ls.final_score DESC,CASE ls.priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END,l.id LIMIT 300`, [selected?.id ?? null])
+    return <LeadsClient initialRows={result.rows} initialView={initialView}/>
+  } finally { await pool.end() }
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\login\page.tsx ---
+
+'use client'
+import { signIn } from 'next-auth/react'
+import { useState } from 'react'
+import { appPath } from '@/lib/base-path'
+export default function Login(){const[email,setEmail]=useState(''),[otp,setOtp]=useState(''),[step,setStep]=useState<'email'|'code'>('email'),[busy,setBusy]=useState(false),[message,setMessage]=useState('');async function requestCode(){setBusy(true);setMessage('');try{const response=await fetch(appPath('/api/auth/otp'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email})});if(!response.ok)throw new Error('Não foi possível enviar o código. Confira o e-mail e a configuração do provedor.');setStep('code');setMessage('Código enviado. Verifique sua caixa de entrada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}}async function login(event:React.FormEvent){event.preventDefault();setBusy(true);setMessage('');const result=await signIn('credentials',{email,otp,callbackUrl:appPath('/'),redirect:false});if(result?.error){setMessage('Código inválido ou expirado. Solicite um novo código.');setBusy(false);return}location.assign(result?.url??appPath('/'))}return <main className="login-page"><section className="login-copy"><span className="eyebrow">Rota de Ataque</span><h1>Operação comercial, sem ruído.</h1><p>Acesse leads, conversas, conteúdos e integrações em um espaço seguro e rastreável.</p></section><form className="card login-card" onSubmit={login}><h2>Entrar no Prospector</h2><label>E-mail<input type="email" autoComplete="email" value={email} onChange={event=>setEmail(event.target.value)} disabled={busy||step==='code'} required/></label>{step==='email'?<button type="button" disabled={busy||!email} onClick={()=>void requestCode()}>{busy?'Enviando…':'Enviar código de acesso'}</button>:<><label>Código de 6 dígitos<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={otp} onChange={event=>setOtp(event.target.value.replace(/\D/g,''))} autoFocus required/></label><button disabled={busy||otp.length!==6}>{busy?'Entrando…':'Entrar'}</button><button className="text-button" type="button" disabled={busy} onClick={()=>{setStep('email');setOtp('');setMessage('')}}>Usar outro e-mail</button></>}<p role="status">{message}</p><small>O código expira em 5 minutos e pode ser usado uma única vez.</small></form></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\market-radar\MarketRadarClient.tsx ---
+
+'use client'
+import{EmptyState,IntegrationState,KpiCard,KpiRow,PageHeader,StatusBadge}from'@plataforma/ui-bridge'
+import{useState}from'react'
+import{appPath}from'@/lib/base-path'
+import type{IntegrationCapability}from'@/lib/integration-capabilities'
+type Signal={id:string;label:string;kind:string;velocity_7d:string|null;velocity_30d:string|null;volume_current:number|null;status:string;last_seen_at:string;evidence_refs:unknown[]}
+type Watch={id:string;kind:string;value:string;active:boolean;last_run_at:string|null;next_run_at:string|null}
+export function MarketRadarClient({initialSignals,initialWatches,redditStatus}:{initialSignals:Signal[];initialWatches:Watch[];redditStatus:IntegrationCapability|null}){const[watches,setWatches]=useState(initialWatches),[busy,setBusy]=useState(false),[message,setMessage]=useState('');async function create(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setBusy(true);setMessage('');const form=new FormData(event.currentTarget);try{const response=await fetch(appPath('/api/reddit/watches'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind:form.get('kind'),value:form.get('value'),active:true})});const body=await response.json() as {id?:string;error?:string};if(!response.ok)throw new Error(body.error??'Não foi possível criar o watch');if(body.id)setWatches((items)=>[{id:body.id!,kind:String(form.get('kind')),value:String(form.get('value')),active:true,last_run_at:null,next_run_at:new Date().toISOString()},...items]);event.currentTarget.reset();setMessage('Watch criado e coleta enfileirada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}}const ready=redditStatus?.status==='ready';return <main className="page"><PageHeader title="Radar de mercado" subtitle="Sinais passivos do Reddit, com velocidade, volume, evidências e frescor"/><KpiRow><KpiCard label="Sinais" value={initialSignals.length}/><KpiCard label="Em alta" value={initialSignals.filter((item)=>item.status==='rising').length}/><KpiCard label="Watches ativos" value={watches.filter((item)=>item.active).length}/><KpiCard label="Evidências" value={initialSignals.reduce((sum,item)=>sum+(item.evidence_refs?.length??0),0)}/></KpiRow>{redditStatus&&<IntegrationState name={redditStatus.name} status={redditStatus.status} detail={redditStatus.detail}/>}<section className="card watch-panel"><h2>Novo watch</h2><form onSubmit={create}><label>Tipo<select name="kind"><option value="subreddit">Subreddit</option><option value="search_query">Consulta</option><option value="user">Usuário</option><option value="keyword_across">Palavra-chave global</option></select></label><label>Valor<input name="value" required placeholder="Ex.: concursospublicos"/></label><button disabled={busy||!ready}>{busy?'Criando…':'Criar watch'}</button></form>{!ready&&<p>A criação será habilitada quando a integração Reddit estiver configurada.</p>}<p role="status">{message}</p><div className="watch-list">{watches.map((watch)=><span key={watch.id}><StatusBadge status={watch.active?'Ativo':'Pausado'}/><strong>{watch.value}</strong><small>{watch.last_run_at?`Última coleta ${new Date(watch.last_run_at).toLocaleString('pt-BR')}`:'Aguardando primeira coleta'}</small></span>)}</div></section>{initialSignals.length?<section className="signal-grid">{initialSignals.map((signal)=><article className="card" key={signal.id}><header><StatusBadge status={signal.status}/><small>{signal.kind.replace(/_/g,' ')}</small></header><h2>{signal.label}</h2><dl><div><dt>Velocidade 7d</dt><dd>{signal.velocity_7d??'—'}</dd></div><div><dt>Velocidade 30d</dt><dd>{signal.velocity_30d??'—'}</dd></div><div><dt>Volume</dt><dd>{signal.volume_current??'—'}</dd></div></dl><time>Atualizado {new Date(signal.last_seen_at).toLocaleString('pt-BR')}</time><details><summary>{signal.evidence_refs?.length??0} evidências</summary>{signal.evidence_refs?.length?<ul>{signal.evidence_refs.map((evidence,index)=><li key={index}>{typeof evidence==='object'?Object.entries(evidence as Record<string,unknown>).map(([key,value])=>`${key}: ${String(value)}`).join(' · '):String(evidence)}</li>)}</ul>:<p>Nenhuma evidência vinculada.</p>}</details></article>)}</section>:<EmptyState message={ready?'Ainda não há sinais. Os watches ativos alimentarão esta tela após a coleta.':'Configure o Reddit para iniciar a coleta passiva.'}/>}</main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\market-radar\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { getIntegrationCapabilities } from '@/lib/integration-capabilities'
+import { MarketRadarClient } from './MarketRadarClient'
+
+export const dynamic='force-dynamic'
+export default async function MarketRadarPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const[signals,watches,capabilities]=await Promise.all([pool.query(`SELECT id,label,kind,velocity_7d,velocity_30d,volume_current,status,last_seen_at,evidence_refs FROM market_signals WHERE ($1::uuid IS NULL OR campaign_id=$1) ORDER BY velocity_7d DESC NULLS LAST,last_seen_at DESC LIMIT 200`,[selected?.id??null]),pool.query(`SELECT id,kind,value,active,last_run_at,next_run_at FROM reddit_watches WHERE ($1::uuid IS NULL OR campaign_id=$1) ORDER BY active DESC,next_run_at NULLS FIRST`,[selected?.id??null]),getIntegrationCapabilities(pool)]);return <MarketRadarClient initialSignals={signals.rows} initialWatches={watches.rows} redditStatus={capabilities.find((item)=>item.id==='reddit')??null}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\notifications\NotificationsClient.tsx ---
+
+'use client'
+import { DataTable, EmptyState, IntegrationState, KpiCard, KpiRow, PageHeader, PriorityChip, StatusBadge } from '@plataforma/ui-bridge'
+import { useState } from 'react'
+import { appPath } from '@/lib/base-path'
+import type { IntegrationCapability } from '@/lib/integration-capabilities'
+interface Trigger{id:string;name:string;match_expr:string;severity:string;channels:string[];dedup_key_template?:string;escalation_policy?:Record<string,unknown>;throttle_seconds?:number;active:boolean;hit_count:number;last_hit_at:string|null}
+interface Alert{id:string;kind:string;severity:'info'|'warn'|'error'|'critical';created_at:string;resolved_at:string|null;payload:Record<string,unknown>}
+interface Delivery{id:string;channel:string;status:string;attempts:number;sent_at:string|null;last_error:string|null}
+export function NotificationsClient({triggers:initialTriggers,alerts,deliveries,capabilities=[]}:{triggers:Trigger[];alerts:Alert[];deliveries:Delivery[];capabilities?:IntegrationCapability[]}){const[triggers,setTriggers]=useState(initialTriggers),[tab,setTab]=useState('Triggers'),[busy,setBusy]=useState(''),[message,setMessage]=useState('');const tabs=['Triggers','Canais','Incidentes','Entregas'];async function toggle(item:Trigger){setBusy(item.id);setMessage('');try{const response=await fetch(appPath('/api/admin/notifications/triggers'),{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({...item,active:!item.active})});if(!response.ok)throw new Error('Não foi possível atualizar o trigger');setTriggers(items=>items.map(value=>value.id===item.id?{...value,active:!value.active}:value));setMessage('Trigger atualizado.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}async function test(){setBusy('test');setMessage('');try{const response=await fetch(appPath('/api/admin/notifications/test'),{method:'POST'});const body=await response.json() as {deliveries?:unknown[];error?:string};if(!response.ok)throw new Error(body.error??'Falha no teste');setMessage(body.deliveries?.length?`Teste enviado por ${body.deliveries.length} canal(is).`:'Nenhum canal está configurado; nenhuma entrega foi simulada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}return <main className="page"><PageHeader title="Notificações e erros" subtitle="Detecção, entrega e resposta operacional"/><KpiRow><KpiCard label="Triggers ativos" value={triggers.filter(item=>item.active).length}/><KpiCard label="Incidentes abertos" value={alerts.filter(item=>!item.resolved_at).length}/><KpiCard label="Falhas de entrega" value={deliveries.filter(item=>item.status==='failed').length}/><KpiCard label="Entregas" value={deliveries.length}/></KpiRow><nav className="tabs" aria-label="Seções de notificação">{tabs.map(item=><button key={item} aria-current={tab===item?'page':undefined} onClick={()=>setTab(item)}>{item}</button>)}</nav><p role="status">{message}</p>{tab==='Triggers'&&<section className="card"><h2>Triggers ({triggers.length})</h2>{triggers.length?triggers.map(item=><article className="trigger-row" key={item.id}><div><strong>{item.name}</strong><code>{item.match_expr}</code><small>{item.hit_count} ocorrências · intervalo {item.throttle_seconds}s</small></div><PriorityChip priority={item.severity==='critical'?'P0':item.severity==='error'?'P1':'P2'}/><span>{item.channels.join(', ')||'sem canal'}</span><button disabled={busy===item.id} onClick={()=>void toggle(item)}>{item.active?'Desativar':'Ativar'}</button></article>):<EmptyState message="Nenhum trigger configurado."/>}</section>}{tab==='Canais'&&<section><div className="integration-grid">{capabilities.filter(item=>['resend','runtime'].includes(item.id)).map(item=><IntegrationState key={item.id} name={item.name} status={item.status} detail={item.detail}/>)}</div><button disabled={busy==='test'} onClick={()=>void test()}>{busy==='test'?'Enviando…':'Enviar teste aos canais configurados'}</button></section>}{tab==='Incidentes'&&(alerts.length?<section className="incident-list">{alerts.map(item=><article className="card" key={item.id}><header><PriorityChip priority={item.severity==='critical'?'P0':item.severity==='error'?'P1':'P2'}/><strong>{item.kind}</strong><StatusBadge status={item.resolved_at?'Resolvido':'Aberto'}/><time>{new Date(item.created_at).toLocaleString('pt-BR')}</time></header><dl>{Object.entries(item.payload??{}).map(([key,value])=><div key={key}><dt>{key.replace(/_/g,' ')}</dt><dd>{typeof value==='object'?JSON.stringify(value):String(value)}</dd></div>)}</dl></article>)}</section>:<EmptyState message="Nenhum incidente registrado."/>)}{tab==='Entregas'&&(deliveries.length?<DataTable rows={deliveries} rowKey={row=>row.id} label="Entregas de notificação" renderRow={row=><div className="delivery-row"><strong>{row.channel}</strong><StatusBadge status={row.status}/><span>{row.attempts} tentativas</span><time>{row.sent_at?new Date(row.sent_at).toLocaleString('pt-BR'):'Não enviada'}</time><span>{row.last_error??''}</span></div>}/>:<EmptyState message="Nenhuma entrega registrada."/>)}</main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\notifications\page.tsx ---
+
+import{createDatabase}from'@plataforma/db';import{NotificationsClient}from'./NotificationsClient';import{getIntegrationCapabilities}from'@/lib/integration-capabilities';export const dynamic='force-dynamic';export default async function NotificationsPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const[triggers,alerts,deliveries,capabilities]=await Promise.all([pool.query('SELECT * FROM error_triggers ORDER BY name'),pool.query('SELECT * FROM alerts ORDER BY created_at DESC LIMIT 200'),pool.query('SELECT * FROM notification_deliveries ORDER BY COALESCE(sent_at,now()) DESC LIMIT 500'),getIntegrationCapabilities(pool)]);return <NotificationsClient triggers={triggers.rows} alerts={alerts.rows} deliveries={deliveries.rows} capabilities={capabilities}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\publishing\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { ChannelBadge, EmptyState, KanbanBoard, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { getCampaignContext } from '@/lib/campaign-context'
+export const dynamic='force-dynamic'
+export default async function PublishingPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const publications=(await pool.query<{id:string;title:string;scheduled_for:Date|null;status:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';external_id:string|null}>(`SELECT publication.id,item.hook title,publication.published_at scheduled_for,variant.status,publication.channel,publication.external_id FROM content_publications publication JOIN content_variants variant ON variant.id=publication.variant_id JOIN content_items item ON item.id=variant.content_item_id WHERE ($1::uuid IS NULL OR item.campaign_id=$1) UNION ALL SELECT scheduled.id,opportunity.thesis,scheduled.scheduled_for,scheduled.status,'instagram',scheduled.ig_media_id FROM scheduled_publications scheduled JOIN content_opportunities opportunity ON opportunity.id=scheduled.content_opportunity_id WHERE ($1::uuid IS NULL OR opportunity.campaign_id=$1) ORDER BY scheduled_for DESC NULLS LAST LIMIT 250`,[selected?.id??null])).rows;const now=new Date(),first=new Date(now.getFullYear(),now.getMonth(),1),start=new Date(first);start.setDate(1-first.getDay());const days=Array.from({length:42},(_,index)=>{const date=new Date(start);date.setDate(start.getDate()+index);return date}),statuses=['draft','ready','approved','scheduled','publishing','published','failed'],scheduled=publications.filter(item=>item.status==='scheduled').length,published=publications.filter(item=>item.status==='published').length,failed=publications.filter(item=>item.status==='failed').length;return <main className="page"><PageHeader title="Publicação multicanal" subtitle="Calendário editorial, fila de aprovação e comprovantes por canal"/><KpiRow><KpiCard label="Agendadas" value={scheduled}/><KpiCard label="Publicadas" value={published}/><KpiCard label="Falhas" value={failed}/><KpiCard label="Canais" value={new Set(publications.map(item=>item.channel)).size}/></KpiRow>{publications.length?<><section className="card" aria-label="Calendário mensal"><h2>{now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h2><div className="calendar-grid">{days.map(day=><article className="calendar-day" key={day.toISOString()}><strong>{day.getDate()}</strong>{publications.filter(item=>item.scheduled_for&&new Date(item.scheduled_for).toDateString()===day.toDateString()).slice(0,3).map(item=><small key={item.id}><ChannelBadge channel={item.channel}/>{item.title}</small>)}</article>)}</div></section><KanbanBoard columns={statuses.map(status=>({title:status,items:publications.filter(item=>item.status===status).map(item=><article className="card" key={`${status}:${item.id}`}><header><ChannelBadge channel={item.channel}/><StatusBadge status={item.status}/></header><strong>{item.title}</strong><p>{item.scheduled_for?item.scheduled_for.toLocaleString('pt-BR'):'Sem horário'}</p>{item.external_id&&<small>Comprovante externo: {item.external_id}</small>}</article>)}))}/></>:<EmptyState message="Nenhuma publicação foi criada nesta campanha. Aprove um conteúdo e gere uma variante para iniciar."/>}</main>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\radar\page.tsx ---
+
+import { DashboardPage } from '@/components/DashboardPage'
+export const dynamic = 'force-dynamic'
+export default function Page() { return <DashboardPage view="radar" title="Radar" subtitle="Posts em ascensão e oportunidades quase em tempo real" /> }
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\review-inbox\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ReviewInboxClient } from './ReviewInboxClient'
+
+export const dynamic = 'force-dynamic'
+export default async function ReviewInboxPage() {
+  const { pool } = createDatabase(process.env.DATABASE_URL!)
+  try {
+    const { selected } = await getCampaignContext(pool)
+    const [items, stats] = await Promise.all([
+      pool.query(`SELECT id,item_type,reason,suggested_action,context,created_at FROM review_inbox WHERE (status='pending' OR (status='snoozed' AND COALESCE(context->>'snooze_until','') <= now()::text)) AND ($1::uuid IS NULL OR context->>'campaignId'=$1::text) ORDER BY created_at ASC LIMIT 200`, [selected?.id ?? null]),
+      pool.query<{ count:string }>(`SELECT COUNT(*)::text count FROM review_inbox WHERE decided_at::date=CURRENT_DATE AND ($1::uuid IS NULL OR context->>'campaignId'=$1::text)`, [selected?.id ?? null]),
+    ])
+    return <ReviewInboxClient initialItems={items.rows} decidedToday={Number(stats.rows[0]?.count ?? 0)}/>
+  } finally { await pool.end() }
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\review-inbox\ReviewInboxClient.tsx ---
+
+'use client'
+
+import { EmptyState, KpiCard, KpiRow, PageHeader, ThreePaneLayout } from '@plataforma/ui-bridge'
+import { useCallback, useEffect, useState } from 'react'
+import { appPath } from '@/lib/base-path'
+
+interface ReviewItem { id:string;item_type:string;reason:string|null;suggested_action:Record<string,unknown>;context:Record<string,unknown>;created_at:string }
+function label(value:string){return value.replace(/_/g,' ').replace(/^./,(character)=>character.toUpperCase())}
+function ReadableRecord({value}:{value:Record<string,unknown>}){const entries=Object.entries(value);return entries.length?<dl className="record-list">{entries.map(([key,item])=><div key={key}><dt>{label(key)}</dt><dd>{item&&typeof item==='object'?Object.entries(item as Record<string,unknown>).map(([nested,nestedValue])=>`${label(nested)}: ${String(nestedValue)}`).join(' · '):String(item??'—')}</dd></div>)}</dl>:<p>Nenhuma informação adicional.</p>}
+
+export function ReviewInboxClient({initialItems,decidedToday}:{initialItems:ReviewItem[];decidedToday:number}){
+  const[items,setItems]=useState(initialItems),[index,setIndex]=useState(0),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[editing,setEditing]=useState(false),[editedText,setEditedText]=useState(''),[notes,setNotes]=useState('')
+  const current=items[index]
+  const decide=useCallback(async(action:'approve'|'edit'|'reject'|'block'|'snooze')=>{if(!current||busy)return;if(action==='edit'&&!editing){setEditedText(String(current.suggested_action.text??''));setEditing(true);return}setBusy(true);setMessage('');try{const payload:Record<string,unknown>={notes:notes||undefined};if(action==='snooze')payload.snoozeUntil=new Date(Date.now()+86_400_000).toISOString();if(action==='edit')payload.suggestedAction={...current.suggested_action,text:editedText};const response=await fetch(appPath(`/api/review-inbox/${current.id}/${action}`),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const body=await response.json() as {item?:ReviewItem;error?:string};if(!response.ok)throw new Error(body.error??'Não foi possível registrar a decisão');if(action==='edit'&&body.item){setItems((value)=>value.map((item)=>item.id===current.id?body.item!:item));setEditing(false);setMessage('Sugestão atualizada.')}else{setItems((value)=>value.filter((item)=>item.id!==current.id));setIndex(0);setMessage('Decisão registrada com auditoria.')}setNotes('')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy(false)}},[current,busy,editing,editedText,notes])
+  useEffect(()=>{const handler=(event:KeyboardEvent)=>{if((event.target as HTMLElement)?.matches('input,textarea'))return;const key=event.key.toLowerCase();if(key==='a')void decide('approve');else if(key==='e')void decide('edit');else if(key==='r')void decide('reject');else if(key==='b')void decide('block');else if(key==='.')void decide('snooze');else if(key==='j')setIndex((value)=>Math.min(items.length-1,value+1));else if(key==='k')setIndex((value)=>Math.max(0,value-1))};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[decide,items.length])
+  return <div className="page"><PageHeader title="Review Inbox" subtitle="Triagem humana com contexto legível e trilha de auditoria"/><KpiRow><KpiCard label="Pendentes" value={items.length}/><KpiCard label="Decididos hoje" value={decidedToday}/></KpiRow><p className="keyboard-help">Atalhos: J/K navegar · A aprovar · E editar · R rejeitar · B bloquear · . adiar</p><p className="action-message" role="status">{message}</p>{!current?<EmptyState message={`Nada para revisar agora · ${decidedToday} decisões hoje`}/>:<ThreePaneLayout list={<><h2>Pendentes ({items.length})</h2>{items.map((item,itemIndex)=><button className="review-list-item" aria-current={itemIndex===index?'true':undefined} key={item.id} onClick={()=>{setIndex(itemIndex);setEditing(false);setNotes('')}}><strong>{label(item.item_type)}</strong><small>{item.reason}</small><time>{new Date(item.created_at).toLocaleString('pt-BR')}</time></button>)}</>} detail={<><p className="eyebrow">{label(current.item_type)}</p><h2>{current.reason??'Revisão necessária'}</h2>{editing?<label className="editor-field">Texto revisado<textarea value={editedText} onChange={(event)=>setEditedText(event.target.value)} rows={8}/></label>:<ReadableRecord value={current.suggested_action}/>}<label className="editor-field">Observação da decisão<textarea value={notes} onChange={(event)=>setNotes(event.target.value)} rows={3}/></label><div className="review-actions">{editing?<><button disabled={busy||!editedText.trim()} onClick={()=>void decide('edit')}>{busy?'Salvando…':'Salvar edição'}</button><button disabled={busy} onClick={()=>setEditing(false)}>Cancelar</button></>:<><button disabled={busy} onClick={()=>void decide('approve')}>A · Aprovar</button><button disabled={busy} onClick={()=>void decide('edit')}>E · Editar</button><button disabled={busy} onClick={()=>void decide('reject')}>R · Rejeitar</button><button disabled={busy} onClick={()=>void decide('block')}>B · Bloquear</button><button disabled={busy} onClick={()=>void decide('snooze')}>. · Adiar</button></>}</div></>} context={<><h2>Contexto</h2><ReadableRecord value={current.context}/><h3>Auditoria</h3><p>A decisão registra operador, estado anterior, estado final e horário no log imutável.</p></>}/>}</div>
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\source-roi\page.tsx ---
+
+import { DashboardPage } from '@/components/DashboardPage'
+export const dynamic = 'force-dynamic'
+export default function Page() { return <DashboardPage view="source-roi" title="ROI por origem" subtitle="Qualidade, retenção e conversão por origem" /> }
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\system-health\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { SystemHealthClient } from './SystemHealthClient'
+import { getIntegrationCapabilities } from '@/lib/integration-capabilities'
+import { Redis } from 'ioredis'
+
+export const dynamic = 'force-dynamic'
+export default async function SystemHealthPage(){
+  const { pool }=createDatabase(process.env.DATABASE_URL!)
+  try{
+    const redis=new Redis(process.env.REDIS_URL!)
+    const [heartbeats,alerts,health,canaries,capabilities,killSwitch]=await Promise.all([
+      pool.query(`SELECT worker,instance_id,last_beat_at,jobs_done_window,jobs_failed_window,backlog_seen,p95_latency_ms,state FROM worker_heartbeats ORDER BY worker,instance_id`),
+      pool.query(`SELECT id,kind,severity,created_at FROM alerts WHERE resolved_at IS NULL ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'error' THEN 1 WHEN 'warn' THEN 2 ELSE 3 END,created_at DESC LIMIT 50`),
+      pool.query<{ score:string }>(`SELECT COALESCE(AVG(health_score),100)::text score FROM (SELECT DISTINCT ON(account_id) account_id,health_score FROM account_health ORDER BY account_id,captured_at DESC) h`),
+      pool.query(`SELECT DISTINCT ON(pipeline) pipeline,status,latency_ms,error,finished_at FROM canary_runs ORDER BY pipeline,finished_at DESC NULLS LAST`),
+      getIntegrationCapabilities(pool),
+      redis.get('kill-switch:global'),
+    ])
+    await redis.quit()
+    return <SystemHealthClient heartbeats={heartbeats.rows} alerts={alerts.rows} healthScore={Math.round(Number(health.rows[0]?.score??100))} currentTime={Date.now()} canaries={canaries.rows} capabilities={capabilities} killSwitchEnabled={killSwitch==='1'}/>
+  }finally{await pool.end()}
+}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\system-health\SystemHealthClient.tsx ---
+
+'use client'
+import { ConfirmDestructiveDialog, HealthDial, IntegrationState, KpiCard, KpiRow, LiveBadge, PageHeader, QuotaMeter, RunbookLink as UiRunbookLink, StatusBadge } from '@plataforma/ui-bridge'
+import { useState } from 'react'
+import { appPath } from '@/lib/base-path'
+import type { IntegrationCapability } from '@/lib/integration-capabilities'
+interface Heartbeat{worker:string;instance_id:string;last_beat_at:string;jobs_done_window:number;jobs_failed_window:number;backlog_seen:number;p95_latency_ms:string;state:string}
+interface Alert{id:string;kind:string;severity:string;created_at:string}
+interface Canary{pipeline:string;status:string;latency_ms:number;error:string|null;finished_at:string|null}
+function RunbookLink({href,name}:{href:string;name:string}){return <UiRunbookLink href={appPath(href)} name={name}/>}
+export function SystemHealthClient({heartbeats,alerts,healthScore,currentTime=0,canaries,capabilities,killSwitchEnabled}:{heartbeats:Heartbeat[];alerts:Alert[];healthScore:number;currentTime?:number;canaries:Canary[];capabilities:IntegrationCapability[];killSwitchEnabled:boolean}){const[confirming,setConfirming]=useState(false),[stopped,setStopped]=useState(killSwitchEnabled),[message,setMessage]=useState('');const stale=heartbeats.filter(item=>currentTime-new Date(item.last_beat_at).getTime()>90_000).length,critical=alerts.filter(item=>item.severity==='critical').length,state=critical||stale?'Crítico':alerts.length?'Atenção':'OK';async function toggleKillSwitch(){setMessage('');const response=await fetch(appPath('/api/kill-switch'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({enabled:!stopped})});if(response.ok){setStopped(!stopped);setMessage(stopped?'Sistema reativado.':'Kill-switch global ativado.')}else setMessage('Não foi possível alterar o kill-switch.');setConfirming(false)}return <main className="page"><PageHeader title="Saúde do sistema" subtitle="Heartbeats, backlog, canários, integrações e incidentes" actions={<><button className={stopped?'danger active':'danger'} onClick={()=>setConfirming(true)}>{stopped?'Reativar sistema':'Ativar kill-switch'}</button>{confirming&&<ConfirmDestructiveDialog onConfirm={()=>void toggleKillSwitch()}/>}</>}/><p role="status">{message}</p><section className="health-summary card"><HealthDial value={healthScore} state={state}/><div><h2>{state}</h2><p>{critical} críticos · {stale} heartbeats atrasados · {alerts.length} alertas abertos</p><RunbookLink href="/docs/runbooks/system-health" name="Runbook de saúde"/></div><StatusBadge status={stopped?'Sistema pausado':'Execução liberada'}/></section><KpiRow><KpiCard label="Workers ativos" value={heartbeats.length-stale}/><KpiCard label="Backlog real" value={heartbeats.reduce((sum,item)=>sum+item.backlog_seen,0)}/><KpiCard label="Falhas na janela" value={heartbeats.reduce((sum,item)=>sum+item.jobs_failed_window,0)}/><KpiCard label="Alertas críticos" value={critical}/></KpiRow><div className="feature-grid"><section className="card panel"><h2>Heartbeats por worker</h2><div className="health-table" role="table">{heartbeats.map(item=><div role="row" key={`${item.worker}:${item.instance_id}`}><strong>{item.worker}</strong><LiveBadge connected={currentTime-new Date(item.last_beat_at).getTime()<90_000} lastUpdate={new Date(item.last_beat_at).toLocaleTimeString('pt-BR')}/><span>{item.state}</span><span>p95 {Math.round(Number(item.p95_latency_ms??0))} ms</span><span>backlog {item.backlog_seen}</span></div>)}</div></section><section className="card"><h2>Capacidade dos workers</h2>{heartbeats.map(item=><div key={`quota:${item.worker}:${item.instance_id}`}><label>{item.worker}</label><QuotaMeter used={item.backlog_seen} limit={Math.max(item.backlog_seen+item.jobs_done_window,1)}/></div>)}</section></div><section><h2>Canários</h2><div className="canary-grid">{canaries.map(item=><article className="card" key={item.pipeline}><StatusBadge status={item.status}/><strong>{item.pipeline}</strong><span>{item.latency_ms} ms</span><small>{item.finished_at?new Date(item.finished_at).toLocaleString('pt-BR'):'Sem execução concluída'}</small>{item.error&&<p>{item.error}</p>}</article>)}</div></section><section><h2>Integrações</h2><div className="integration-grid">{capabilities.map(item=><IntegrationState key={item.id} name={item.name} status={item.status} detail={item.detail}/>)}</div></section></main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\theses\page.tsx ---
+
+import { createDatabase } from '@plataforma/db'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { ThesesClient } from './ThesesClient'
+
+export const dynamic='force-dynamic'
+export default async function ThesesPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const theses=(await pool.query(`SELECT thesis.id,thesis.title,thesis.description,thesis.tenets,thesis.forbidden_angles,thesis.tone_guidelines,thesis.example_hooks,thesis.version,thesis.active,count(DISTINCT item.id)::int content_count,COALESCE(sum(performance.impressions),0)::int impressions,COALESCE(sum(performance.engagements),0)::int engagements,COALESCE(sum(performance.conversions),0)::int conversions FROM theses thesis LEFT JOIN content_items item ON item.thesis_id=thesis.id LEFT JOIN content_variants variant ON variant.content_item_id=item.id LEFT JOIN content_performance performance ON performance.variant_id=variant.id WHERE ($1::uuid IS NULL OR thesis.campaign_id=$1) GROUP BY thesis.id ORDER BY thesis.active DESC,thesis.title`,[selected?.id??null])).rows;return <ThesesClient initialTheses={theses}/>}finally{await pool.end()}}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\theses\ThesesClient.tsx ---
+
+'use client'
+
+import { EmptyState, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
+import { useState } from 'react'
+import { appPath } from '@/lib/base-path'
+type Thesis={id:string;title:string;description:string;tenets:string[];forbidden_angles:string[];tone_guidelines:string|null;example_hooks:string[];version:number;active:boolean;content_count:number;impressions:number;engagements:number;conversions:number}
+export function ThesesClient({initialTheses}:{initialTheses:Thesis[]}){const[items,setItems]=useState(initialTheses),[creating,setCreating]=useState(false),[busy,setBusy]=useState(''),[message,setMessage]=useState('');async function create(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setBusy('create');setMessage('');const form=new FormData(event.currentTarget);try{const response=await fetch(appPath('/api/theses'),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:form.get('title'),description:form.get('description'),tenets:String(form.get('tenets')??'').split('\n').filter(Boolean),forbiddenAngles:String(form.get('forbiddenAngles')??'').split('\n').filter(Boolean),toneGuidelines:form.get('toneGuidelines'),exampleHooks:String(form.get('exampleHooks')??'').split('\n').filter(Boolean)})});const body=await response.json() as {item?:Thesis;error?:string};if(!response.ok)throw new Error(body.error==='active_thesis_limit'?'O limite de sete teses ativas foi atingido.':body.error??'Não foi possível criar a tese');if(body.item)setItems((value)=>[{...body.item!,content_count:0,impressions:0,engagements:0,conversions:0},...value]);setCreating(false);setMessage('Tese criada com auditoria.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}async function toggle(item:Thesis){setBusy(item.id);setMessage('');try{const response=await fetch(appPath('/api/theses'),{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:item.id,active:!item.active})});const body=await response.json() as {item?:Thesis;error?:string};if(!response.ok)throw new Error(body.error==='active_thesis_limit'?'O limite de sete teses ativas foi atingido.':body.error??'Não foi possível atualizar');if(body.item)setItems((value)=>value.map((current)=>current.id===item.id?{...current,...body.item}:current));setMessage(item.active?'Tese pausada.':'Tese ativada.')}catch(error){setMessage(error instanceof Error?error.message:'Erro inesperado')}finally{setBusy('')}}const active=items.filter((item)=>item.active).length;return <main className="page"><PageHeader title="Teses" subtitle="Princípios editoriais com origem, uso e desempenho rastreáveis" actions={<button disabled={active>=7} onClick={()=>setCreating(true)}>Nova tese</button>}/><KpiRow><KpiCard label="Ativas" value={`${active}/7`}/><KpiCard label="Conteúdos" value={items.reduce((sum,item)=>sum+item.content_count,0)}/><KpiCard label="Impressões" value={items.reduce((sum,item)=>sum+item.impressions,0).toLocaleString('pt-BR')}/><KpiCard label="Conversões" value={items.reduce((sum,item)=>sum+item.conversions,0)}/></KpiRow><p className="action-message" role="status">{message}</p>{creating&&<form className="card thesis-form" onSubmit={create}><h2>Nova tese</h2><label>Título<input name="title" minLength={3} required/></label><label>Descrição<textarea name="description" rows={4} minLength={3} required/></label><label>Princípios — um por linha<textarea name="tenets" rows={4}/></label><label>Ângulos proibidos — um por linha<textarea name="forbiddenAngles" rows={3}/></label><label>Diretrizes de tom<textarea name="toneGuidelines" rows={3}/></label><label>Hooks de exemplo — um por linha<textarea name="exampleHooks" rows={3}/></label><div className="action-row"><button disabled={busy==='create'}>{busy==='create'?'Criando…':'Criar tese'}</button><button type="button" onClick={()=>setCreating(false)}>Cancelar</button></div></form>}{items.length?<section className="thesis-grid">{items.map((item)=><article className="card thesis-card" key={item.id}><header><div><h2>{item.title}</h2><small>Versão {item.version}</small></div><StatusBadge status={item.active?'Ativa':'Pausada'}/></header><p>{item.description}</p><details><summary>Princípios e limites</summary><h3>Princípios</h3><ul>{item.tenets.map((tenet)=><li key={tenet}>{tenet}</li>)}</ul><h3>Ângulos proibidos</h3><ul>{item.forbidden_angles.map((angle)=><li key={angle}>{angle}</li>)}</ul>{item.tone_guidelines&&<><h3>Tom</h3><p>{item.tone_guidelines}</p></>}</details><KpiRow><KpiCard label="Conteúdos" value={item.content_count}/><KpiCard label="Impressões" value={item.impressions}/><KpiCard label="Engagements" value={item.engagements}/><KpiCard label="Conversões" value={item.conversions}/></KpiRow><button disabled={busy===item.id} onClick={()=>void toggle(item)}>{busy===item.id?'Salvando…':item.active?'Pausar':'Ativar'}</button></article>)}</section>:<EmptyState message="Nenhuma tese cadastrada. Crie a primeira para orientar conteúdos reais."/>}</main>}
+
+
+--- c:\Users\Lenovo\Desktop\Rota de Ataque\Sistema de Design\plataforma\apps\web\src\app\timeline\page.tsx ---
+
+import { DashboardPage } from '@/components/DashboardPage'
+export const dynamic = 'force-dynamic'
+export default function Page() { return <DashboardPage view="timeline" title="Timeline" subtitle="Histórico unificado de descoberta, ações, reciprocidade e conversão" /> }

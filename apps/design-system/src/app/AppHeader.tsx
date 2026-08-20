@@ -1,6 +1,7 @@
 import { useEditorStore, ZOOM_LEVELS } from '@/stores/useEditorStore'
 import { useUiStore, type AppTab } from '@/stores/useUiStore'
 import { useSeriesStore } from '@/stores/useSeriesStore'
+import { useWizardStore } from '@/stores/useWizardStore'
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { HeaderPrimaryButton, HeaderSecondaryButton } from './HeaderButtons'
@@ -8,7 +9,9 @@ import { useSeriesExport } from '@/features/series/useSeriesExport'
 import { ProjectSessionControls } from '@/features/projects/ProjectSessionControls'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
+  ArrowLeft,
   Download,
+  LayoutDashboard,
   Layers3,
   Package,
   PanelLeft,
@@ -23,14 +26,14 @@ import {
 } from 'lucide-react'
 
 const TABS: { id: AppTab; label: string }[] = [
-  { id: 'create', label: 'Criar Arte' },
+  { id: 'dashboard', label: 'Início' },
   { id: 'brand', label: 'Marca' },
-  { id: 'ai-config', label: 'AI' },
+  { id: 'ai-config', label: 'IA' },
   { id: 'renders', label: 'Renders' },
-  { id: 'history', label: 'Historico' },
+  { id: 'history', label: 'Histórico' },
+  { id: 'editorial', label: 'Teses' },
 ]
 
-/** Espelha <header class="app-header"> do Gerador/index.html (linhas 1272-1318). */
 export function AppHeader({ onDownload, onSave }: { onDownload: () => void; onSave: () => void }) {
   const activeTab = useUiStore((s) => s.activeTab)
   const theme = useUiStore((s) => s.theme)
@@ -48,6 +51,10 @@ export function AppHeader({ onDownload, onSave }: { onDownload: () => void; onSa
   const toggleSeriesMode = useSeriesStore((s) => s.toggleSeriesMode)
   const seriesSlidesCount = useSeriesStore((s) => s.slides.length)
   const { exportSeriesZIP } = useSeriesExport()
+  const wizardActive = useWizardStore((s) => s.active)
+  const wizardStep = useWizardStore((s) => s.step)
+
+  const isInCreateFlow = activeTab === 'create' || activeTab === 'wizard'
 
   return (
     <header className="relative z-50 flex min-h-13 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-ui-border bg-ui-panel px-3 py-2 lg:px-5">
@@ -63,7 +70,24 @@ export function AppHeader({ onDownload, onSave }: { onDownload: () => void; onSa
 
       <div className="hidden h-6.5 w-px bg-ui-border md:block" />
 
-      <ProjectSessionControls />
+      {!isInCreateFlow && <ProjectSessionControls />}
+
+      {isInCreateFlow && (
+        <button
+          onClick={() => setTab('dashboard')}
+          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-ui-muted transition-colors hover:bg-ui-panel2 hover:text-ui-text"
+        >
+          <ArrowLeft className="size-3.5" />
+          Voltar ao Início
+        </button>
+      )}
+
+      {activeTab === 'wizard' && wizardActive && (
+        <div className="flex items-center gap-1.5 text-xs text-ui-muted">
+          <LayoutDashboard className="size-3.5" />
+          <span>Passo {wizardStep} de 5</span>
+        </div>
+      )}
 
       <nav className="order-3 flex w-full gap-1 overflow-x-auto md:order-none md:w-auto" aria-label="Abas principais">
         {TABS.map((tab) => (

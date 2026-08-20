@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { HeaderSecondaryButton } from '@/app/HeaderButtons'
 import { ModelsList } from './ModelsList'
 import { ModelFormDialog } from './ModelFormDialog'
+import { AICostPanel } from './AICostPanel'
 
 /** Espelha #ai-config-view do Gerador/index.html original (linhas 1857-1939). */
 export function AIConfigView() {
@@ -62,6 +63,10 @@ export function AIConfigView() {
           docsLabel="fal.ai/dashboard/keys"
           modelHint="fal-ai/flux/schnell"
         />
+
+        <div className="mt-8 border-t border-ui-border pt-7">
+          <AICostPanel />
+        </div>
 
         <div className="mt-8 border-t border-ui-border pt-7">
           <div className="mb-4 flex items-center justify-between">

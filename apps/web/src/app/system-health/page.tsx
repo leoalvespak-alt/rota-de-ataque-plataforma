@@ -3,7 +3,6 @@ import { SystemHealthClient } from './SystemHealthClient'
 import { getIntegrationCapabilities } from '@/lib/integration-capabilities'
 import { Redis } from 'ioredis'
 
-export const dynamic = 'force-dynamic'
 export default async function SystemHealthPage(){
   const { pool }=createDatabase(process.env.DATABASE_URL!)
   try{
