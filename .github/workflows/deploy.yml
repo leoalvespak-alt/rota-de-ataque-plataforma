@@ -70,11 +70,32 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-worker:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-worker:latest
 
-      - name: Trigger Dokploy Webhooks
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Deploy to VPS
+        env:
+          SSH_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          if [ -n "${{ secrets.DOKPLOY_WEBHOOK_URL }}" ]; then
-            curl -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}"
-            echo "Webhook triggered successfully"
-          else
-            echo "DOKPLOY_WEBHOOK_URL not set, skipping webhook"
-          fi
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@$VPS_HOST"
+
+          echo "=== Deploying Design Web ==="
+          $SSH '/opt/rota-deploy/deploy.sh design-web'
+
+          echo "=== Deploying Design API ==="
+          $SSH '/opt/rota-deploy/deploy.sh design-api --migrate'
+
+          echo "=== Deploying Prospector ==="
+          $SSH '/opt/rota-deploy/deploy.sh prospector --migrate'
+
+          echo "=== Cleanup old images ==="
+          $SSH '/opt/rota-deploy/deploy.sh cleanup'
+
+          echo "=== Final status ==="
+          $SSH '/opt/rota-deploy/deploy.sh status'
