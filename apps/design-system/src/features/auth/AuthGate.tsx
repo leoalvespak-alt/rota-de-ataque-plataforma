@@ -3,18 +3,20 @@ import { Loader2, LockKeyhole } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  if (import.meta.env.VITE_E2E === '1') return children
-
   const [state, setState] = useState<'checking' | 'authenticated' | 'anonymous'>('checking')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const bypassAuth = import.meta.env.VITE_E2E === '1'
 
   useEffect(() => {
+    if (import.meta.env.VITE_E2E === '1') return
     apiFetch<{ authenticated: boolean }>('/auth/session')
       .then(() => setState('authenticated'))
       .catch(() => setState('anonymous'))
   }, [])
+
+  if (bypassAuth) return children
 
   if (state === 'checking') {
     return <div className="flex min-h-screen items-center justify-center bg-ui-bg"><Loader2 className="size-6 animate-spin text-brand-red" /></div>
