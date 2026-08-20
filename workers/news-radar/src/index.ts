@@ -131,11 +131,11 @@ function keywordClassify(title: string, content: string | null): { concurso_alvo
   if (!isPoliceRelevant) return { concurso_alvo: null, estado: null, banca: null, fase_ciclo: null, relevance_score: 0.1, is_police_relevant: false }
 
   let concurso_alvo: string | null = null
-  if (/policia militar|pm[a-z]{2}|pm\s/i.test(text)) concurso_alvo = 'PM'
-  else if (/policia penal|pp[a-z]{2}|agepen|seap|depen/i.test(text)) concurso_alvo = 'PP'
-  else if (/policia civil|pc[a-z]{2}|delegad|investigad|escriv/i.test(text)) concurso_alvo = 'PC'
-  else if (/policia federal|pf\s|dpf/i.test(text)) concurso_alvo = 'PF'
-  else if (/policia rodoviaria|prf/i.test(text)) concurso_alvo = 'PRF'
+  if (/pol[íi]cia militar|pm[a-z]{2}|pm\s/i.test(text)) concurso_alvo = 'PM'
+  else if (/pol[íi]cia penal|pp[a-z]{2}|agepen|seap|depen/i.test(text)) concurso_alvo = 'PP'
+  else if (/pol[íi]cia civil|pc[a-z]{2}|delegad|investigad|escriv/i.test(text)) concurso_alvo = 'PC'
+  else if (/pol[íi]cia federal|pf\s|dpf/i.test(text)) concurso_alvo = 'PF'
+  else if (/pol[íi]cia rodovi[aá]ria|prf/i.test(text)) concurso_alvo = 'PRF'
   else if (/guarda municipal|guarda civil|gcm/i.test(text)) concurso_alvo = 'GCM'
 
   let fase_ciclo: string | null = null
