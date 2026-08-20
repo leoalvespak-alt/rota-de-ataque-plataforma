@@ -68,7 +68,7 @@
     "src/tokens/semantic/ui.json": "9e4a8e22b914d2cf76358897d457fed3c659cd5a8f820cfe4b80d130ae1f4a45",
     "src/index.css": "abcaf877fd93309da5b85dc66f4459f11aa9272e32d7811ab22b799f30126922",
     "style-dictionary.config.mjs": "b6463fead32579173d3330537cd51e8efb0e55bd7fd03215e44f149d4ab42922",
-    "tests/e2e/editor.spec.ts": "b085f9ebbd547ec221ee1d06b10b322c4f55d1f0f5c53836483d65286e6071eb",
+    "tests/e2e/editor.spec.ts": "5d5fe88db735ee0f1f6300000d2ce0df6b4b2e9501a4d4e5bf7bdf2a3e89a32f",
     "tests/editorial/content-fit.test.ts": "c8c74178ac44a6367657edd98f87c4e9fd458f6012fb836b6f571d9483b6b5cb",
     "tests/editorial/planner.test.ts": "35bcd4f0e3acfff99db9ff912c08c062a31145ee45bb15f7204395704b371caf",
     "tests/editorial/quality.test.ts": "83eb9ab6f951a4c89f3d8a893195236ae5c6909f109d684775b73b82e1f0b705",
