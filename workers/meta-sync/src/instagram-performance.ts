@@ -43,7 +43,7 @@ export async function upsertInstagramPerformance(database: Queryable, mediaId: s
        FROM content_publications publication WHERE publication.channel='instagram' AND publication.external_id=$1
      ), snapshot AS (
        INSERT INTO publication_metric_snapshots(publication_id,variant_id,channel,metric_window,metrics,source)
-       SELECT id,variant_id,'instagram',metric_window,jsonb_build_object('impressions',$2,'reach',$3,'engagements',$4,'saves',$5,'shares',$6),'meta' FROM published
+       SELECT id,variant_id,'instagram',metric_window,jsonb_build_object('impressions',$2::int,'reach',$3::int,'engagements',$4::int,'saves',$5::int,'shares',$6::int),'meta' FROM published
        ON CONFLICT(publication_id,metric_window) DO UPDATE SET metrics=EXCLUDED.metrics,captured_at=now() RETURNING variant_id
      )
      INSERT INTO content_performance(variant_id, channel, impressions, reach, engagements, saves, shares)
