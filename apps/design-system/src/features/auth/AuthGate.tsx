@@ -3,6 +3,8 @@ import { Loader2, LockKeyhole } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  if (import.meta.env.VITE_E2E === '1') return children
+
   const [state, setState] = useState<'checking' | 'authenticated' | 'anonymous'>('checking')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
