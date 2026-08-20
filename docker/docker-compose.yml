@@ -5,7 +5,8 @@ x-worker: &worker
   build:
     context: ..
     dockerfile: docker/worker.Dockerfile
-  env_file: ../.env
+  environment:
+    DATABASE_POOL_MAX: "2"
   restart: unless-stopped
   entrypoint: ["/app/docker/worker-entrypoint.sh"]
   depends_on:
@@ -19,6 +20,7 @@ x-worker: &worker
 services:
   postgres:
     image: pgvector/pgvector:pg16
+    command: ["postgres", "-c", "max_connections=200"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -58,7 +60,8 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
-    env_file: ../.env
+    environment:
+      DATABASE_POOL_MAX: "10"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -74,7 +77,6 @@ services:
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
-    env_file: ../.env
     depends_on:
       postgres: { condition: service_healthy }
     command: ["pnpm", "--filter", "@plataforma/db", "migrate"]
@@ -86,7 +88,6 @@ services:
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
-    env_file: ../.env
     restart: unless-stopped
     depends_on:
       redis: { condition: service_healthy }
@@ -96,7 +97,6 @@ services:
     build:
       context: ..
       dockerfile: docker/backup.Dockerfile
-    env_file: ../.env
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

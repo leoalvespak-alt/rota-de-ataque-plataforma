@@ -1,6 +1,7 @@
 services:
   postgres:
     restart: unless-stopped
+    command: ["postgres", "-c", "max_connections=200"]
     ports:
       - "127.0.0.1:5434:5432"
   redis:
@@ -16,6 +17,8 @@ services:
           memory: 2G
   web:
     restart: unless-stopped
+    environment:
+      DATABASE_POOL_MAX: "10"
     ports:
       - "127.0.0.1:3010:3000"
   caddy:

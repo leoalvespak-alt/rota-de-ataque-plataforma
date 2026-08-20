@@ -21,7 +21,7 @@ export const EmptyState=({message,action}:{message:string;action?:ReactNode})=><
 export const ErrorState=({traceId,runbook,onRetry}:{traceId:string;runbook:string;onRetry?:()=>void})=><section className="state error"><strong>Não deu para carregar</strong><code>{traceId}</code><a href={runbook} target="_blank" rel="noreferrer">Runbook</a><button onClick={onRetry}>Tentar novamente</button></section>
 export function ConfirmDestructiveDialog({name,onConfirm}:{name?:string;onConfirm:()=>void}){const[ready,setReady]=useState(false);const[value,setValue]=useState('');useEffect(()=>{const timer=setTimeout(()=>setReady(true),3000);return()=>clearTimeout(timer)},[]);return <dialog open><h2>Confirmar ação destrutiva</h2><p>Esta ação pode afetar dados e não pode ser desfeita.</p>{name&&<input aria-label="Digite o nome para confirmar" value={value} onChange={(event)=>setValue(event.target.value)}/>}<button disabled={!ready||(name!==undefined&&value!==name)} onClick={onConfirm}>Confirmar</button></dialog>}
 export const AsyncBanner=({kind='partial',children}:{kind?:string;children:ReactNode})=><div className={`banner ${kind}`} role="status">{children}</div>
-import { Tooltip } from './feedback.js'
+import { Tooltip } from './feedback'
 
 export const LiveBadge=({connected,lastUpdate,details}:{connected:boolean;lastUpdate:string;details?:string})=>{
   const badge = <span className={`live ${connected?'connected':'reconnecting'}`} style={{ cursor: 'help' }}><i/>{connected?'Ao vivo':'Reconectando…'} · {lastUpdate}</span>;

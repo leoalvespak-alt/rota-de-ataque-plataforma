@@ -8,7 +8,7 @@ const _pools = new Map<string, { pool: Pool; db: ReturnType<typeof drizzle> }>()
 export const createDatabase = (connectionString: string) => {
   let entry = _pools.get(connectionString)
   if (!entry) {
-    const pool = new Pool({ connectionString, max: 10, application_name: 'plataforma' })
+    const pool = new Pool({ connectionString, max: Number(process.env.DATABASE_POOL_MAX ?? 3), application_name: 'plataforma' })
     entry = { pool, db: drizzle(pool) }
     _pools.set(connectionString, entry)
   }
