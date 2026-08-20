@@ -5,10 +5,11 @@ import { Toaster } from 'sonner'
 import { ProjectSessionProvider } from '@/features/projects/ProjectSessionProvider'
 import { FeatureDiagnostics } from '@/features/diagnostics/FeatureDiagnostics'
 import { CreativeBridgeListener } from '@/features/editor/CreativeBridgeListener'
+import { AuthGate } from '@/features/auth/AuthGate'
 
 function App() {
   return (
-    <TooltipProvider>
+    <AuthGate><TooltipProvider>
       <ExportNodeProvider>
         <ProjectSessionProvider>
           <CreativeBridgeListener />
@@ -17,7 +18,7 @@ function App() {
       </ExportNodeProvider>
       <FeatureDiagnostics />
       <Toaster richColors position="bottom-right" />
-    </TooltipProvider>
+    </TooltipProvider></AuthGate>
   )
 }
 

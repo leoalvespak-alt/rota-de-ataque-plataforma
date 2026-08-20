@@ -15,19 +15,26 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.5.7",
     "@plataforma/db": "workspace:*",
     "@plataforma/email-provider": "workspace:*",
     "@plataforma/meta-api": "workspace:*",
     "@plataforma/notifications": "workspace:*",
+    "@plataforma/organic-intelligence": "workspace:*",
     "@plataforma/queue": "workspace:*",
     "@plataforma/shared": "workspace:*",
     "@plataforma/ui-bridge": "workspace:*",
     "@plataforma/whatsapp-cloud": "workspace:*",
+    "@tanstack/react-table": "9.1.2",
+    "@xyflow/react": "^12.11.2",
     "ioredis": "6.0.0",
+    "kbar": "^1.0.0",
+    "lucide-react": "1.30.0",
     "next": "15.5.9",
     "next-auth": "4.24.11",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-hook-form": "^7.83.0",
     "zod": "4.3.6"
   },
   "devDependencies": {

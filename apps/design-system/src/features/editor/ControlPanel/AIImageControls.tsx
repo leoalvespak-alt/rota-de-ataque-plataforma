@@ -6,6 +6,7 @@ import { generateImage } from '@/lib/ai/generateImage'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { HeaderPrimaryButton, HeaderSecondaryButton } from '@/app/HeaderButtons'
+import { createIdempotencyKey } from '@/lib/api/idempotency'
 
 const STYLE_OPTIONS = [
   { value: 'tático militar, tons escuros, vermelho e preto, alta definição', label: 'Tático / Militar' },
@@ -17,7 +18,7 @@ const STYLE_OPTIONS = [
 
 /** Espelha buildAIImageControls()/generateImage() do Gerador/index.html original (linha 4291). */
 export function AIImageControls() {
-  const falKey = useAIStore((s) => s.falKey)
+  const imageModel = useAIStore((s) => s.getActiveImageModel())
   const generatedImageUrl = useAIStore((s) => s.generatedImageUrl)
   const setGeneratedImageUrl = useAIStore((s) => s.setGeneratedImageUrl)
   const setElementField = useEditorStore((s) => s.setElementField)
@@ -27,14 +28,14 @@ export function AIImageControls() {
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (!falKey) {
+  if (!imageModel?.configured) {
     return (
       <div className="border-b border-ui-border px-4 py-3.5">
         <div className="mb-3 text-[10px] font-semibold tracking-[0.1em] text-ui-muted uppercase">
           🎨 Gerar Imagem de Fundo
         </div>
         <div className="py-2 text-center text-[11px] text-ui-muted">
-          Configure a chave fal.ai na aba <strong className="text-brand-red">⚙ AI</strong>
+          Configure o provider de imagem no servidor.
         </div>
       </div>
     )
@@ -48,7 +49,13 @@ export function AIImageControls() {
     setLoading(true)
     setStatus('Gerando imagem... (~5-10s)')
     try {
-      const url = await generateImage({ falKey, promptText, style, onStatus: setStatus })
+      const url = await generateImage({
+        model: imageModel.id,
+        promptText,
+        style,
+        idempotencyKey: createIdempotencyKey('editor-image', promptText, style),
+        onStatus: setStatus,
+      })
       setGeneratedImageUrl(url)
       setStatus('Imagem gerada. Revisar antes de aplicar.')
     } catch (err) {

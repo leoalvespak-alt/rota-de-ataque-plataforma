@@ -1,5 +1,41 @@
 import { createDatabase } from '@plataforma/db'
-import { ChannelBadge, EmptyState, KanbanBoard, KpiCard, KpiRow, PageHeader, StatusBadge } from '@plataforma/ui-bridge'
 import { getCampaignContext } from '@/lib/campaign-context'
-export const dynamic='force-dynamic'
-export default async function PublishingPage(){const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);const publications=(await pool.query<{id:string;title:string;scheduled_for:Date|null;status:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';external_id:string|null}>(`SELECT publication.id,item.hook title,publication.published_at scheduled_for,variant.status,publication.channel,publication.external_id FROM content_publications publication JOIN content_variants variant ON variant.id=publication.variant_id JOIN content_items item ON item.id=variant.content_item_id WHERE ($1::uuid IS NULL OR item.campaign_id=$1) UNION ALL SELECT scheduled.id,opportunity.thesis,scheduled.scheduled_for,scheduled.status,'instagram',scheduled.ig_media_id FROM scheduled_publications scheduled JOIN content_opportunities opportunity ON opportunity.id=scheduled.content_opportunity_id WHERE ($1::uuid IS NULL OR opportunity.campaign_id=$1) ORDER BY scheduled_for DESC NULLS LAST LIMIT 250`,[selected?.id??null])).rows;const now=new Date(),first=new Date(now.getFullYear(),now.getMonth(),1),start=new Date(first);start.setDate(1-first.getDay());const days=Array.from({length:42},(_,index)=>{const date=new Date(start);date.setDate(start.getDate()+index);return date}),statuses=['draft','ready','approved','scheduled','publishing','published','failed'],scheduled=publications.filter(item=>item.status==='scheduled').length,published=publications.filter(item=>item.status==='published').length,failed=publications.filter(item=>item.status==='failed').length;return <main className="page"><PageHeader title="Publicação multicanal" subtitle="Calendário editorial, fila de aprovação e comprovantes por canal"/><KpiRow><KpiCard label="Agendadas" value={scheduled}/><KpiCard label="Publicadas" value={published}/><KpiCard label="Falhas" value={failed}/><KpiCard label="Canais" value={new Set(publications.map(item=>item.channel)).size}/></KpiRow>{publications.length?<><section className="card" aria-label="Calendário mensal"><h2>{now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h2><div className="calendar-grid">{days.map(day=><article className="calendar-day" key={day.toISOString()}><strong>{day.getDate()}</strong>{publications.filter(item=>item.scheduled_for&&new Date(item.scheduled_for).toDateString()===day.toDateString()).slice(0,3).map(item=><small key={item.id}><ChannelBadge channel={item.channel}/>{item.title}</small>)}</article>)}</div></section><KanbanBoard columns={statuses.map(status=>({title:status,items:publications.filter(item=>item.status===status).map(item=><article className="card" key={`${status}:${item.id}`}><header><ChannelBadge channel={item.channel}/><StatusBadge status={item.status}/></header><strong>{item.title}</strong><p>{item.scheduled_for?item.scheduled_for.toLocaleString('pt-BR'):'Sem horário'}</p>{item.external_id&&<small>Comprovante externo: {item.external_id}</small>}</article>)}))}/></>:<EmptyState message="Nenhuma publicação foi criada nesta campanha. Aprove um conteúdo e gere uma variante para iniciar."/>}</main>}finally{await pool.end()}}
+import { PublishingClient } from './PublishingClient'
+
+export default async function PublishingPage() {
+  const { pool } = createDatabase(process.env.DATABASE_URL!)
+  try {
+    const { selected } = await getCampaignContext(pool)
+    const publications = (await pool.query(
+      `SELECT scheduled.id,COALESCE(scheduled.title,item.hook,opportunity.thesis) title,scheduled.caption,scheduled.scheduled_for,scheduled.status,scheduled.channel,
+        scheduled.origin,scheduled.locked_at,scheduled.subtype,scheduled.hashtags,scheduled.cta,scheduled.thesis_id,scheduled.pillar,scheduled.format,
+        scheduled.content_structure,scheduled.ig_media_id external_id
+       FROM scheduled_publications scheduled
+       LEFT JOIN content_opportunities opportunity ON opportunity.id=scheduled.content_opportunity_id
+       LEFT JOIN content_variants variant ON variant.id=scheduled.variant_id
+       LEFT JOIN content_items item ON item.id=variant.content_item_id
+       WHERE ($1::uuid IS NULL OR COALESCE(scheduled.campaign_id,opportunity.campaign_id)=$1)
+       ORDER BY scheduled.scheduled_for DESC NULLS LAST LIMIT 500`, [selected?.id ?? null],
+    )).rows
+
+    const [pillars, formats] = await Promise.all([
+      pool.query("SELECT name, slug FROM content_pillars WHERE active = true ORDER BY weekly_weight DESC"),
+      pool.query("SELECT format_name, slug FROM format_playbook WHERE active = true ORDER BY frequency_max DESC"),
+    ])
+
+    const scheduled = publications.filter((item: any) => item.status === 'scheduled').length
+    const published = publications.filter((item: any) => item.status === 'published').length
+    const failed = publications.filter((item: any) => item.status === 'failed').length
+
+    return (
+      <PublishingClient
+        publications={JSON.parse(JSON.stringify(publications))}
+        scheduled={scheduled}
+        published={published}
+        failed={failed}
+        pillars={pillars.rows}
+        formats={formats.rows}
+      />
+    )
+  } finally {}
+}

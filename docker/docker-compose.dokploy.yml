@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    command: ["postgres", "-c", "max_connections=200"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    command: ["--model-id", "${EMBEDDINGS_MODEL}", "--port", "8080"]
+    restart: unless-stopped
+    volumes:
+      - embeddings_cache:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.25"
+          memory: 2G
+
+  web:
+    image: ghcr.io/leoalvespak-alt/prospector-platform-web:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      DATABASE_POOL_MAX: "10"
+    ports:
+      - "127.0.0.1:3010:3000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/prospector/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: ghcr.io/leoalvespak-alt/prospector-platform-worker:latest
+    pull_policy: always
+    restart: "no"
+    profiles: ["tools"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    command: ["pnpm", "--filter", "@plataforma/db", "migrate"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  embeddings_cache:

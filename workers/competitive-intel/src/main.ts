@@ -1,6 +1,7 @@
 import { createDatabase, loadLlmRuntimeConfig } from '@plataforma/db'
 import { ConfigurableLlmClient, LocalEmbeddingsClient } from '@plataforma/nlp'
 import { runWorker } from '@plataforma/queue/runtime'
+import { logger } from '@plataforma/shared'
 import { Redis } from 'ioredis'
 import { createCompetitiveIntelProcessor, spec, type CompetitiveRepository } from './index.js'
 
@@ -53,4 +54,29 @@ const repository: CompetitiveRepository = {
   async refreshTrends() { await pool.query('REFRESH MATERIALIZED VIEW mv_topic_trends') },
 }
 
-runWorker(spec.queue, createCompetitiveIntelProcessor(repository, { embed: (text) => embeddings.embed(text), complete: (prompt) => llm.complete(prompt) }))
+import { createMetaClient } from '@plataforma/meta-api'
+import { runCompetitorIntelligence } from './organic-intelligence.js'
+
+const metaToken = process.env.META_ACCESS_TOKEN
+const igUserId = process.env.IG_USER_ID ?? null
+const metaClient = metaToken ? createMetaClient(metaToken) : null
+
+const processor = createCompetitiveIntelProcessor(repository, { embed: (text) => embeddings.embed(text), complete: (prompt) => llm.complete(prompt) })
+
+runWorker(spec.queue, async (job) => {
+  const payload = job.payload as { windowDays?: number; mode?: string }
+
+  if (payload.mode === 'organic' || !payload.mode) {
+    const organicResult = await runCompetitorIntelligence(
+      pool,
+      metaClient,
+      igUserId,
+      { complete: (prompt) => llm.complete(prompt) },
+      payload.windowDays ?? 7,
+    )
+    logger.info(organicResult, 'organic competitor intelligence complete')
+  }
+
+  const base = await processor(job)
+  return base
+})

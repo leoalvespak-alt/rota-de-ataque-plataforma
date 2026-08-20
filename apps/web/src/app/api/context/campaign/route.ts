@@ -19,7 +19,5 @@ export async function POST(request: Request) {
     const store = await cookies()
     store.set(CAMPAIGN_COOKIE, campaign.id, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: appPath('/') || '/', maxAge: 60 * 60 * 24 * 365 })
     return NextResponse.json({ data: campaign, meta: { generatedAt: new Date().toISOString() } })
-  } finally {
-    await pool.end()
-  }
+  } finally {}
 }

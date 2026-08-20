@@ -1,69 +1,43 @@
-/**
- * Espelha generateImage() do Gerador/index.html original (linha 4348) — mesmo
- * endpoint fal-ai/flux/schnell, mesmo fluxo de submit + polling (até 30 tentativas
- * de 1s), mesma composição de prompt (descrição + estilo).
- */
+import { apiFetch } from '@/lib/api/client'
+
+interface ImageJob {
+  requestId: string
+  status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'EXPIRED'
+  imageUrl?: string
+  error?: string
+}
+
 export async function generateImage(params: {
-  falKey: string
+  model: string
   promptText: string
   style: string
-  onStatus?: (msg: string) => void
+  signal?: AbortSignal
+  idempotencyKey?: string
+  onStatus?: (message: string) => void
 }): Promise<string> {
-  const { falKey, promptText, style, onStatus } = params
-  const fullPrompt = style ? `${promptText}, ${style}` : promptText
-
-  onStatus?.('Gerando imagem... (~5-10s)')
-
-  const submitResp = await fetch('https://queue.fal.run/fal-ai/flux/schnell', {
+  const submitted = await apiFetch<ImageJob>('/ai/image/submit', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Key ${falKey}`,
-    },
+    signal: params.signal,
+    headers: params.idempotencyKey ? { 'Idempotency-Key': params.idempotencyKey } : undefined,
     body: JSON.stringify({
-      prompt: fullPrompt,
-      image_size: 'square_hd',
-      num_inference_steps: 4,
-      num_images: 1,
-      enable_safety_checker: true,
+      provider: 'fal',
+      model: params.model,
+      prompt: params.promptText,
+      style: params.style,
+      idempotencyKey: params.idempotencyKey,
     }),
   })
 
-  if (!submitResp.ok) {
-    const err = await submitResp.json().catch(() => ({}))
-    throw new Error(err?.detail || `HTTP ${submitResp.status}`)
-  }
-
-  const submitData = await submitResp.json()
-
-  if (submitData?.images?.[0]?.url) {
-    return submitData.images[0].url as string
-  }
-
-  if (!submitData?.request_id) {
-    throw new Error('Resposta inesperada da API fal.ai.')
-  }
-
-  const requestId = submitData.request_id
-  onStatus?.('Processando...')
-
-  for (let attempts = 1; attempts <= 30; attempts++) {
-    await new Promise((r) => setTimeout(r, 1000))
-
-    const pollResp = await fetch(`https://queue.fal.run/fal-ai/flux/schnell/requests/${requestId}`, {
-      headers: { Authorization: `Key ${falKey}` },
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    if (params.signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    const job = attempt === 0 ? submitted : await apiFetch<ImageJob>(`/ai/jobs/${submitted.requestId}`, { signal: params.signal })
+    params.onStatus?.(job.status === 'IN_QUEUE' ? 'Imagem na fila…' : job.status === 'IN_PROGRESS' ? 'Gerando imagem…' : 'Finalizando…')
+    if (job.status === 'COMPLETED' && job.imageUrl) return job.imageUrl
+    if (job.status === 'FAILED' || job.status === 'EXPIRED') throw new Error(job.error ?? `Job ${job.status.toLowerCase()}.`)
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(resolve, 1500)
+      params.signal?.addEventListener('abort', () => { window.clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')) }, { once: true })
     })
-    if (!pollResp.ok) continue
-
-    const pollData = await pollResp.json()
-    if (pollData?.status === 'COMPLETED' && pollData?.output?.images?.[0]?.url) {
-      return pollData.output.images[0].url as string
-    }
-    if (pollData?.status === 'FAILED') {
-      throw new Error('Geração falhou no servidor fal.ai.')
-    }
-    onStatus?.(`Processando... (${attempts}s)`)
   }
-
-  throw new Error('Timeout — tente novamente.')
+  throw new Error('Tempo limite excedido ao gerar a imagem.')
 }

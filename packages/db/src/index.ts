@@ -3,9 +3,16 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import type { HeartbeatStore } from '@plataforma/shared/worker'
 
+const _pools = new Map<string, { pool: Pool; db: ReturnType<typeof drizzle> }>()
+
 export const createDatabase = (connectionString: string) => {
-  const pool = new Pool({ connectionString, max: 10, application_name: 'plataforma' })
-  return { pool, db: drizzle(pool) }
+  let entry = _pools.get(connectionString)
+  if (!entry) {
+    const pool = new Pool({ connectionString, max: Number(process.env.DATABASE_POOL_MAX ?? 3), application_name: 'plataforma' })
+    entry = { pool, db: drizzle(pool) }
+    _pools.set(connectionString, entry)
+  }
+  return entry
 }
 
 export function createPostgresHeartbeatStore(pool: Pool): HeartbeatStore {
@@ -15,6 +22,11 @@ export function createPostgresHeartbeatStore(pool: Pool): HeartbeatStore {
         VALUES($1,$2,now(),$3,$4,$5,$6,$7)
         ON CONFLICT(worker,instance_id) DO UPDATE SET last_beat_at=now(),jobs_done_window=EXCLUDED.jobs_done_window,jobs_failed_window=EXCLUDED.jobs_failed_window,backlog_seen=EXCLUDED.backlog_seen,p95_latency_ms=EXCLUDED.p95_latency_ms,state=EXCLUDED.state`,
       [worker, instanceId, snapshot.jobsDone, snapshot.jobsFailed, snapshot.backlog, snapshot.p95LatencyMs, snapshot.state])
+      // Purge stale instances of the same worker that haven't beaten in 10 minutes
+      await pool.query(
+        `DELETE FROM worker_heartbeats WHERE worker=$1 AND instance_id<>$2 AND last_beat_at < now() - interval '10 minutes'`,
+        [worker, instanceId],
+      )
     },
   }
 }
@@ -47,17 +59,13 @@ function environmentLlmConfig(env: NodeJS.ProcessEnv): LlmRuntimeConfig {
 
 export async function loadLlmRuntimeConfig(pool: Pool, env: NodeJS.ProcessEnv = process.env): Promise<LlmRuntimeConfig> {
   try {
-    const result = await pool.query<{kind:LlmProviderKind;base_url:string;api_key_encrypted:string|null;model_id:string;max_output_tokens:number;temperature:string}>(`SELECT provider.kind,provider.base_url,provider.api_key_encrypted,model.model_id,model.max_output_tokens,model.temperature
+    const result = await pool.query<{kind:LlmProviderKind;base_url:string;secret_env_name:string|null;model_id:string;max_output_tokens:number;temperature:string}>(`SELECT provider.kind,provider.base_url,provider.secret_env_name,model.model_id,model.max_output_tokens,model.temperature
       FROM ai_models model JOIN ai_providers provider ON provider.id=model.provider_id
-      WHERE model.is_default AND model.enabled AND provider.enabled LIMIT 1`)
-    const selected = result.rows[0]
+      WHERE model.enabled AND provider.enabled AND provider.deleted_at IS NULL
+      ORDER BY model.is_default DESC, model.priority ASC`)
+    const selected = result.rows.find(row => row.kind === 'local' || Boolean(row.secret_env_name && env[row.secret_env_name]))
     if (!selected) return environmentLlmConfig(env)
-    let apiKey: string | undefined
-    if (selected.api_key_encrypted) {
-      const encryptionKey = env.TOKEN_ENCRYPTION_KEY
-      if (!encryptionKey) throw new Error('TOKEN_ENCRYPTION_KEY é obrigatória para usar a chave de IA salva')
-      apiKey = decryptToken(selected.api_key_encrypted, Buffer.from(encryptionKey, 'base64'))
-    }
+    const apiKey = selected.secret_env_name ? env[selected.secret_env_name]?.trim() || undefined : undefined
     return { provider: selected.kind === 'anthropic' ? 'anthropic' : 'openai-compatible', endpoint: selected.base_url, model: selected.model_id, apiKey, maxOutputTokens: selected.max_output_tokens, temperature: Number(selected.temperature), source: 'database' }
   } catch (error) {
     if ((error as {code?:string}).code === '42P01') return environmentLlmConfig(env)

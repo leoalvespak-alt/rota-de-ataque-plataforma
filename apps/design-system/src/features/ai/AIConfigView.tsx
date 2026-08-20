@@ -1,142 +1,78 @@
-import { useState } from 'react'
-import { useAIStore } from '@/stores/useAIStore'
-import { Input } from '@/components/ui/input'
-import { HeaderSecondaryButton } from '@/app/HeaderButtons'
-import { ModelsList } from './ModelsList'
-import { ModelFormDialog } from './ModelFormDialog'
+import { useEffect, useState } from 'react'
+import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react'
+import { useAIStore, type AIModel, type AIProvider } from '@/stores/useAIStore'
+import { apiFetch } from '@/lib/api/client'
+import { AICostPanel } from './AICostPanel'
 
-/** Espelha #ai-config-view do Gerador/index.html original (linhas 1857-1939). */
 export function AIConfigView() {
-  const deepseekKey = useAIStore((s) => s.deepseekKey)
-  const claudeKey = useAIStore((s) => s.claudeKey)
-  const falKey = useAIStore((s) => s.falKey)
-  const setKey = useAIStore((s) => s.setKey)
+  const { models, providers, copyModel, imageModel, setCopyModel, setImageModel, setCatalog, testConnection } = useAIStore()
+  const [loading, setLoading] = useState(true)
+  const [tests, setTests] = useState<Record<string, { success: boolean; latency?: number; error?: string }>>({})
+  const [testing, setTesting] = useState<string | null>(null)
 
-  const [editingModelId, setEditingModelId] = useState<string | null>(null)
-  const [dialogMode, setDialogMode] = useState<'closed' | 'add' | 'edit'>('closed')
-  const [showKeys, setShowKeys] = useState({ deepseek: false, claude: false, fal: false })
+  useEffect(() => {
+    apiFetch<{ models: AIModel[]; providers: AIProvider[] }>('/ai/catalog')
+      .then((catalog) => setCatalog(catalog.models, catalog.providers))
+      .finally(() => setLoading(false))
+  }, [setCatalog])
+
+  const runTest = async (model: AIModel) => {
+    setTesting(model.id)
+    const result = await testConnection(model.id)
+    setTests((current) => ({ ...current, [model.id]: result }))
+    setTesting(null)
+  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-ui-bg text-ui-text">
-      <div className="mx-auto max-w-[520px] px-6 py-12">
-        <div className="mb-1.5 font-heading text-[28px] font-bold tracking-[0.04em] uppercase">
-          Configuração de AI
-        </div>
-        <p className="mb-8 text-[13px] leading-relaxed text-ui-muted">
-          As chaves ficam salvas apenas no seu navegador (localStorage). Nunca são enviadas para
-          nenhum servidor externo além das próprias APIs.
+      <div className="mx-auto max-w-2xl px-6 py-12">
+        <h1 className="font-heading text-[28px] font-bold tracking-[0.04em] uppercase">Configuração de IA</h1>
+        <p className="mb-8 mt-2 text-sm leading-relaxed text-ui-muted">
+          Credenciais, URLs e allowlists ficam exclusivamente na API. Este navegador guarda apenas os IDs dos modelos selecionados.
         </p>
 
-        <KeyField
-          label="DeepSeek API Key"
-          hint="— para geração de copy e textos"
-          value={deepseekKey}
-          onChange={(v) => setKey('deepseekKey', v)}
-          visible={showKeys.deepseek}
-          onToggleVisible={() => setShowKeys((s) => ({ ...s, deepseek: !s.deepseek }))}
-          docsUrl="https://platform.deepseek.com"
-          docsLabel="platform.deepseek.com"
-          modelHint="deepseek-chat"
-        />
-
-        <KeyField
-          label="Claude API Key"
-          hint="— alternativa para geração de copy"
-          value={claudeKey}
-          onChange={(v) => setKey('claudeKey', v)}
-          visible={showKeys.claude}
-          onToggleVisible={() => setShowKeys((s) => ({ ...s, claude: !s.claude }))}
-          docsUrl="https://console.anthropic.com/settings/keys"
-          docsLabel="console.anthropic.com"
-          modelHint="claude-sonnet-4-6"
-        />
-
-        <KeyField
-          label="fal.ai API Key"
-          hint="— para geração de imagens de fundo"
-          value={falKey}
-          onChange={(v) => setKey('falKey', v)}
-          visible={showKeys.fal}
-          onToggleVisible={() => setShowKeys((s) => ({ ...s, fal: !s.fal }))}
-          docsUrl="https://fal.ai/dashboard/keys"
-          docsLabel="fal.ai/dashboard/keys"
-          modelHint="fal-ai/flux/schnell"
-        />
-
-        <div className="mt-8 border-t border-ui-border pt-7">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="font-heading text-lg font-bold tracking-[0.04em] uppercase">Modelos de Copy</div>
-              <div className="mt-0.5 text-[11px] text-ui-muted">
-                Edite, reordene ou adicione modelos compatíveis com OpenAI ou Anthropic.
-              </div>
+        <div className="mb-8 rounded-xl border border-ui-border bg-ui-panel p-5">
+          <h2 className="mb-4 text-sm font-semibold">Catálogo do servidor</h2>
+          {loading ? <Loader2 className="size-5 animate-spin text-ui-muted" /> : (
+            <div className="space-y-3">
+              {models.map((model) => {
+                const result = tests[model.id]
+                return (
+                  <div key={model.id} className="flex items-center gap-3 rounded-lg bg-ui-panel2 p-3">
+                    {model.configured ? <CheckCircle2 className="size-4 text-emerald-500" /> : <AlertCircle className="size-4 text-amber-500" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{model.label}</div>
+                      <div className="text-xs text-ui-muted">{model.provider} · {model.capabilities.join(', ')} · {model.configured ? 'configurado' : 'não configurado'}</div>
+                      {result && <div className={`text-xs ${result.success ? 'text-emerald-500' : 'text-red-500'}`}>{result.success ? `Conectado em ${result.latency ?? 0} ms` : result.error}</div>}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!model.configured || testing === model.id}
+                      onClick={() => void runTest(model)}
+                      className="inline-flex items-center gap-1 rounded-md border border-ui-border px-2.5 py-1.5 text-xs disabled:opacity-40"
+                    >
+                      <RefreshCw className={`size-3 ${testing === model.id ? 'animate-spin' : ''}`} /> Testar
+                    </button>
+                  </div>
+                )
+              })}
             </div>
-            <HeaderSecondaryButton className="whitespace-nowrap" onClick={() => setDialogMode('add')}>
-              + Adicionar
-            </HeaderSecondaryButton>
+          )}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <label className="text-xs text-ui-muted">Modelo de texto
+              <select value={copyModel} onChange={(event) => setCopyModel(event.target.value)} className="mt-1 w-full rounded-lg border border-ui-border bg-ui-panel2 px-3 py-2 text-sm text-ui-text">
+                {models.filter((model) => model.capabilities.includes('text')).map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-ui-muted">Modelo de imagem
+              <select value={imageModel} onChange={(event) => setImageModel(event.target.value)} className="mt-1 w-full rounded-lg border border-ui-border bg-ui-panel2 px-3 py-2 text-sm text-ui-text">
+                {models.filter((model) => model.capabilities.includes('image')).map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
+              </select>
+            </label>
           </div>
-          <ModelsList
-            onEdit={(id) => {
-              setEditingModelId(id)
-              setDialogMode('edit')
-            }}
-          />
+          <p className="mt-4 text-xs text-ui-muted">Providers disponíveis: {providers.map((provider) => provider.label).join(', ') || 'nenhum'}.</p>
         </div>
-      </div>
-
-      <ModelFormDialog
-        editingId={dialogMode === 'edit' ? editingModelId : dialogMode === 'add' ? 'new' : null}
-        onClose={() => setDialogMode('closed')}
-      />
-    </div>
-  )
-}
-
-function KeyField({
-  label,
-  hint,
-  value,
-  onChange,
-  visible,
-  onToggleVisible,
-  docsUrl,
-  docsLabel,
-  modelHint,
-}: {
-  label: string
-  hint: string
-  value: string
-  onChange: (v: string) => void
-  visible: boolean
-  onToggleVisible: () => void
-  docsUrl: string
-  docsLabel: string
-  modelHint: string
-}) {
-  return (
-    <div className="mb-6">
-      <label className="mb-2 block text-[13px]">
-        {label}
-        <span className="ml-1.5 text-[11px] font-normal text-ui-muted">{hint}</span>
-      </label>
-      <div className="flex gap-2">
-        <Input
-          type={visible ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="sk-..."
-          className="flex-1"
-        />
-        <HeaderSecondaryButton type="button" onClick={onToggleVisible}>
-          👁
-        </HeaderSecondaryButton>
-      </div>
-      <div className="mt-1.5 text-[11px] text-ui-muted">
-        Obter em:{' '}
-        <a href={docsUrl} target="_blank" rel="noreferrer" className="text-brand-red">
-          {docsLabel}
-        </a>{' '}
-        — use o modelo <code className="rounded bg-ui-panel2 px-1 py-0.5">{modelHint}</code>
+        <AICostPanel />
       </div>
     </div>
   )

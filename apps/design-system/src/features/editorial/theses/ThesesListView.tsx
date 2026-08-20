@@ -1,7 +1,131 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Thesis } from '@/domain/editorial/types'
 import { apiFetch } from '@/lib/api/client'
 import { ThesisEditorView } from './ThesisEditorView'
 import { ThesisStructurer } from './ThesisStructurer'
 
-export function ThesesListView() { const [items, setItems] = useState<Thesis[]>([]); const [search, setSearch] = useState(''); const [editor, setEditor] = useState<Thesis | null | 'new'>(null); const [structuring, setStructuring] = useState(false); const [error, setError] = useState(''); const load = () => apiFetch<Thesis[]>(`/api/theses${search ? `?search=${encodeURIComponent(search)}` : ''}`).then(setItems).catch((err: unknown) => setError(err instanceof Error ? err.message : 'Não foi possível carregar as teses.')); useEffect(() => { const timeout = window.setTimeout(load, 180); return () => window.clearTimeout(timeout) }, [search]); const active = useMemo(() => items.filter((item) => item.status === 'active').length, [items]); if (editor) return <ThesisEditorView thesis={editor === 'new' ? undefined : editor} onClose={() => { setEditor(null); load() }} />; if (structuring) return <ThesisStructurer onClose={() => { setStructuring(false); load() }} />; return <section className="mx-auto max-w-7xl space-y-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-ui-muted">Motor editorial</p><h1 className="font-heading text-2xl font-bold text-ui-text">Teses</h1><p className="mt-1 text-sm text-ui-muted">{items.length} teses cadastradas · {active} ativas</p></div><div className="flex gap-2"><button className="rounded-md border border-ui-border px-3 py-2 text-sm text-ui-text" onClick={() => setStructuring(true)}>Estruturar com IA</button><button className="rounded-md bg-brand-red px-3 py-2 text-sm font-medium text-white" onClick={() => setEditor('new')}>Nova tese</button></div></div><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título…" className="w-full max-w-md rounded-md border border-ui-border bg-ui-panel px-3 py-2 text-sm text-ui-text" />{error && <p className="rounded bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}<div className="overflow-x-auto rounded-lg border border-ui-border"><table className="min-w-full text-left text-sm"><thead className="bg-ui-panel2 text-ui-muted"><tr><th className="px-4 py-3">Título</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Prioridade</th><th className="px-4 py-3">Peso</th><th className="px-4 py-3">Tags</th><th className="px-4 py-3" /></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-t border-ui-border"><td className="px-4 py-3 font-medium text-ui-text">{item.title}<p className="mt-1 max-w-xl truncate text-xs font-normal text-ui-muted">{item.coreStatement}</p></td><td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs ${item.status === 'active' ? 'bg-emerald-950 text-emerald-300' : item.status === 'archived' ? 'bg-zinc-800 text-zinc-400' : 'bg-amber-950 text-amber-300'}`}>{item.status}</span></td><td className="px-4 py-3 text-ui-text">{item.priority}</td><td className="px-4 py-3 text-ui-text">{item.weight}</td><td className="px-4 py-3 text-ui-muted">{item.tags?.join(', ') || '—'}</td><td className="px-4 py-3"><button className="text-brand-red hover:underline" onClick={() => setEditor(item)}>Editar</button></td></tr>)}{!items.length && !error && <tr><td colSpan={6} className="px-4 py-10 text-center text-ui-muted">Nenhuma tese encontrada. Crie a primeira para começar.</td></tr>}</tbody></table></div></section> }
+export function ThesesListView() {
+  const [items, setItems] = useState<Thesis[]>([])
+  const [search, setSearch] = useState('')
+  const [editor, setEditor] = useState<Thesis | null | 'new'>(null)
+  const [structuring, setStructuring] = useState(false)
+  const [error, setError] = useState('')
+  const load = useCallback(
+    () =>
+      apiFetch<Thesis[]>(`/theses${search ? `?search=${encodeURIComponent(search)}` : ''}`)
+        .then(setItems)
+        .catch((err: unknown) =>
+          setError(err instanceof Error ? err.message : 'Não foi possível carregar as teses.'),
+        ),
+    [search],
+  )
+  useEffect(() => {
+    const timeout = window.setTimeout(load, 180)
+    return () => window.clearTimeout(timeout)
+  }, [load])
+  const active = useMemo(() => items.filter((item) => item.status === 'active').length, [items])
+  if (editor)
+    return (
+      <ThesisEditorView
+        thesis={editor === 'new' ? undefined : editor}
+        onClose={() => {
+          setEditor(null)
+          load()
+        }}
+      />
+    )
+  if (structuring)
+    return (
+      <ThesisStructurer
+        onClose={() => {
+          setStructuring(false)
+          load()
+        }}
+      />
+    )
+  return (
+    <section className="mx-auto max-w-7xl space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-ui-muted">Motor editorial</p>
+          <h1 className="font-heading text-2xl font-bold text-ui-text">Teses</h1>
+          <p className="mt-1 text-sm text-ui-muted">
+            {items.length} teses cadastradas · {active} ativas
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            className="rounded-md border border-ui-border px-3 py-2 text-sm text-ui-text"
+            onClick={() => setStructuring(true)}
+          >
+            Estruturar com IA
+          </button>
+          <button
+            className="rounded-md bg-brand-red px-3 py-2 text-sm font-medium text-white"
+            onClick={() => setEditor('new')}
+          >
+            Nova tese
+          </button>
+        </div>
+      </div>
+      <input
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Buscar por título…"
+        className="w-full max-w-md rounded-md border border-ui-border bg-ui-panel px-3 py-2 text-sm text-ui-text"
+      />
+      {error && <p className="rounded bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
+      <div className="overflow-x-auto rounded-lg border border-ui-border">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-ui-panel2 text-ui-muted">
+            <tr>
+              <th className="px-4 py-3">Título</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Prioridade</th>
+              <th className="px-4 py-3">Peso</th>
+              <th className="px-4 py-3">Tags</th>
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id} className="border-t border-ui-border">
+                <td className="px-4 py-3 font-medium text-ui-text">
+                  {item.title}
+                  <p className="mt-1 max-w-xl truncate text-xs font-normal text-ui-muted">
+                    {item.coreStatement}
+                  </p>
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs ${item.status === 'active' ? 'bg-emerald-950 text-emerald-300' : item.status === 'archived' ? 'bg-zinc-800 text-zinc-400' : 'bg-amber-950 text-amber-300'}`}
+                  >
+                    {item.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-ui-text">{item.priority}</td>
+                <td className="px-4 py-3 text-ui-text">{item.weight}</td>
+                <td className="px-4 py-3 text-ui-muted">{item.tags?.join(', ') || '—'}</td>
+                <td className="px-4 py-3">
+                  <button
+                    className="text-brand-red hover:underline"
+                    onClick={() => setEditor(item)}
+                  >
+                    Editar
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {!items.length && !error && (
+              <tr>
+                <td colSpan={6} className="px-4 py-10 text-center text-ui-muted">
+                  Nenhuma tese encontrada. Crie a primeira para começar.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}

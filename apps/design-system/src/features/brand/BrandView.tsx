@@ -1,4 +1,10 @@
+import { useState, useEffect } from 'react'
 import { CopyableSwatch } from './CopyableSwatch'
+import { ProfileCard } from './ProfileCard'
+import { ProfileFormDialog } from './ProfileFormDialog'
+import { useProfileStore } from '@/stores/useProfileStore'
+import type { BrandProfile } from '@/db/schema'
+import { Plus } from 'lucide-react'
 
 const AUDIENCE_TAGS = [
   'Carreiras Fiscais',
@@ -96,7 +102,42 @@ const VOICE_DONT = [
  * isso à mesma fonte de tokens do CSS, hoje ambos derivam do valor fixo em index.css).
  */
 export function BrandView() {
+  const { profiles, loading, fetchProfiles, createProfile, updateProfile, deleteProfile } = useProfileStore()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingProfile, setEditingProfile] = useState<BrandProfile | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<BrandProfile | null>(null)
+
+  useEffect(() => { fetchProfiles() }, [fetchProfiles])
+
+  const handleEdit = (profile: BrandProfile) => { setEditingProfile(profile); setDialogOpen(true) }
+  const handleNew = () => { setEditingProfile(null); setDialogOpen(true) }
+  const handleDuplicate = async (profile: BrandProfile) => {
+    await createProfile({
+      name: `${profile.name} (cópia)`,
+      handle: `${profile.handle}_copia`,
+      colorBackground: profile.colorBackground,
+      colorText: profile.colorText,
+      colorPrimary: profile.colorPrimary,
+      colorButton: profile.colorButton,
+      fontHeading: profile.fontHeading,
+      fontBody: profile.fontBody,
+    })
+  }
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return
+    await deleteProfile(deleteConfirm.id)
+    setDeleteConfirm(null)
+  }
+  const handleSave = async (data: Parameters<typeof createProfile>[0]) => {
+    if (editingProfile) {
+      await updateProfile(editingProfile.id, data)
+    } else {
+      await createProfile(data)
+    }
+  }
+
   return (
+    <>
     <div className="flex-1 overflow-y-auto bg-ui-bg">
       <div className="mx-auto max-w-[1100px] px-12 pt-12 pb-20">
         {/* Hero */}
@@ -334,6 +375,7 @@ export function BrandView() {
 
         {/* 07 Contraste */}
         <BrandSection num="07" title="Regras de Contraste e Acessibilidade">
+
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl border border-ui-border bg-ui-panel2 p-5">
               <div className="mb-3.5 font-heading text-sm font-bold tracking-wide uppercase">Modo Light (Padrão)</div>
@@ -363,8 +405,79 @@ export function BrandView() {
             </div>
           </div>
         </BrandSection>
+
+        {/* 08 Perfis */}
+        <BrandSection num="08" title="Perfis de Marca">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <p className="text-[13px] text-ui-muted">
+              Gerencie os perfis de marca usados nos criativos. Cada perfil define paleta e tipografia próprias, aplicadas dinamicamente no canvas sem afetar o chrome da aplicação.
+            </p>
+            <button
+              onClick={handleNew}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-red px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-hover"
+            >
+              <Plus className="size-4" />
+              Novo Perfil
+            </button>
+          </div>
+
+          {loading ? (
+            <p className="text-sm text-ui-muted">Carregando perfis…</p>
+          ) : profiles.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-ui-border p-8 text-center text-sm text-ui-muted">
+              Nenhum perfil cadastrado. Clique em "Novo Perfil" para criar.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {profiles.map((profile) => (
+                <ProfileCard
+                  key={profile.id}
+                  profile={profile}
+                  onEdit={handleEdit}
+                  onDelete={setDeleteConfirm}
+                  onDuplicate={handleDuplicate}
+                />
+              ))}
+            </div>
+          )}
+        </BrandSection>
       </div>
     </div>
+
+    {dialogOpen && (
+      <ProfileFormDialog
+        key={editingProfile?.id ?? 'new'}
+        profile={editingProfile}
+        onSave={handleSave}
+        onClose={() => setDialogOpen(false)}
+      />
+    )}
+
+    {deleteConfirm && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="w-full max-w-sm rounded-2xl border border-ui-border bg-ui-panel p-6 shadow-2xl">
+          <h3 className="mb-2 font-heading text-lg font-bold uppercase text-ui-text">Confirmar exclusão</h3>
+          <p className="mb-5 text-sm text-ui-muted">
+            Tem certeza que deseja excluir o perfil <strong className="text-ui-text">{deleteConfirm.name}</strong>? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setDeleteConfirm(null)}
+              className="rounded-lg border border-ui-border px-4 py-2 text-sm text-ui-muted hover:text-ui-text"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleConfirmDelete}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 

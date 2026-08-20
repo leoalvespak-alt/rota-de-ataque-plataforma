@@ -1,4 +1,13 @@
 export type DesignSystemPrimitive = 'button' | 'input' | 'badge' | 'card'
 export const designSystemPackage = '@plataforma/design-system' as const
-export const semanticTokens = Object.freeze({ bgCanvas:'var(--bg-canvas)',bgSurface:'var(--bg-surface)',bgSubtle:'var(--bg-subtle)',borderDefault:'var(--border-default)',borderStrong:'var(--border-strong)',textPrimary:'var(--text-primary)',textSecondary:'var(--text-secondary)',textTertiary:'var(--text-tertiary)',accentPrimary:'var(--accent-primary)',accentSecondary:'var(--accent-secondary)',statusSuccess:'var(--status-success)',statusWarn:'var(--status-warn)',statusError:'var(--status-error)',statusInfo:'var(--status-info)',scoreHigh:'var(--score-high)',scoreMed:'var(--score-med)',scoreLow:'var(--score-low)',roleCollector:'var(--role-collector)',roleActor:'var(--role-actor)'})
-export * from './patterns.js'
+export * from './patterns'
+export * from './tokens'
+export * from './primitives'
+export * from './fields'
+export * from './dialogs'
+export * from './feedback'
+export * from './layout'
+export * from './data'
+export * from './help'
+export * from './charts'
+export * from './hooks'

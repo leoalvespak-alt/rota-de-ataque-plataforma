@@ -36,9 +36,7 @@ export function CarouselMarkdownImport({ compact = false }: { compact?: boolean 
   const replaceElements = useEditorStore((state) => state.replaceElements)
   const models = useAIStore((state) => state.models)
   const copyModel = useAIStore((state) => state.copyModel)
-  const resolveKeyForModel = useAIStore((state) => state.resolveKeyForModel)
   const selectedModel = models.find((model) => model.id === copyModel) ?? models.find((model) => model.enabled)
-  const apiKey = selectedModel ? resolveKeyForModel(selectedModel) : ''
 
   const handleFile = async (file?: File) => {
     if (!file) return
@@ -61,8 +59,8 @@ export function CarouselMarkdownImport({ compact = false }: { compact?: boolean 
   }
 
   const handleApply = async () => {
-    if (!selectedModel || !apiKey) {
-      toast.error('Configure um modelo de copy e sua chave na aba AI.')
+    if (!selectedModel?.configured) {
+      toast.error('Configure o modelo de copy no servidor.')
       return
     }
     if (!markdown.trim()) {
@@ -78,7 +76,6 @@ export function CarouselMarkdownImport({ compact = false }: { compact?: boolean 
     try {
       const copies = await generateCarouselCopy({
         model: selectedModel,
-        apiKey,
         career,
         markdown,
         slides: slides.map((slide) => ({

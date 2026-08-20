@@ -1,46 +1,235 @@
-'use client'
-
-import { useMemo, useState } from 'react'
-import { ChannelBadge, DataTable, EmptyState, KpiCard, KpiRow, PageHeader, StatusBadge, ThreePaneLayout } from '@plataforma/ui-bridge'
-import { appPath } from '@/lib/base-path'
-import type { DashboardView } from '@/lib/dashboard-data'
+import React, { Suspense } from 'react'
+import { loadDashboardView, type DashboardView } from '@/lib/dashboard-data'
+import { PageHeader, KpiRow, KpiCard, EmptyState, DataTable, ThreePaneLayout, ChannelBadge, StatusBadge, KpiSkeleton, TableSkeleton, SidebarSkeleton, LiveBadge, ChartContainer, MetricGroup, PriorityChip } from '@plataforma/ui-bridge'
+import { OperationalInteractive, RefreshButton } from './OperationalInteractive'
+import { dashboardSettings, dashboardLabels } from '@/lib/dashboard-config'
+import { OverviewReadiness } from './OverviewReadiness'
 
 type Item = Record<string, unknown>
-type Setting = { empty: string; fields: string[]; primary: string; countLabel: string; scoreField?: string }
-const settings: Record<DashboardView, Setting> = {
-  overview:{empty:'Nenhum desempenho consolidado para a campanha.',fields:['name','leads','conversions','completed_actions','recommendations'],primary:'name',countLabel:'Campanhas'},
-  radar:{empty:'Nenhuma oportunidade detectada no radar.',fields:['competitor','opportunity_score','velocity','new_leads','avg_intent','post_url'],primary:'competitor',countLabel:'Posts no radar',scoreField:'opportunity_score'},
-  'competitive-intel':{empty:'A inteligência competitiva aparecerá após a primeira coleta.',fields:['topic','competitor','momentum_7d','momentum_30d','pain_points','questions','last_seen_at'],primary:'topic',countLabel:'Temas',scoreField:'momentum_7d'},
-  'content-opportunity':{empty:'Nenhuma oportunidade editorial calculada.',fields:['thesis','campaign','angle','hook','opportunity_score','status','created_at'],primary:'thesis',countLabel:'Oportunidades',scoreField:'opportunity_score'},
-  community:{empty:'Nenhuma comunidade identificada para a campanha.',fields:['name','size','members','cohesion_score','last_refreshed_at'],primary:'name',countLabel:'Comunidades',scoreField:'cohesion_score'},
-  conversations:{empty:'Nenhuma conversa recebida nos canais conectados.',fields:['participant','channel','account','unread_count','stage','detected_intent','requires_human_review','last_message_at'],primary:'participant',countLabel:'Conversas'},
-  timeline:{empty:'A timeline será preenchida conforme eventos reais forem recebidos.',fields:['lead','channel','event_type','source','at'],primary:'event_type',countLabel:'Eventos'},
-  identities:{empty:'Nenhum candidato de identidade encontrado.',fields:['lead_a','lead_b','reason','confidence','status','created_at'],primary:'lead_a',countLabel:'Candidatos',scoreField:'confidence'},
-  'email-flows':{empty:'Nenhum fluxo de e-mail configurado.',fields:['name','campaign','active','version','subscribers','active_subscribers'],primary:'name',countLabel:'Fluxos'},
-  'contact-policies':{empty:'Nenhuma política de contato configurada.',fields:['campaign','channel','cadence_seconds','enabled','rules'],primary:'channel',countLabel:'Políticas'},
-  'source-roi':{empty:'Ainda não há janela de ROI calculada.',fields:['source_type','source_id','campaign','window_days','unique_leads','followback_rate','retention_7d_rate','conversion_rate','source_score','computed_at'],primary:'source_id',countLabel:'Origens',scoreField:'source_score'},
-  configs:{empty:'Nenhuma configuração de scoring encontrada.',fields:['campaign','p0_threshold','p1_threshold','p2_threshold','lambda_freshness','source_weights'],primary:'campaign',countLabel:'Configurações'},
+
+async function KpiSection({ view }: { view: DashboardView }) {
+  const result = await loadDashboardView(view)
+  const items = result.items
+  const config = dashboardSettings[view]
+  
+  let metrics: Array<any> = []
+  
+  if(view === 'overview') {
+    const sum = (field:string) => items.reduce((total,row) => total + Number(row[field]??0),0)
+    metrics = [
+      {label:'Leads',value:sum('leads'), period:'na campanha ativa'},
+      {label:'Conversões',value:sum('conversions'), period:'resultado registrado'},
+      {label:'Ações concluídas',value:sum('completed_actions'), period:'execução confirmada'},
+      {label:'Recomendações',value:sum('recommendations'), period:'próximas decisões'}
+    ]
+  } else {
+    metrics.push({label:config.countLabel,value:items.length})
+    if(config.scoreField && items.length) {
+      const values = items.map((row) => Number(row[config.scoreField!]??0)).filter(Number.isFinite)
+      if(values.length) {
+        metrics.push({
+          label:`${dashboardLabels[config.scoreField]??config.scoreField} média`,
+          value:(values.reduce((a,b)=>a+b,0)/values.length).toLocaleString('pt-BR',{maximumFractionDigits:2})
+        })
+      }
+    }
+  }
+
+  return (
+    <KpiRow>
+      {metrics.map((metric: any) => (
+        <KpiCard key={metric.label} label={metric.label} value={metric.value} sparklineData={metric.sparklineData} delta={metric.delta} trend={metric.trend} period={metric.period} />
+      ))}
+    </KpiRow>
+  )
 }
-const labels: Record<string,string> = {name:'Nome',leads:'Leads',conversions:'Conversões',completed_actions:'Ações concluídas',recommendations:'Recomendações',competitor:'Concorrente',opportunity_score:'Oportunidade',velocity:'Velocidade',new_leads:'Novos leads',avg_intent:'Intenção média',post_url:'Publicação',topic:'Tema',momentum_7d:'Momentum 7d',momentum_30d:'Momentum 30d',pain_points:'Dores',questions:'Perguntas',last_seen_at:'Último sinal',thesis:'Tese',campaign:'Campanha',angle:'Ângulo',hook:'Hook',status:'Status',created_at:'Criado em',participant:'Contato',channel:'Canal',account:'Conta',unread_count:'Não lidas',stage:'Etapa',detected_intent:'Intenção',requires_human_review:'Revisão humana',last_message_at:'Última mensagem',lead:'Lead',event_type:'Evento',source:'Origem',at:'Data',cadence_seconds:'Cadência',enabled:'Ativa',rules:'Regras',source_type:'Tipo de origem',source_id:'Origem',window_days:'Janela',unique_leads:'Leads únicos',followback_rate:'Followback',retention_7d_rate:'Retenção 7d',conversion_rate:'Conversão',source_score:'Score',computed_at:'Calculado em',p0_threshold:'Limite P0',p1_threshold:'Limite P1',p2_threshold:'Limite P2',lambda_freshness:'Frescor',source_weights:'Pesos',size:'Tamanho',members:'Membros',cohesion_score:'Coesão',last_refreshed_at:'Atualizada em',lead_a:'Lead A',lead_b:'Lead B',reason:'Evidência',confidence:'Confiança',active:'Ativo',version:'Versão',subscribers:'Inscritos',active_subscribers:'Inscritos ativos'}
 
-function display(value: unknown) { if(value===null||value===undefined||value==='')return '—';if(typeof value==='boolean')return value?'Sim':'Não';if(typeof value==='object')return Object.entries(value as Record<string,unknown>).map(([key,item])=>`${key}: ${String(item)}`).join(' · ')||'—';if(typeof value==='string'&&/^\d{4}-\d\d-\d\dT/.test(value))return new Date(value).toLocaleString('pt-BR');return String(value) }
+async function MainContent({ view, title, pane }: { view: DashboardView, title: string, pane: boolean }) {
+  const result = await loadDashboardView(view)
+  const sum = (field: string) => result.items.reduce((total, row) => total + Number(row[field] ?? 0), 0)
+  const overviewTotals = {
+    leads: sum('leads'),
+    conversions: sum('conversions'),
+    actions: sum('completed_actions'),
+    recommendations: sum('recommendations'),
+  }
+  const hasOverviewActivity = Object.values(overviewTotals).some((value) => value > 0)
 
-export function OperationalDashboard({view,title,subtitle,pane=false,initialItems,initialGeneratedAt}:{view:DashboardView;title:string;subtitle:string;pane?:boolean;initialItems:Item[];initialGeneratedAt:string}) {
-  const [items,setItems] = useState(initialItems)
-  const [generatedAt,setGeneratedAt] = useState(initialGeneratedAt)
-  const [selected,setSelected] = useState(0)
-  const [search,setSearch] = useState('')
-  const [refreshing,setRefreshing] = useState(false)
-  const [error,setError] = useState<string|null>(null)
-  const config = settings[view]
-  const visible = useMemo(() => { const term=search.trim().toLowerCase();return term?items.filter((row)=>config.fields.some((field)=>display(row[field]).toLowerCase().includes(term))):items }, [items,search,config.fields])
-  const totals = useMemo(() => { if(view==='overview'){const sum=(field:string)=>items.reduce((total,row)=>total+Number(row[field]??0),0);return [{label:'Leads',value:sum('leads')},{label:'Conversões',value:sum('conversions')},{label:'Ações concluídas',value:sum('completed_actions')},{label:'Recomendações',value:sum('recommendations')}]};const metrics:Array<{label:string;value:string|number}>=[{label:config.countLabel,value:items.length}];if(config.scoreField&&items.length){const values=items.map((row)=>Number(row[config.scoreField!]??0)).filter(Number.isFinite);if(values.length)metrics.push({label:`${labels[config.scoreField]??config.scoreField} média`,value:(values.reduce((a,b)=>a+b,0)/values.length).toLocaleString('pt-BR',{maximumFractionDigits:2})})}return metrics }, [items,view,config])
-  const detail = visible[selected] ?? visible[0]
-  const table = !visible.length?<EmptyState message={search?'Nenhum registro corresponde à busca.':config.empty}/>:<DataTable rows={visible} label={title} rowKey={(row)=>String(row.id??row[config.primary]??JSON.stringify(row))} renderRow={(row)=><button className="operational-row" type="button" aria-pressed={detail===row} onClick={()=>setSelected(visible.indexOf(row))}>{config.fields.map((field)=><span key={field}><small>{labels[field]??field}</small><strong>{field==='channel'&&typeof row[field]==='string'?<ChannelBadge channel={(row[field]==='whatsapp'?'whatsapp_dm':row[field]) as 'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group'|'reddit'}/>:field==='status'&&typeof row[field]==='string'?<StatusBadge status={String(row[field])}/>:display(row[field])}</strong></span>)}</button>}/>
+  return (
+    <>
+      {result.stale && (
+        <div className="banner" role="status" aria-live="polite" style={{ marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span aria-hidden="true">⏳</span>
+          <span>
+            Dados ainda não consolidados — aguardando primeira sincronização.
+            {view === 'overview' && ' A visão geral aparecerá após o worker de qualidade de dados rodar pela primeira vez.'}
+          </span>
+        </div>
+      )}
+      {view === 'overview' && (
+        <OverviewReadiness />
+      )}
+      {view === 'overview' && (
+        <MetricGroup title="Visão estratégica da campanha">
+          <div className="dashboard-visual-grid">
+            <article className="dashboard-chart-card dashboard-chart-card-wide">
+              <header>
+                <div>
+                  <span>Funil atual</span>
+                  <h4>Da descoberta à conversão</h4>
+                </div>
+                <strong>{overviewTotals.conversions}</strong>
+              </header>
+              {hasOverviewActivity ? (
+                <ChartContainer
+                  option={{
+                    tooltip: { trigger: 'item', formatter: '{b} : {c}' },
+                    series: [
+                      {
+                        name: 'Funil',
+                        type: 'funnel',
+                        left: '4%',
+                        top: 12,
+                        bottom: 12,
+                        width: '92%',
+                        minSize: '28%',
+                        maxSize: '100%',
+                        sort: 'descending',
+                        gap: 5,
+                        label: { show: true, position: 'inside', formatter: '{b}  {c}', fontWeight: 700 },
+                        itemStyle: { borderColor: 'var(--surface-card)', borderWidth: 3, borderRadius: 7 },
+                        data: [
+                          { value: overviewTotals.leads, name: 'Leads' },
+                          { value: overviewTotals.actions, name: 'Ações' },
+                          { value: overviewTotals.conversions, name: 'Conversões' }
+                        ]
+                      }
+                    ]
+                  }}
+                  height={270}
+                />
+              ) : <ChartEmpty message="O funil aparecerá assim que houver atividade real." />}
+            </article>
 
-  async function refresh() { setRefreshing(true);setError(null);try{const response=await fetch(appPath(`/api/dashboard/${view}`),{cache:'no-store'});const body=await response.json() as {data?:Item[];items?:Item[];error?:string;meta?:{generatedAt?:string}};if(!response.ok)throw new Error(body.error??'Não foi possível atualizar');setItems(body.data??body.items??[]);setGeneratedAt(body.meta?.generatedAt??new Date().toISOString());setSelected(0)}catch(cause){setError(cause instanceof Error?cause.message:'Erro inesperado')}finally{setRefreshing(false)} }
+            <article className="dashboard-chart-card">
+              <header>
+                <div>
+                  <span>Comparativo</span>
+                  <h4>Volume por campanha</h4>
+                </div>
+                <strong>{overviewTotals.leads}</strong>
+              </header>
+              {hasOverviewActivity ? (
+                <ChartContainer
+                  option={{
+                    tooltip: { trigger: 'axis' },
+                    legend: { bottom: 0 },
+                    grid: { left: 8, right: 8, top: 12, bottom: 42, containLabel: true },
+                    xAxis: { type: 'category', data: result.items.map((item) => String(item.name ?? 'Campanha')), axisLabel: { interval: 0, overflow: 'truncate', width: 100 } },
+                    yAxis: { type: 'value', minInterval: 1 },
+                    series: [
+                      { name: 'Leads', type: 'bar', data: result.items.map((item) => Number(item.leads ?? 0)) },
+                      { name: 'Conversões', type: 'bar', data: result.items.map((item) => Number(item.conversions ?? 0)) }
+                    ]
+                  }}
+                  height={270}
+                />
+              ) : <ChartEmpty message="Sem volume suficiente para comparar campanhas." />}
+            </article>
 
-  return <section className="page"><PageHeader title={title} subtitle={subtitle} actions={<button type="button" disabled={refreshing} onClick={()=>void refresh()}>{refreshing?'Atualizando…':'Atualizar'}</button>}/><div className="freshness"><span>Atualizado em {new Date(generatedAt).toLocaleTimeString('pt-BR')}</span>{error&&<span role="alert">{error}</span>}</div><KpiRow>{totals.map((metric)=><KpiCard key={metric.label} label={metric.label} value={metric.value}/>)}</KpiRow><div className="toolbar"><label>Buscar em {title}<input type="search" value={search} onChange={(event)=>{setSearch(event.target.value);setSelected(0)}} placeholder="Digite para filtrar…"/></label><span>{visible.length} de {items.length} registros</span></div>{pane?<ThreePaneLayout list={<div><h2>Conversas</h2><p>{visible.length} registros</p></div>} detail={table} context={<Detail config={config} item={detail}/>}/>:<div className="operational-layout"><section className="operational-section"><header><h2>{title}</h2><span>{visible.length} registros</span></header>{table}</section><aside className="card operational-detail"><Detail config={config} item={detail}/></aside></div>}</section>
+            <article className="dashboard-chart-card">
+              <header>
+                <div>
+                  <span>Distribuição</span>
+                  <h4>Mix operacional</h4>
+                </div>
+                <strong>{Object.values(overviewTotals).reduce((total, value) => total + value, 0)}</strong>
+              </header>
+              {hasOverviewActivity ? (
+                <ChartContainer
+                  option={{
+                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                    legend: { bottom: 0 },
+                    series: [{
+                      name: 'Mix operacional',
+                      type: 'pie',
+                      radius: ['52%', '76%'],
+                      center: ['50%', '44%'],
+                      avoidLabelOverlap: true,
+                      padAngle: 3,
+                      itemStyle: { borderRadius: 8, borderColor: 'var(--surface-card)', borderWidth: 3 },
+                      label: { show: false },
+                      data: [
+                        { name: 'Leads', value: overviewTotals.leads },
+                        { name: 'Conversões', value: overviewTotals.conversions },
+                        { name: 'Ações', value: overviewTotals.actions },
+                        { name: 'Recomendações', value: overviewTotals.recommendations }
+                      ]
+                    }]
+                  }}
+                  height={270}
+                />
+              ) : <ChartEmpty message="O mix será calculado com os primeiros registros." />}
+            </article>
+          </div>
+
+          <div className="overview-priority-strip">
+            <div><PriorityChip priority="P0" /><span>Leads para qualificar</span><strong>{overviewTotals.leads}</strong></div>
+            <div><PriorityChip priority="P1" /><span>Recomendações para decidir</span><strong>{overviewTotals.recommendations}</strong></div>
+            <div><PriorityChip priority="P2" /><span>Ações concluídas</span><strong>{overviewTotals.actions}</strong></div>
+          </div>
+        </MetricGroup>
+      )}
+      {view === 'source-roi' && result.items.length > 0 && (
+        <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+          <ChartContainer
+            option={{
+              title: { text: 'Conversão por Origem' },
+              tooltip: { trigger: 'axis' },
+              xAxis: { type: 'category' as const, data: result.items.map(item => String(item.source_id ?? '')) },
+              yAxis: { type: 'value' },
+              series: [{ 
+                data: result.items.map(item => Number(item.conversion_rate || 0)), 
+                type: 'bar', 
+                itemStyle: { color: 'var(--accent-primary)' }
+              }]
+            }}
+            height={300}
+          />
+        </section>
+      )}
+      <OperationalInteractive view={view} title={title} items={result.items} pane={pane} />
+    </>
+  )
 }
 
-function Detail({config,item}:{config:Setting;item:Item|undefined}) { return <div><h2>Detalhes</h2>{item?config.fields.map((field)=><p key={field}><strong>{labels[field]??field}</strong><span>{display(item[field])}</span></p>):<p>Selecione um registro.</p>}</div> }
+function ChartEmpty({ message }: { message: string }) {
+  return (
+    <div className="dashboard-chart-empty">
+      <span aria-hidden>◇</span>
+      <p>{message}</p>
+    </div>
+  )
+}
+
+export function OperationalDashboard({ view, title, subtitle, pane = false, searchParams, helpContent }: { view: DashboardView; title: string; subtitle: string; pane?: boolean; searchParams?: Record<string, string>; helpContent?: any }) {
+  return (
+    <section className="page">
+      <PageHeader 
+        title={title}
+        subtitle={subtitle}
+        actions={<RefreshButton />}
+        helpContent={helpContent}
+      />
+      
+      <Suspense fallback={<KpiSkeleton count={4} />}>
+        <KpiSection view={view} />
+      </Suspense>
+      
+      <Suspense fallback={<TableSkeleton rows={10} />}>
+        <MainContent view={view} title={title} pane={pane} />
+      </Suspense>
+      
+    </section>
+  )
+}

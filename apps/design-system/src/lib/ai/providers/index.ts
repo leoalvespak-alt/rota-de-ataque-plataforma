@@ -9,6 +9,3 @@ export type {
   ImageGenerationResponse,
 } from './types'
 
-export { DeepSeekProvider } from './DeepSeekProvider'
-export { FalImageProvider } from './FalImageProvider'
-export { OpenAIEmbeddingProvider } from './OpenAIEmbeddingProvider'

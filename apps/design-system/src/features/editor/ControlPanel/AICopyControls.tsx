@@ -19,7 +19,6 @@ export function AICopyControls() {
   const models = useAIStore((s) => s.models)
   const copyModel = useAIStore((s) => s.copyModel)
   const setCopyModel = useAIStore((s) => s.setCopyModel)
-  const resolveKeyForModel = useAIStore((s) => s.resolveKeyForModel)
   const elements = useEditorStore((s) => s.elements)
   const activeTemplateId = useEditorStore((s) => s.activeTemplateId)
   const setElementField = useEditorStore((s) => s.setElementField)
@@ -31,16 +30,15 @@ export function AICopyControls() {
 
   const enabledModels = models.filter((m) => m.enabled)
   const selectedModel = models.find((m) => m.id === copyModel) ?? enabledModels[0]
-  const activeKey = selectedModel ? resolveKeyForModel(selectedModel) : ''
-  const missingKey = !activeKey
+  const unavailable = !selectedModel?.configured
 
   const handleGenerate = async () => {
     if (!selectedModel) {
       toast.error('Nenhum modelo configurado. Adicione um na aba ⚙ AI.')
       return
     }
-    if (!activeKey) {
-      toast.error(`Configure a chave para "${selectedModel.label}" na aba ⚙ AI.`)
+    if (!selectedModel.configured) {
+      toast.error(`O modelo "${selectedModel.label}" não está configurado no servidor.`)
       return
     }
     if (!activeTemplateId) {
@@ -61,7 +59,6 @@ export function AICopyControls() {
     try {
       const parsed = await generateCopy({
         model: selectedModel,
-        apiKey: activeKey,
         prompt,
         career,
         availableFields,
@@ -110,10 +107,9 @@ export function AICopyControls() {
         </Select>
       </div>
 
-      {missingKey && (
+      {unavailable && (
         <div className="mb-2 text-center text-[11px] leading-relaxed text-ui-muted">
-          Configure a chave para <strong className="text-brand-red">{selectedModel?.label ?? 'um modelo'}</strong> na
-          aba <strong className="text-brand-red">⚙ AI</strong>
+          O modelo <strong className="text-brand-red">{selectedModel?.label ?? 'selecionado'}</strong> precisa ser configurado no servidor.
         </div>
       )}
 
@@ -145,7 +141,7 @@ export function AICopyControls() {
 
       <HeaderPrimaryButton
         className="w-full justify-center"
-        disabled={missingKey || loading}
+        disabled={unavailable || loading}
         onClick={handleGenerate}
       >
         {loading ? 'Gerando...' : 'Gerar Copy'}

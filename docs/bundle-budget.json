@@ -1,0 +1,21 @@
+{
+  "budgets": {
+    "list": {
+      "type": "Listagem",
+      "limit": "200KB"
+    },
+    "dashboard": {
+      "type": "Dashboard",
+      "limit": "250KB"
+    },
+    "editor": {
+      "type": "Editor (flows)",
+      "limit": "400KB"
+    },
+    "config": {
+      "type": "Configuração",
+      "limit": "150KB"
+    }
+  },
+  "note": "JS comprimido (gzipped) budget for pages."
+}

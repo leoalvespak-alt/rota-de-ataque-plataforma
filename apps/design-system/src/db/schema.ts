@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, jsonb, integer, boolean, varchar } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, uuid, jsonb, integer, boolean, varchar, numeric, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -177,6 +177,77 @@ export const settings = pgTable('settings', {
   value: jsonb('value').$type<unknown>(),
 })
 
+export type CreativeProjectStatus = 'nao_iniciado' | 'em_andamento' | 'finalizado'
+
+export const creativeProjects = pgTable('creative_projects', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  brandId: uuid('brand_id').references(() => brands.id),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 30 }).notNull().default('nao_iniciado').$type<CreativeProjectStatus>(),
+  format: varchar('format', { length: 50 }),
+  templateId: varchar('template_id', { length: 100 }),
+  cardCount: integer('card_count').default(1),
+  wizardStep: integer('wizard_step').default(1),
+  wizardData: jsonb('wizard_data').$type<Record<string, unknown>>(),
+  elements: jsonb('elements').$type<Record<string, unknown>>(),
+  slides: jsonb('slides').$type<Array<Record<string, unknown>>>(),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  profileId: uuid('profile_id').references(() => brandProfiles.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+})
+
+export const aiTokenLogs = pgTable('ai_token_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  model: varchar('model', { length: 255 }).notNull(),
+  provider: varchar('provider', { length: 100 }).notNull(),
+  operation: varchar('operation', { length: 100 }).notNull(),
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  totalTokens: integer('total_tokens').notNull().default(0),
+  costUsd: numeric('cost_usd', { precision: 12, scale: 8 }).notNull().default('0'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const aiJobs = pgTable('ai_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  provider: varchar('provider', { length: 100 }).notNull(),
+  modelId: varchar('model_id', { length: 255 }).notNull(),
+  providerRequestId: varchar('provider_request_id', { length: 500 }).notNull(),
+  status: varchar('status', { length: 30 }).notNull(),
+  statusUrl: text('status_url').notNull(),
+  responseUrl: text('response_url').notNull(),
+  imageUrl: text('image_url'),
+  error: text('error'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+}, (table) => [
+  uniqueIndex('ai_jobs_provider_request_unique').on(table.provider, table.providerRequestId),
+  index('ai_jobs_user_created_idx').on(table.userId, table.createdAt),
+])
+
+export const apiIdempotency = pgTable('api_idempotency', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  scope: varchar('scope', { length: 100 }).notNull(),
+  key: varchar('key', { length: 200 }).notNull(),
+  requestHash: varchar('request_hash', { length: 64 }).notNull(),
+  status: varchar('status', { length: 30 }).notNull().default('started'),
+  response: jsonb('response').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+}, (table) => [
+  uniqueIndex('api_idempotency_user_scope_key_unique').on(table.userId, table.scope, table.key),
+  index('api_idempotency_expires_idx').on(table.expiresAt),
+])
+
 export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
@@ -186,5 +257,31 @@ export const auditLogs = pgTable('audit_logs', {
   metadata: jsonb('metadata').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+export const brandProfiles = pgTable('brand_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  handle: varchar('handle', { length: 100 }).notNull(),
+  slug: varchar('slug', { length: 255 }).unique().notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+
+  colorBackground: varchar('color_background', { length: 9 }).notNull(),
+  colorText: varchar('color_text', { length: 9 }).notNull(),
+  colorPrimary: varchar('color_primary', { length: 9 }).notNull(),
+  colorButton: varchar('color_button', { length: 9 }).notNull(),
+
+  fontHeading: varchar('font_heading', { length: 255 }).notNull().default('Rajdhani'),
+  fontBody: varchar('font_body', { length: 255 }).notNull().default('IBM Plex Sans'),
+
+  avatarKey: varchar('avatar_key', { length: 1000 }),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export type BrandProfile = typeof brandProfiles.$inferSelect
+export type NewBrandProfile = typeof brandProfiles.$inferInsert
 
 export * from './editorial-schema'

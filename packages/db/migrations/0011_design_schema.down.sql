@@ -1,0 +1,2 @@
+DROP VIEW IF EXISTS theses_from_design;
+DROP SCHEMA IF EXISTS design CASCADE;

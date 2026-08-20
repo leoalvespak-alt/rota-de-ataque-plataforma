@@ -1,1 +1,185 @@
-import{launchPersistentContext,searchInstagramProfiles,withAccountMutex}from'@plataforma/browser';import{createDatabase,createPostgresHeartbeatStore}from'@plataforma/db';import{HttpJsonLlmClient}from'@plataforma/nlp';import{runWorker}from'@plataforma/queue/runtime';import{startWorkerHeartbeat}from'@plataforma/shared/worker';import{Redis}from'ioredis';import path from'node:path';import{createSearchProcessor,spec,type SearchRepository}from'./index.js';const databaseUrl=process.env.DATABASE_URL,redisUrl=process.env.REDIS_URL,llmModel=process.env.LLM_MODEL,llmEndpoint=process.env.LLM_ENDPOINT;const provider=process.env.LLM_PROVIDER==='anthropic'?'anthropic':'openai-compatible';if(!databaseUrl||!redisUrl||!llmModel||(provider!=='anthropic'&&!llmEndpoint))throw new Error('Search mining runtime configuration is incomplete');const{pool}=createDatabase(databaseUrl);const redis=new Redis(redisUrl,{maxRetriesPerRequest:null});const llm=new HttpJsonLlmClient(llmEndpoint,llmModel,process.env.LLM_API_KEY,provider);const repository:SearchRepository={async term(scheduleId){return(await pool.query(`SELECT st.id "termId",st.term,cs.campaign_id "campaignId" FROM crawl_schedule cs JOIN search_terms st ON st.id::text=cs.source_id WHERE cs.id=$1 AND cs.source_type='search' AND st.active AND cs.next_run_at<=now()`,[scheduleId])).rows[0]??null},async save(scheduleId,target,hits,traceId){const client=await pool.connect();let leads=0;try{await client.query('BEGIN');const run=await client.query<{id:string}>(`INSERT INTO crawl_runs(scope_type,scope_id,source,status) VALUES('search',$1,'scrape','running') RETURNING id`,[target.termId]);for(const hit of hits){const saved=await client.query<{id:string}>(`INSERT INTO search_hits(search_term_id,run_id,kind,username,permalink,snippet) VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,[target.termId,run.rows[0]!.id,hit.kind,hit.username,hit.permalink,hit.snippet]);if(hit.kind==='account'){let lead=await client.query<{id:string}>('SELECT id FROM leads WHERE lower(username_current)=lower($1) LIMIT 1',[hit.username]);if(!lead.rows[0])lead=await client.query<{id:string}>('INSERT INTO leads(username_current,profile_url) VALUES($1,$2) RETURNING id',[hit.username,hit.permalink]);await client.query(`INSERT INTO lead_sources(lead_id,campaign_id,source_kind) VALUES($1,$2,'search') ON CONFLICT DO NOTHING`,[lead.rows[0]!.id,target.campaignId]);await client.query('UPDATE search_hits SET converted_to_lead=true WHERE id=$1',[saved.rows[0]!.id]);leads++}else if(hit.kind==='competitor_candidate')await client.query(`INSERT INTO candidate_sources(username_candidate,discovered_via,evidence) VALUES($1,'search',$2)`,[hit.username,JSON.stringify({term:target.term,permalink:hit.permalink})])}await client.query(`UPDATE crawl_runs SET finished_at=now(),status='completed',items_seen=$2,items_new=$2 WHERE id=$1`,[run.rows[0]!.id,hits.length]);await client.query(`UPDATE search_terms SET last_run_at=now(),next_run_at=now()+COALESCE(frequency_hint_seconds,86400)*interval '1 second',leads_generated=leads_generated+$2,hit_rate=$3 WHERE id=$1`,[target.termId,leads,hits.length?leads/hits.length:0]);await client.query(`UPDATE crawl_schedule SET last_run_at=now(),next_run_at=now()+current_interval_seconds*interval '1 second' WHERE id=$1`,[scheduleId]);await client.query(`INSERT INTO events(campaign_id,scope,level,payload) VALUES($1,'search','info',$2)`,[target.campaignId,JSON.stringify({type:'search.completed',hits:hits.length,leads,traceId})]);await client.query('COMMIT');return{hits:hits.length,leads}}catch(error){await client.query('ROLLBACK');throw error}finally{client.release()}}};const collector={collect:(term:string,accountId:string)=>withAccountMutex(redis,accountId,async()=>{const context=await launchPersistentContext(path.join(process.env.CHROMIUM_PROFILES_DIR??'/data/chromium_profiles',accountId));try{return await searchInstagramProfiles(await context.newPage(),term)}finally{await context.close()}})};const classifier={async classify(hit:{username:string;snippet:string}){try{const text=await llm.complete(`Classifique este resultado Instagram em JSON {"kind":"account|content|community|competitor_candidate"}. Username: ${hit.username}. Texto: ${hit.snippet}`);const kind=JSON.parse(text).kind;return['account','content','community','competitor_candidate'].includes(kind)?kind:'account'}catch{return'account'as const}}};const worker=runWorker(spec.queue,createSearchProcessor(repository,collector,classifier));const stop=startWorkerHeartbeat(spec.queue,createPostgresHeartbeatStore(pool),()=>({jobsDone:0,jobsFailed:0,backlog:0,p95LatencyMs:0,state:worker?.isRunning()?'running':'disabled'}));process.once('SIGTERM',()=>void stop().finally(()=>pool.end()).finally(()=>redis.quit()))
+import {
+  launchPersistentContext,
+  searchInstagramProfiles,
+  withAccountMutex,
+} from "@plataforma/browser";
+import { createDatabase, createPostgresHeartbeatStore } from "@plataforma/db";
+import { HttpJsonLlmClient } from "@plataforma/nlp";
+import { runWorker } from "@plataforma/queue/runtime";
+import { startWorkerHeartbeat } from "@plataforma/shared/worker";
+import { Redis } from "ioredis";
+import path from "node:path";
+import { createSearchProcessor, spec, type SearchRepository } from "./index.js";
+const databaseUrl = process.env.DATABASE_URL,
+  redisUrl = process.env.REDIS_URL,
+  llmModel = process.env.LLM_MODEL,
+  llmEndpoint = process.env.LLM_ENDPOINT;
+const provider =
+  process.env.LLM_PROVIDER === "anthropic" ? "anthropic" : "openai-compatible";
+if (
+  !databaseUrl ||
+  !redisUrl ||
+  !llmModel ||
+  (provider !== "anthropic" && !llmEndpoint)
+)
+  throw new Error("Search mining runtime configuration is incomplete");
+const { pool } = createDatabase(databaseUrl);
+const redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+const llm = new HttpJsonLlmClient(
+  llmEndpoint,
+  llmModel,
+  process.env.LLM_API_KEY,
+  provider,
+);
+const repository: SearchRepository = {
+  async term(scheduleId) {
+    return (
+      (
+        await pool.query(
+          `SELECT st.id "termId",st.term,cs.campaign_id "campaignId" FROM crawl_schedule cs JOIN search_terms st ON st.id::text=cs.source_id WHERE cs.id=$1 AND cs.source_type='search' AND st.active AND cs.next_run_at<=now()`,
+          [scheduleId],
+        )
+      ).rows[0] ?? null
+    );
+  },
+  async save(scheduleId, target, hits, traceId) {
+    const client = await pool.connect();
+    let leads = 0;
+    try {
+      await client.query("BEGIN");
+      const run = await client.query<{ id: string }>(
+        `INSERT INTO crawl_runs(scope_type,scope_id,source,status) VALUES('search',$1,'scrape','running') RETURNING id`,
+        [target.termId],
+      );
+      for (const hit of hits) {
+        const saved = await client.query<{ id: string }>(
+          `INSERT INTO search_hits(search_term_id,run_id,kind,username,permalink,snippet) VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
+          [
+            target.termId,
+            run.rows[0]!.id,
+            hit.kind,
+            hit.username,
+            hit.permalink,
+            hit.snippet,
+          ],
+        );
+        if (hit.kind === "account") {
+          let lead = await client.query<{ id: string }>(
+            "SELECT id FROM leads WHERE lower(username_current)=lower($1) LIMIT 1",
+            [hit.username],
+          );
+          if (!lead.rows[0])
+            lead = await client.query<{ id: string }>(
+              "INSERT INTO leads(username_current,profile_url) VALUES($1,$2) RETURNING id",
+              [hit.username, hit.permalink],
+            );
+          await client.query(
+            `INSERT INTO lead_sources(lead_id,campaign_id,source_kind) VALUES($1,$2,'search') ON CONFLICT DO NOTHING`,
+            [lead.rows[0]!.id, target.campaignId],
+          );
+          await client.query(
+            "UPDATE search_hits SET converted_to_lead=true WHERE id=$1",
+            [saved.rows[0]!.id],
+          );
+          leads++;
+        } else if (hit.kind === "competitor_candidate")
+          await client.query(
+            `INSERT INTO candidate_sources(username_candidate,discovered_via,evidence) VALUES($1,'search',$2)`,
+            [
+              hit.username,
+              JSON.stringify({ term: target.term, permalink: hit.permalink }),
+            ],
+          );
+      }
+      await client.query(
+        `UPDATE crawl_runs SET finished_at=now(),status='completed',items_seen=$2,items_new=$2 WHERE id=$1`,
+        [run.rows[0]!.id, hits.length],
+      );
+      await client.query(
+        `UPDATE search_terms SET last_run_at=now(),next_run_at=now()+COALESCE(frequency_hint_seconds,86400)*interval '1 second',leads_generated=leads_generated+$2,hit_rate=$3 WHERE id=$1`,
+        [target.termId, leads, hits.length ? leads / hits.length : 0],
+      );
+      await client.query(
+        `UPDATE crawl_schedule SET last_run_at=now(),next_run_at=now()+current_interval_seconds*interval '1 second' WHERE id=$1`,
+        [scheduleId],
+      );
+      await client.query(
+        `INSERT INTO events(campaign_id,scope,level,payload) VALUES($1,'search','info',$2)`,
+        [
+          target.campaignId,
+          JSON.stringify({
+            type: "search.completed",
+            hits: hits.length,
+            leads,
+            traceId,
+          }),
+        ],
+      );
+      await client.query("COMMIT");
+      return { hits: hits.length, leads };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+};
+const collector = {
+  collect: (term: string, accountId: string) =>
+    withAccountMutex(redis, accountId, async () => {
+      const context = await launchPersistentContext(
+        path.join(
+          process.env.CHROMIUM_PROFILES_DIR ?? "/data/chromium_profiles",
+          accountId,
+        ),
+      );
+      try {
+        return await searchInstagramProfiles(await context.newPage(), term);
+      } finally {
+        await context.close();
+      }
+    }),
+};
+const classifier = {
+  async classify(hit: { username: string; snippet: string }) {
+    try {
+      const text = await llm.complete(
+        `Classifique este resultado Instagram em JSON {"kind":"account|content|community|competitor_candidate"}. Username: ${hit.username}. Texto: ${hit.snippet}`,
+      );
+      const kind = JSON.parse(text).kind;
+      return [
+        "account",
+        "content",
+        "community",
+        "competitor_candidate",
+      ].includes(kind)
+        ? kind
+        : "account";
+    } catch {
+      return "account" as const;
+    }
+  },
+};
+const worker = runWorker(
+  spec.queue,
+  createSearchProcessor(repository, collector, classifier),
+);
+const stop = startWorkerHeartbeat(
+  spec.queue,
+  createPostgresHeartbeatStore(pool),
+  () => ({
+    jobsDone: 0,
+    jobsFailed: 0,
+    backlog: 0,
+    p95LatencyMs: 0,
+    state: worker?.isRunning() ? "running" : "disabled",
+  }),
+);
+process.once(
+  "SIGTERM",
+  () =>
+    void stop()
+      .finally(() => pool.end())
+      .finally(() => redis.quit()),
+);
