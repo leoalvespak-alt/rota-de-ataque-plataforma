@@ -2,7 +2,7 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 # We run this from the 'plataforma' root context!
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/design-system/package.json ./apps/design-system/
 COPY apps/web/package.json ./apps/web/
 COPY packages/ ./packages/
