@@ -8,4 +8,4 @@ Quando o repositório tiver o diretório `.codegraph/`, use CodeGraph antes de v
 Para tarefas pequenas e claramente localizadas, não invoque ferramentas extras sem necessidade. Se o índice parecer inconsistente, execute `npm run codegraph:update`.
 <!-- CODEGRAPH_END -->
 
-Consulte `docs/architecture/README.md` antes de tarefas grandes e leia somente o documento do módulo afetado. Após alterações estruturais, execute `npm run context:update` e revise o respectivo documento de arquitetura; use `npm run docs:architecture:check` como verificação leve.
+Consulte `../../../Docs/README.md` e `../../../Docs/DESIGN-SYSTEM.md` antes de tarefas grandes. Após alterações estruturais, revise o documento canônico e, se a integração entre produtos mudar, `../../../Docs/ARQUITETURA-UNIFICADA.md`.

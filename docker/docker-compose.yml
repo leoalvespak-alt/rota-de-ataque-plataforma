@@ -1,11 +1,13 @@
 name: plataforma-rota
 
 x-worker: &worker
+  image: ${WORKER_IMAGE:-prospector-platform-worker:latest}
   build:
     context: ..
     dockerfile: docker/worker.Dockerfile
   env_file: ../.env
   restart: unless-stopped
+  entrypoint: ["/app/docker/worker-entrypoint.sh"]
   depends_on:
     postgres: { condition: service_healthy }
     redis: { condition: service_healthy }
@@ -52,6 +54,7 @@ services:
       retries: 10
 
   web:
+    image: ${WEB_IMAGE:-prospector-platform-web:latest}
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
@@ -67,6 +70,7 @@ services:
       retries: 10
 
   migrate:
+    image: ${WORKER_IMAGE:-prospector-platform-worker:latest}
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
@@ -76,6 +80,17 @@ services:
     command: ["pnpm", "--filter", "@plataforma/db", "migrate"]
     restart: "no"
     profiles: ["tools"]
+
+  scheduler:
+    image: ${WORKER_IMAGE:-prospector-platform-worker:latest}
+    build:
+      context: ..
+      dockerfile: docker/worker.Dockerfile
+    env_file: ../.env
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+    command: ["pnpm", "--filter", "@plataforma/queue", "scheduler"]
 
   cron:
     build:
@@ -212,6 +227,9 @@ services:
   worker-content-item-orchestrator:
     <<: *worker
     command: ["pnpm", "--filter", "@plataforma/worker-content-item-orchestrator", "start"]
+  worker-news-radar:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-news-radar", "start"]
   worker-reddit-intelligence:
     <<: *worker
     command: ["pnpm", "--filter", "@plataforma/worker-reddit-intelligence", "start"]

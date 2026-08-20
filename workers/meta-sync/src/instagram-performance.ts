@@ -34,10 +34,20 @@ export function normalizeInstagramInsights(
 
 export async function upsertInstagramPerformance(database: Queryable, mediaId: string, metrics: InstagramPerformanceMetrics) {
   await database.query(
-    `INSERT INTO content_performance(variant_id, channel, impressions, reach, engagements, saves, shares)
-     SELECT publication.variant_id, 'instagram', $2, $3, $4, $5, $6
-     FROM content_publications publication
-     WHERE publication.channel = 'instagram' AND publication.external_id = $1
+    `WITH published AS (
+       SELECT publication.id,publication.variant_id,publication.published_at,
+         CASE WHEN now()-publication.published_at<=interval '2 hours' THEN '1h'
+              WHEN now()-publication.published_at<=interval '12 hours' THEN '6h'
+              WHEN now()-publication.published_at<=interval '48 hours' THEN '24h'
+              WHEN now()-publication.published_at<=interval '120 hours' THEN '72h' ELSE '7d' END metric_window
+       FROM content_publications publication WHERE publication.channel='instagram' AND publication.external_id=$1
+     ), snapshot AS (
+       INSERT INTO publication_metric_snapshots(publication_id,variant_id,channel,metric_window,metrics,source)
+       SELECT id,variant_id,'instagram',metric_window,jsonb_build_object('impressions',$2,'reach',$3,'engagements',$4,'saves',$5,'shares',$6),'meta' FROM published
+       ON CONFLICT(publication_id,metric_window) DO UPDATE SET metrics=EXCLUDED.metrics,captured_at=now() RETURNING variant_id
+     )
+     INSERT INTO content_performance(variant_id, channel, impressions, reach, engagements, saves, shares)
+     SELECT variant_id, 'instagram', $2, $3, $4, $5, $6 FROM published
      ON CONFLICT (variant_id) DO UPDATE SET
        impressions = GREATEST(content_performance.impressions, EXCLUDED.impressions),
        reach       = GREATEST(content_performance.reach,       EXCLUDED.reach),

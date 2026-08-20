@@ -32,6 +32,11 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
   const [wizardStep, setWizardStep] = useState(1)
 
   const ready = redditStatus?.status === 'ready'
+  const now = Date.now()
+  const activeWatches = watches.filter((item) => item.active)
+  const overdue = activeWatches.filter((item) => !item.next_run_at || new Date(item.next_run_at).getTime() < now)
+  const awaitingFirstRun = activeWatches.filter((item) => !item.last_run_at)
+  const health = !ready ? { label: 'Não configurado', detail: 'Configure a integração Reddit antes de iniciar coletas.', tone: 'var(--status-error)' } : !activeWatches.length ? { label: 'Sem watches ativos', detail: 'Cadastre um watch para iniciar a primeira coleta.', tone: 'var(--status-warn)' } : overdue.length ? { label: 'Atrasado', detail: `${overdue.length} watch(es) ultrapassaram o próximo horário previsto. Verifique o worker e execute uma coleta.`, tone: 'var(--status-error)' } : awaitingFirstRun.length ? { label: 'Aguardando primeira coleta', detail: `${awaitingFirstRun.length} watch(es) ainda não produziram evidências.`, tone: 'var(--status-warn)' } : { label: 'Em cadência', detail: `Todos os ${activeWatches.length} watches ativos têm próxima execução futura registrada.`, tone: 'var(--status-success)' }
   const [isPending, startTransition] = useTransition()
 
   const { register, handleSubmit, watch, trigger, reset, formState: { errors } } = useForm<WatchFormData>({
@@ -180,12 +185,12 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
                   <div style={{ background: 'var(--surface-overlay)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                     <h3 style={{ marginBottom: 'var(--space-2)' }}>Preview da Coleta</h3>
                     <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
-                      Validamos a existência do alvo. A coleta consumirá cerca de <strong>1.5 API calls/dia</strong>.
+                      O alvo será persistido e a primeira coleta será enfileirada. A disponibilidade e o consumo real aparecerão na aba Saúde após a execução.
                     </p>
                     <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-4) 0', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                       <li><strong>Tipo:</strong> {formValues.kind}</li>
                       <li><strong>Alvo:</strong> {formValues.value}</li>
-                      <li><strong>Cadência estimada:</strong> 12 horas</li>
+                      <li><strong>Próximo passo:</strong> criar watch e aguardar o worker confirmar a coleta</li>
                     </ul>
                     
                     <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
@@ -222,9 +227,10 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
         {tab === 'Saúde' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <h2>Saúde da Coleta</h2>
-            <div style={{ padding: 'var(--space-4)', background: 'var(--status-success-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--status-success)' }}>
-              <strong style={{ color: 'var(--status-success-strong)' }}>Operacional</strong>
-              <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>Todos os {watches.filter(w => w.active).length} watches estão sendo resolvidos dentro da cadência esperada.</p>
+            <div style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: `1px solid ${health.tone}` }}>
+              <strong style={{ color: health.tone }}>{health.label}</strong>
+              <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>{health.detail}</p>
+              <dl className="record-list"><div><dt>Watches ativos</dt><dd>{activeWatches.length}</dd></div><div><dt>Atrasados</dt><dd>{overdue.length}</dd></div><div><dt>Sem primeira coleta</dt><dd>{awaitingFirstRun.length}</dd></div></dl>
             </div>
           </div>
         )}

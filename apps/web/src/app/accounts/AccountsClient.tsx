@@ -1,6 +1,6 @@
 'use client'
 
-import { HealthDial, IntegrationState, KpiCard, KpiRow, PageHeader, RoleBadge, EmptyState } from '@plataforma/ui-bridge'
+import { Dialog, HealthDial, InputField, IntegrationState, KpiCard, KpiRow, PageHeader, RoleBadge, EmptyState, SelectField, StatusBadge } from '@plataforma/ui-bridge'
 import { useEffect, useState, useTransition } from 'react'
 import type { IntegrationCapability } from '@/lib/integration-capabilities'
 import { appPath } from '@/lib/base-path'
@@ -21,7 +21,7 @@ const competitorSchema = z.object({
 })
 type CompetitorFormData = z.infer<typeof competitorSchema>
 
-export function AccountsClient({ accounts:initialAccounts, competitors:initialCompetitors, campaigns, capabilities, notice }:{ accounts:Account[]; competitors:Competitor[]; campaigns:Campaign[]; capabilities:IntegrationCapability[]; notice?:string }) {
+export function AccountsClient({ accounts:initialAccounts, competitors:initialCompetitors, campaigns, capabilities, freshness = [], nba = [], history = [], notice }:{ accounts:Account[]; competitors:Competitor[]; campaigns:Campaign[]; capabilities:IntegrationCapability[]; freshness?:Array<{id:string;username:string;role:string;status:string;last_checked:string|null}>; nba?:Array<{id:string;suggested_action:string|null;chosen_channel:string|null;confidence:string|null;status:string;username_current:string|null}>; history?:Array<{action:string;target:string;created_at:string}>; notice?:string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -93,11 +93,17 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
     <PageHeader title="Contas e Configurações" subtitle="Integrações, políticas, saúde e concorrentes monitorados" />
     {notice && <p className="banner" role="status">{notice}</p>}
     
-    <div style={{ display: 'flex', gap: 'var(--space-4)', borderBottom: '1px solid var(--border)', marginBottom: 'var(--space-6)', marginTop: 'var(--space-6)' }}>
-      {['connections', 'freshness', 'nba', 'history'].map(t => (
+    <div role="tablist" aria-label="Seções de contas" style={{ display: 'flex', gap: 'var(--space-4)', borderBottom: '1px solid var(--border)', marginBottom: 'var(--space-6)', marginTop: 'var(--space-6)' }}>
+      {(['connections', 'freshness', 'nba', 'history'] as const).map((t, index) => (
         <button 
           key={t}
+          role="tab"
+          id={`accounts-tab-${t}`}
+          aria-selected={tab === t}
+          aria-controls={`accounts-panel-${t}`}
+          tabIndex={tab === t ? 0 : -1}
           onClick={() => changeTab(t)}
+          onKeyDown={(event) => { if (event.key === 'ArrowRight') changeTab((['connections', 'freshness', 'nba', 'history'] as const)[(index + 1) % 4] ?? 'connections'); if (event.key === 'ArrowLeft') changeTab((['connections', 'freshness', 'nba', 'history'] as const)[(index + 3) % 4] ?? 'connections') }}
           style={{ padding: 'var(--space-2) var(--space-4)', border: 'none', background: 'transparent', cursor: 'pointer', borderBottom: tab === t ? '2px solid var(--accent-primary)' : '2px solid transparent', color: tab === t ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: tab === t ? 'bold' : 'normal' }}
         >
           {t === 'connections' ? 'Conexões (Contas)' : t === 'freshness' ? 'Frescor de Dados' : t === 'nba' ? 'Next Best Action' : 'Histórico'}
@@ -107,7 +113,7 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
     
     {tab === 'connections' && (
       <>
-        <section>
+        <section id="accounts-panel-connections" role="tabpanel" aria-labelledby="accounts-tab-connections">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2>Integrações</h2>
             <button className="bridge-button" data-variant="primary" onClick={() => setWizardOpen(true)}>Nova Integração</button>
@@ -135,14 +141,14 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
           <form onSubmit={handleSubmit(onSubmitCompetitor)}>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <select aria-label="Campanha" {...register('campaignId')}>
+                <SelectField label="Campanha" {...register('campaignId')}>
                   {campaigns.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                </select>
-                {errors.campaignId && <span style={{color: 'var(--status-error)', fontSize: '12px'}}>{errors.campaignId.message}</span>}
+                </SelectField>
+                {errors.campaignId && <span role="alert" style={{color: 'var(--status-error)', fontSize: '12px'}}>{errors.campaignId.message}</span>}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <input aria-label="Username do concorrente" {...register('username')} placeholder="@username" />
-                {errors.username && <span style={{color: 'var(--status-error)', fontSize: '12px'}}>{errors.username.message}</span>}
+                <InputField label="Username do concorrente" {...register('username')} placeholder="@username" />
+                {errors.username && <span role="alert" style={{color: 'var(--status-error)', fontSize: '12px'}}>{errors.username.message}</span>}
               </div>
               <span style={{ padding: '8px 0' }}>{validation}</span>
               <button>Adicionar</button>
@@ -154,29 +160,24 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
     )}
     
     {tab === 'freshness' && (
-      <EmptyState message="Políticas de Frescor (Freshness): Defina aqui as janelas de re-sincronização automática para leads inativos." />
+      <section id="accounts-panel-freshness" role="tabpanel" aria-labelledby="accounts-tab-freshness"><h2>Frescor de dados das contas</h2><p>Mostra a última verificação persistida; uma conta sem verificação exige reconexão ou execução do worker de sincronização.</p>{freshness.length?<div className="record-list">{freshness.map(item=><div key={item.id}><strong>{item.role} · @{item.username}</strong><span>{item.last_checked?`Última verificação: ${new Date(item.last_checked).toLocaleString('pt-BR')}`:'Ainda sem verificação de saúde'}</span><StatusBadge status={item.status}/></div>)}</div>:<EmptyState message="Nenhuma conta vinculada para medir frescor."/>}</section>
     )}
     {tab === 'nba' && (
-      <EmptyState message="Next Best Action (NBA): Configure os motores de recomendação e limiares de score aqui." />
+      <section id="accounts-panel-nba" role="tabpanel" aria-labelledby="accounts-tab-nba"><h2>Next Best Action</h2><p>Recomendações calculadas pelo motor, apresentadas para revisão — não executam contato automaticamente.</p>{nba.length?<div className="record-list">{nba.map(item=><div key={item.id}><strong>{item.suggested_action??'Ação sem descrição'} {item.username_current?`· @${item.username_current}`:''}</strong><span>{item.chosen_channel??'Canal ainda não escolhido'} · confiança {item.confidence??'—'}</span><StatusBadge status={item.status}/></div>)}</div>:<EmptyState message="Ainda não há recomendações. Ative o worker NBA para uma campanha com leads elegíveis."/>}</section>
     )}
     {tab === 'history' && (
-      <EmptyState message="Histórico de Configuração: Log de auditoria de alterações sistêmicas." />
+      <section id="accounts-panel-history" role="tabpanel" aria-labelledby="accounts-tab-history"><h2>Histórico de configuração</h2>{history.length?<div className="record-list">{history.map((item,index)=><div key={`${item.created_at}:${index}`}><strong>{item.action}</strong><span>{item.target} · {new Date(item.created_at).toLocaleString('pt-BR')}</span></div>)}</div>:<EmptyState message="Nenhuma alteração auditada até o momento."/>}</section>
     )}
 
-    {wizardOpen && (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-        <div className="card" style={{ width: '400px', background: 'var(--bg-default)' }}>
-          <h2>Assistente de Nova Integração (OAuth)</h2>
-          <p style={{ margin: 'var(--space-4) 0', color: 'var(--text-secondary)' }}>Selecione o provedor para autorizar acesso seguro.</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <button className="bridge-button" data-variant="secondary" onClick={triggerOAuthFlow}>Meta (Instagram / WhatsApp)</button>
-            <button className="bridge-button" data-variant="secondary" disabled>Salesforce (Em Breve)</button>
-          </div>
-          <div style={{ marginTop: 'var(--space-6)', textAlign: 'right' }}>
-            <button className="bridge-button" data-variant="outline" onClick={() => setWizardOpen(false)}>Cancelar</button>
-          </div>
-        </div>
+    <Dialog open={wizardOpen} onOpenChange={setWizardOpen} title="Assistente de Nova Integração (OAuth)">
+      <p style={{ margin: '0 0 var(--space-4)', color: 'var(--text-secondary)' }}>Selecione o provedor para autorizar acesso seguro.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <button className="bridge-button" data-variant="secondary" onClick={triggerOAuthFlow}>Meta (Instagram / WhatsApp)</button>
+        <p className="bridge-inline-notice">Salesforce não é uma integração suportada neste produto; por isso não há ação de conexão disponível.</p>
       </div>
-    )}
+      <div style={{ marginTop: 'var(--space-6)', textAlign: 'right' }}>
+        <button className="bridge-button" data-variant="outline" onClick={() => setWizardOpen(false)}>Cancelar</button>
+      </div>
+    </Dialog>
   </div>
 }

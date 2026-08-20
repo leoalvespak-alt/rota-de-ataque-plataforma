@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client'
 
 import { ChannelBadge, DataGrid, EmptyState, FilterBar, KpiCard, KpiRow, PageHeader, PriorityChip, SavedViewTabs, ScoreBadge, TimelineFeed, IdentityStrip, ContactPolicyIndicator } from '@plataforma/ui-bridge'
@@ -6,11 +5,11 @@ import { useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { appPath } from '@/lib/base-path'
 import { helpRegistry } from '@/lib/help-registry'
-import { createColumnHelper } from '@tanstack/react-table'
+import { createColumnHelper, gridFeatures } from '@plataforma/ui-bridge'
 
 export interface LeadRow { id:string;username_current:string;profile_url:string|null;last_seen_at:string;is_private:boolean|null;is_verified:boolean|null;final_score:string;priority:'P0'|'P1'|'P2'|'P3';intent_score:string;relationship_score:string;freshness_score:string;intents:string[];sources:string[];interactions:Array<{id:string;kind:string;text:string;at:string;direction?:string;source?:string}>;identities:Array<{channel:'instagram'|'threads'|'email'|'whatsapp'|'reddit'|'whatsapp_dm'|'whatsapp_group';handle:string;verified?:boolean}>;communities:string[];nba:{id:string;action:string;channel:string|null;rationale:string;confidence:string}|null }
 
-const columnHelper = createColumnHelper<LeadRow, any>()
+const columnHelper = createColumnHelper<typeof gridFeatures, LeadRow>()
 
 export function LeadsClient({ initialRows }: { initialRows: LeadRow[] }) {
   const router=useRouter(),pathname=usePathname(),searchParams=useSearchParams()
@@ -30,30 +29,30 @@ export function LeadsClient({ initialRows }: { initialRows: LeadRow[] }) {
   const columns = useMemo(() => [
     columnHelper.accessor('username_current', {
       header: 'Lead',
-      cell: info => <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+      cell: (info: any) => <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
         {false ? <span title="Verificado" style={{ color: 'var(--status-success)' }}>✓</span> : null}
         <strong>@{info.getValue()}</strong>
       </div>
     }),
     columnHelper.accessor('final_score', {
       header: 'Score',
-      cell: info => <ScoreBadge score={Math.round(Number(info.getValue()))} />
+      cell: (info: any) => <ScoreBadge score={Math.round(Number(info.getValue()))} />
     }),
     columnHelper.accessor('priority', {
       header: 'Prioridade',
-      cell: info => <PriorityChip priority={info.getValue()} />
+      cell: (info: any) => <PriorityChip priority={info.getValue()} />
     }),
     columnHelper.accessor('intents', {
       header: 'Intenção',
-      cell: info => info.getValue().join(', ') || '—'
+      cell: (info: any) => (info.getValue() as string[]).join(', ') || '—'
     }),
     columnHelper.accessor('sources', {
       header: 'Fontes',
-      cell: info => info.getValue().join(', ') || '—'
+      cell: (info: any) => (info.getValue() as string[]).join(', ') || '—'
     }),
     columnHelper.accessor('last_seen_at', {
       header: 'Última atividade',
-      cell: info => <time>{new Date(info.getValue()).toLocaleDateString('pt-BR')}</time>
+      cell: (info: any) => <time>{new Date(info.getValue() as string).toLocaleDateString('pt-BR')}</time>
     }),
   ], [])
 

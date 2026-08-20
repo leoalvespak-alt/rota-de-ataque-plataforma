@@ -1,6 +1,6 @@
 'use client'
 
-import React, { type ReactNode, useState, useRef, useEffect, useCallback, createContext, useContext } from 'react'
+import React, { type ReactNode, useState, useRef, useEffect, useCallback, createContext, useContext, useId } from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 // Tooltip is the canonical wrapper exported from feedback.tsx
@@ -91,6 +91,27 @@ export function ConfirmDialog({
   onConfirm: () => void
   variant?: 'primary' | 'danger'
 }) {
+  const titleId = useId()
+  const descriptionId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const previousFocus = document.activeElement as HTMLElement | null
+    const focusable = 'button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    const timer = window.setTimeout(() => dialogRef.current?.querySelector<HTMLElement>(focusable)?.focus(), 0)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onOpenChange(false); return }
+      if (event.key !== 'Tab' || !dialogRef.current) return
+      const elements = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(focusable))
+      if (!elements.length) { event.preventDefault(); dialogRef.current.focus(); return }
+      const first = elements[0]!
+      const last = elements[elements.length - 1]!
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => { window.clearTimeout(timer); document.removeEventListener('keydown', handleKeyDown); previousFocus?.focus() }
+  }, [onOpenChange, open])
   if (!open) return null
   return (
     <>
@@ -103,8 +124,10 @@ export function ConfirmDialog({
       <div
         role="alertdialog"
         aria-modal
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-desc"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        ref={dialogRef}
+        tabIndex={-1}
         className="bridge-alert-content"
         style={{
           position: 'fixed', top: '50%', left: '50%',
@@ -112,18 +135,18 @@ export function ConfirmDialog({
           zIndex: 301,
           background: 'var(--surface-card)',
           border: '1px solid var(--border)',
-          borderRadius: '12px',
-          padding: '24px',
-          width: '400px',
+          borderRadius: 'var(--radius-lg, 0.75rem)',
+          padding: 'var(--space-6, 1.5rem)',
+          width: 'min(25rem, 90vw)',
           maxWidth: '90vw',
           boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
         }}
       >
-        <h2 id="confirm-dialog-title" className="bridge-alert-title" style={{ margin: '0 0 8px' }}>{title}</h2>
-        <p id="confirm-dialog-desc" className="bridge-alert-description" style={{ margin: '0 0 20px', color: 'var(--text-secondary)' }}>
+        <h2 id={titleId} className="bridge-alert-title" style={{ margin: '0 0 var(--space-2, 0.5rem)' }}>{title}</h2>
+        <p id={descriptionId} className="bridge-alert-description" style={{ margin: '0 0 var(--space-5, 1.25rem)', color: 'var(--text-secondary)' }}>
           {description}
         </p>
-        <div className="bridge-alert-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+        <div className="bridge-alert-actions" style={{ display: 'flex', gap: 'var(--space-2, 0.5rem)', justifyContent: 'flex-end' }}>
           <button
             className="bridge-button"
             data-variant="secondary"
@@ -151,46 +174,60 @@ export function Dialog({
   onOpenChange,
   title,
   children,
+  busy = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   title?: string
   children: ReactNode
+  /** Prevents accidental close while a mutation is in flight. */
+  busy?: boolean
 }) {
+  const titleId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusable = 'button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    const focusFirst = () => dialogRef.current?.querySelector<HTMLElement>(focusable)?.focus()
+    const timer = window.setTimeout(focusFirst, 0)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); if (!busy) onOpenChange(false); return }
+      if (event.key !== 'Tab' || !dialogRef.current) return
+      const elements = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(focusable))
+      if (!elements.length) { event.preventDefault(); dialogRef.current.focus(); return }
+      const first = elements[0]!
+      const last = elements[elements.length - 1]!
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => { window.clearTimeout(timer); document.removeEventListener('keydown', handleKeyDown); document.body.style.overflow = previousOverflow; previousFocus?.focus() }
+  }, [busy, onOpenChange, open])
   if (!open) return null
   return (
     <>
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)' }}
-        onClick={() => onOpenChange(false)}
+        className="bridge-dialog-overlay"
+        onClick={() => { if (!busy) onOpenChange(false) }}
         aria-hidden
       />
       <div
         role="dialog"
-        aria-modal
-        aria-label={title}
-        style={{
-          position: 'fixed', top: '50%', left: '50%',
-          transform: 'translate(-50%,-50%)',
-          zIndex: 301,
-          background: 'var(--surface-card)',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          padding: '24px',
-          minWidth: '400px',
-          maxWidth: '90vw',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
-        }}
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : 'Dialog'}
+        ref={dialogRef}
+        tabIndex={-1}
+        className="bridge-dialog-content"
       >
-        {title && <h2 style={{ margin: '0 0 16px' }}>{title}</h2>}
-        {children}
-        <button
-          aria-label="Fechar"
-          onClick={() => onOpenChange(false)}
-          style={{ position: 'absolute', top: 12, right: 12, background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18 }}
-        >
-          ×
-        </button>
+        <header className="bridge-dialog-header">
+          {title && <h2 id={titleId}>{title}</h2>}
+          <button aria-label="Fechar" disabled={busy} onClick={() => onOpenChange(false)} className="bridge-dialog-close">×</button>
+        </header>
+        <div className="bridge-dialog-body">{children}</div>
       </div>
     </>
   )
@@ -249,28 +286,45 @@ export function Popover({
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-interface TabsCtx { active: string; setActive: (v: string) => void }
-const TabsContext = createContext<TabsCtx>({ active: '', setActive: () => {} })
+interface TabsCtx { active: string; setActive: (v: string) => void; listId: string }
+const TabsContext = createContext<TabsCtx>({ active: '', setActive: () => {}, listId: 'tabs' })
 
 export function Tabs({ defaultValue, children }: { defaultValue: string; children: ReactNode }) {
   const [active, setActive] = useState(defaultValue)
-  return <TabsContext.Provider value={{ active, setActive }}>{children}</TabsContext.Provider>
+  const listId = useId()
+  return <TabsContext.Provider value={{ active, setActive, listId }}>{children}</TabsContext.Provider>
 }
 
 export function TabsList({ children }: { children: ReactNode }) {
-  return <div role="tablist" style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--border)', marginBottom: '16px' }}>{children}</div>
+  const { listId } = useContext(TabsContext)
+  return <div id={listId} role="tablist" aria-label="Seções" style={{ display: 'flex', gap: 'var(--space-1, 0.25rem)', borderBottom: '1px solid var(--border)', marginBottom: 'var(--space-4, 1rem)' }}>{children}</div>
 }
 
 export function TabsTrigger({ value, children }: { value: string; children: ReactNode }) {
-  const { active, setActive } = useContext(TabsContext)
+  const { active, setActive, listId } = useContext(TabsContext)
   const isActive = active === value
+  const tabId = `${listId}-tab-${value}`
+  const panelId = `${listId}-panel-${value}`
   return (
     <button
+      id={tabId}
       role="tab"
       aria-selected={isActive}
+      aria-controls={panelId}
+      tabIndex={isActive ? 0 : -1}
       onClick={() => setActive(value)}
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+        event.preventDefault()
+        const tabs = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [])
+        const index = tabs.indexOf(event.currentTarget)
+        const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]
+        next?.focus()
+        if (next) setActive(next.dataset.value ?? value)
+      }}
+      data-value={value}
       style={{
-        padding: '8px 16px', border: 'none', cursor: 'pointer', background: 'transparent',
+        padding: 'var(--space-2, 0.5rem) var(--space-4, 1rem)', border: 'none', cursor: 'pointer', background: 'transparent',
         borderBottom: isActive ? '2px solid var(--accent-primary)' : '2px solid transparent',
         color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
         fontWeight: isActive ? 600 : 400,
@@ -282,9 +336,9 @@ export function TabsTrigger({ value, children }: { value: string; children: Reac
 }
 
 export function TabsContent({ value, children }: { value: string; children: ReactNode }) {
-  const { active } = useContext(TabsContext)
+  const { active, listId } = useContext(TabsContext)
   if (active !== value) return null
-  return <div role="tabpanel">{children}</div>
+  return <div id={`${listId}-panel-${value}`} role="tabpanel" aria-labelledby={`${listId}-tab-${value}`}>{children}</div>
 }
 
 // ─── DropdownMenu ─────────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { db } from '../db'
 import { aiTokenLogs } from '@/db/schema'
-import { desc, sql, gte, eq } from 'drizzle-orm'
+import { and, desc, sql, gte, eq } from 'drizzle-orm'
+import { getAuthenticatedUserId } from '../auth'
 
 export const tokenLogRoutes = new Hono()
   .get('/', async (c) => {
@@ -14,7 +15,7 @@ export const tokenLogRoutes = new Hono()
     else if (period === '7d') since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     else if (period === '30d') since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-    const conditions = []
+    const conditions = [eq(aiTokenLogs.userId, getAuthenticatedUserId(c))]
     if (since) conditions.push(gte(aiTokenLogs.createdAt, since))
     if (model) conditions.push(eq(aiTokenLogs.model, model))
 
@@ -38,7 +39,8 @@ export const tokenLogRoutes = new Hono()
     else if (period === '7d') since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     else if (period === '30d') since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-    const whereClause = since ? gte(aiTokenLogs.createdAt, since) : undefined
+    const owner = eq(aiTokenLogs.userId, getAuthenticatedUserId(c))
+    const whereClause = since ? and(owner, gte(aiTokenLogs.createdAt, since)) : owner
 
     const [summary] = await db.select({
       totalInputTokens: sql<number>`COALESCE(SUM(${aiTokenLogs.inputTokens}), 0)`,
@@ -59,18 +61,4 @@ export const tokenLogRoutes = new Hono()
       .groupBy(aiTokenLogs.model, aiTokenLogs.provider)
 
     return c.json({ summary, byModel })
-  })
-  .post('/', async (c) => {
-    const body = await c.req.json()
-    const [row] = await db.insert(aiTokenLogs).values({
-      model: body.model,
-      provider: body.provider,
-      operation: body.operation,
-      inputTokens: body.inputTokens ?? 0,
-      outputTokens: body.outputTokens ?? 0,
-      totalTokens: (body.inputTokens ?? 0) + (body.outputTokens ?? 0),
-      costUsd: body.costUsd ?? '0',
-      metadata: body.metadata,
-    }).returning()
-    return c.json(row, 201)
   })

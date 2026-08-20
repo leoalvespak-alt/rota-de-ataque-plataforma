@@ -85,11 +85,17 @@ export function validateParsedCards(cards: ParsedCard[], expectedCount: number):
 }
 
 export function parsedCardsToScriptCards(parsed: ParsedCard[]): ScriptCard[] {
-  return parsed.map((p) => ({
-    id: crypto.randomUUID(),
-    role: p.role,
-    title: isUnfilled(p.title) ? '' : p.title,
-    body: isUnfilled(p.body) ? '' : p.body,
-    eyebrow: isUnfilled(p.eyebrow) ? '' : p.eyebrow,
-  }))
+  return parsed.map((p) => {
+    const title = isUnfilled(p.title) ? '' : p.title
+    const body = isUnfilled(p.body) ? '' : p.body
+    const eyebrow = isUnfilled(p.eyebrow) ? '' : p.eyebrow
+    return {
+      id: crypto.randomUUID(),
+      role: p.role,
+      fields: { title, body, eyebrow },
+      title,
+      body,
+      eyebrow,
+    }
+  })
 }

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { DollarSign, Cpu, TrendingUp, RefreshCw } from 'lucide-react'
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+import { isApiAvailable } from '@/lib/api/guards'
+import { apiFetch } from '@/lib/api/client'
 
 type Period = '24h' | '7d' | '30d' | 'total'
 
@@ -49,14 +49,19 @@ export function AICostPanel() {
   const [loading, setLoading] = useState(true)
 
   const fetchData = useCallback(async () => {
+    if (!isApiAvailable()) {
+      setSummary(null)
+      setByModel([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/token-logs/summary?period=${period}`)
-      if (res.ok) {
-        const data = await res.json()
-        setSummary(data.summary)
-        setByModel(data.byModel)
-      }
+      const data = await apiFetch<{ summary: TokenSummary; byModel: ModelBreakdown[] }>(
+        `/token-logs/summary?period=${period}`,
+      )
+      setSummary(data.summary)
+      setByModel(data.byModel)
     } catch {
       setSummary(null)
       setByModel([])

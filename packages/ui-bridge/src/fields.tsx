@@ -1,3 +1,4 @@
+'use client'
 import React, { type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
 
 export interface FieldProps {

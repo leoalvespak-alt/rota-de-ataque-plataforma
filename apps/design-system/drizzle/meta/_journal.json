@@ -29,6 +29,13 @@
       "when": 1786559698932,
       "tag": "0003_last_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786609000000,
+      "tag": "0004_secure_ai_gateway",
+      "breakpoints": true
     }
   ]
 }

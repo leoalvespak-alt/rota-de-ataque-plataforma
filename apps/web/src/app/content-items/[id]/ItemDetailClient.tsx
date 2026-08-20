@@ -4,8 +4,22 @@ import { ChannelTimeline, EmptyState, PageHeader, SavedViewTabs, VariantPreview 
 import { ContentItemActions } from './ContentItemActions'
 import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { appPath } from '@/lib/base-path'
 
-export function ItemDetailClient({ item, variants, events }: { item: any, variants: any[], events: any[] }) {
+function ScheduleVariant({ variant }: { variant: { id: string; channel: string; status: string } }) {
+  const [scheduledFor, setScheduledFor] = useState('')
+  const [mediaAssetRef, setMediaAssetRef] = useState('')
+  const [message, setMessage] = useState('')
+  async function schedule() {
+    if (!scheduledFor) return
+    const response = await fetch(appPath(`/api/content-variants/${variant.id}/schedule`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scheduledFor: new Date(scheduledFor).toISOString(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, mediaAssetRef: mediaAssetRef || undefined }) })
+    const body = await response.json() as { error?: string }
+    setMessage(response.ok ? 'Agendamento salvo.' : body.error ?? 'Falha ao agendar.')
+  }
+  return <article className="card"><strong>{variant.channel}</strong><p>Status: {variant.status}</p><label>Data e hora<input type="datetime-local" value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} /></label>{variant.channel === 'instagram' && <label>Referência do PNG no storage<input value={mediaAssetRef} onChange={(event) => setMediaAssetRef(event.target.value)} placeholder="approved/arte.png" /></label>}<button type="button" disabled={variant.status !== 'approved' || !scheduledFor} onClick={() => void schedule()}>Agendar variante aprovada</button><small aria-live="polite">{message}</small></article>
+}
+
+export function ItemDetailClient({ item, variants, assets, events }: { item: any, variants: any[], assets: any[], events: any[] }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -25,7 +39,7 @@ export function ItemDetailClient({ item, variants, events }: { item: any, varian
   }
 
   return (
-    <main className="page" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <main className="page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <PageHeader title={item.hook} subtitle={`${item.angle} · voz ${item.brand_voice_version}`} />
       <ContentItemActions id={item.id} status={item.status} />
       
@@ -57,14 +71,15 @@ export function ItemDetailClient({ item, variants, events }: { item: any, varian
         {tab === 'Assets' && (
           <section>
             <h2>Assets</h2>
-            <EmptyState message="Galeria de mídias e assets gráficos será exibida aqui." />
+            {assets.length ? <div className="content-grid">{assets.map(asset => <article className="card" key={asset.id}><strong>{asset.filename ?? 'Asset sem nome'}</strong><p>{asset.mime_type ?? 'tipo não informado'}{asset.width && asset.height ? ` · ${asset.width}×${asset.height}` : ''}</p><small>{asset.status} · {asset.source} · {new Date(asset.created_at).toLocaleString('pt-BR')}</small><code style={{overflowWrap:'anywhere'}}>{asset.storage_ref}</code>{asset.variant_id && <small>Vinculado à variante</small>}</article>)}</div> : <EmptyState message="Nenhum asset foi retornado ainda. Envie a variante para o Design System ou vincule um asset aprovado antes de agendar." />}
           </section>
         )}
         
         {tab === 'Distribution' && (
           <section>
-            <h2>Distribuição</h2>
-            <EmptyState message="Estratégia de distribuição e canais selecionados." />
+            <h2>Distribuição aprovada</h2>
+            <p>O agendamento exige variante aprovada, conta ator saudável e, para Instagram, o PNG exportado no storage.</p>
+            <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>{variants.map((variant) => <ScheduleVariant key={variant.id} variant={variant} />)}</div>
           </section>
         )}
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client'
 
 import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react'
@@ -16,9 +15,9 @@ export default function FlowEditor({ nodes }: { nodes?: Array<{ id: string; type
   }))
 
   const flowEdges = nodes.slice(0, -1).map((node, i) => ({
-    id: `e${node.id}-${nodes[i+1].id}`,
+    id: `e${node.id}-${nodes[i+1]!.id}`,
     source: node.id,
-    target: nodes[i+1].id,
+    target: nodes[i+1]!.id,
   }))
 
   return (

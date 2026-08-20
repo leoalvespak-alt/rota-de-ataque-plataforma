@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUiStore } from '@/stores/useUiStore'
 import { useWizardStore } from '@/stores/useWizardStore'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/api/client'
 import {
   Plus,
   FolderOpen,
@@ -26,8 +27,6 @@ interface ProjectItem {
   createdAt: string
   updatedAt: string
 }
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
 const STATUS_CONFIG: Record<CreativeProjectStatus, { label: string; color: string; Icon: typeof FolderOpen }> = {
   nao_iniciado: { label: 'Não Iniciado', color: 'text-ui-muted', Icon: FolderOpen },
@@ -139,15 +138,14 @@ export function DashboardView() {
   const setCreativeType = useWizardStore((s) => s.setCreativeType)
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/projects`)
-      .then((r) => r.ok ? r.json() : [])
+    apiFetch<ProjectItem[]>('/projects')
       .then(setProjects)
       .catch(() => setProjects([]))
       .finally(() => setLoading(false))
   }, [])
 
   const handleDelete = async (id: string) => {
-    await fetch(`${API_BASE}/api/projects/${id}`, { method: 'DELETE' }).catch(() => null)
+    await apiFetch(`/projects/${id}`, { method: 'DELETE' }).catch(() => null)
     setProjects((prev) => prev.filter((p) => p.id !== id))
   }
 

@@ -1,15 +1,15 @@
 import { createDatabase } from '@plataforma/db'
-import { createQueueRegistry } from '@plataforma/queue'
+import { createQueueRegistry, MANAGED_SCHEDULER_CONFIG, parseCadence } from '@plataforma/queue'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole } from '@/lib/permissions'
 import { getCampaignContext } from '@/lib/campaign-context'
 import { apiErrorResponse, invalidRequestResponse } from '@/lib/api-errors'
 
-const ActionSchema = z.object({
-  workerName: z.string(),
-  action: z.enum(['enable', 'disable', 'run_now', 'pause', 'resume', 'clear_dlq']),
-})
+const ActionSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.enum(['enable', 'disable', 'run_now', 'pause', 'resume', 'clear_dlq']), workerName: z.string() }),
+  z.object({ action: z.literal('set_schedule'), workerName: z.string(), cadence: z.string().trim().min(1).max(100) }),
+])
 
 export async function GET() {
   try { await requireRole('viewer') } catch (error) { return apiErrorResponse(error) }
@@ -21,7 +21,13 @@ export async function GET() {
       `SELECT ws.*,
         wh.last_beat_at, wh.jobs_done_window, wh.jobs_failed_window, wh.backlog_seen, wh.p95_latency_ms, wh.state AS heartbeat_state
        FROM worker_settings ws
-       LEFT JOIN worker_heartbeats wh ON wh.worker = ws.worker_name
+       LEFT JOIN LATERAL (
+         SELECT last_beat_at, jobs_done_window, jobs_failed_window, backlog_seen, p95_latency_ms, state
+         FROM worker_heartbeats
+         WHERE worker = ws.worker_name
+         ORDER BY last_beat_at DESC
+         LIMIT 1
+       ) wh ON true
        ORDER BY ws.domain, ws.worker_name`
     )
 
@@ -63,10 +69,27 @@ export async function POST(request: Request) {
   if (!parsed.success) return invalidRequestResponse()
 
   const { workerName, action } = parsed.data
+  const cadence = 'cadence' in parsed.data ? parsed.data.cadence : undefined
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   const registry = createQueueRegistry(process.env.REDIS_URL!)
 
   try {
+    // set_schedule is an operational config action, not a worker command; handle it separately
+    if (action === 'set_schedule') {
+      await pool.query('UPDATE worker_settings SET cadence = $2, updated_at = now() WHERE worker_name = $1', [workerName, cadence])
+      const queue = registry.queues[workerName as keyof typeof registry.queues]
+      if (queue && cadence) {
+        const opts = parseCadence(cadence)
+        const config = MANAGED_SCHEDULER_CONFIG[workerName as keyof typeof MANAGED_SCHEDULER_CONFIG]
+        // Use the primary scheduler ID so installPlatformSchedulers won't create a duplicate
+        const schedulerId = config?.primaryId ?? `${workerName}-managed-v1`
+        const data = config?.data ?? {}
+        await queue.upsertJobScheduler(schedulerId, opts, { name: workerName, data })
+      }
+      await pool.query("INSERT INTO audit_log(actor_id, action, target, after) VALUES($1, 'worker.set_schedule', $2, $3::jsonb)", [user.email ?? 'operator', workerName, JSON.stringify({ cadence })])
+      return NextResponse.json({ ok: true, action, workerName, cadence })
+    }
+
     const command = await pool.query<{ id: string }>(
       `INSERT INTO worker_commands(worker_name,command_type,payload,requested_by)
        VALUES($1,$2,$3::jsonb,$4) RETURNING id`,
@@ -93,11 +116,8 @@ export async function POST(request: Request) {
           'threads-publisher': {},
           'content-opportunity': selected ? { campaignId: selected.id, limit: 25 } : undefined,
         }
-        const payload = payloads[workerName]
-        if (!payload) {
-          await pool.query(`UPDATE worker_commands SET status='failed',error_code='manual_payload_not_supported',completed_at=now() WHERE id=$1`, [commandId])
-          return NextResponse.json({ error: 'manual_payload_not_supported', workerName }, { status: 422 })
-        }
+        // Fall back to an empty payload for workers not in the explicit map
+        const payload = payloads[workerName] ?? {}
         const job = await queue.add(`${workerName}-manual`, { ...payload, manual: true, triggeredBy: user.email, commandId })
         await pool.query(`UPDATE worker_commands SET payload=$2::jsonb,status='enqueued',job_id=$3 WHERE id=$1`, [commandId, JSON.stringify(payload), String(job.id)])
         await pool.query("INSERT INTO audit_log(actor_id, action, target, after) VALUES($1, 'worker.run_now', $2, $3::jsonb)", [user.email, workerName, JSON.stringify({ jobId: job.id, commandId, payload })])

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { generateCopy } from '@/lib/ai/generateCopy'
 import { getTemplateContract } from './templateContracts'
 import type { AIModel } from '@/stores/useAIStore'
+import { createIdempotencyKey } from '@/lib/api/idempotency'
 
 export const aiCardProposalSchema = z.object({ templateId: z.string(), fields: z.record(z.string(), z.string()) })
 export const aiProposalSchema = z.object({ title: z.string(), cards: z.array(aiCardProposalSchema).min(1), notes: z.array(z.string()).default([]) })
@@ -10,7 +11,6 @@ export interface AIRequest {
   prompt: string
   templateIds: string[]
   model: AIModel
-  apiKey: string
   career: 'fiscal' | 'policial' | 'tribunal' | 'geral'
   signal?: AbortSignal
   timeoutMs?: number
@@ -25,10 +25,11 @@ export class AIOrchestrator {
     const primary = templates[0]!
     const work = generateCopy({
       model: request.model,
-      apiKey: request.apiKey,
       prompt: request.prompt,
       career: request.career,
       availableFields: primary.fieldSchema.fields.filter((field) => field.type === 'text').map((field) => field.name),
+      signal: request.signal,
+      idempotencyKey: createIdempotencyKey('orchestrator', primary.templateId, request.prompt),
     })
     const fields = await withTimeout(work, request.timeoutMs ?? 25_000, request.signal)
     return aiProposalSchema.parse({ title: request.prompt, cards: [{ templateId: primary.templateId, fields }], notes: [] })

@@ -1,9 +1,10 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { brandProfiles } from '@/db/schema'
 import { db } from '../db'
 import { body, notFound, slugify } from './helpers'
+import { getAuthenticatedUserId } from '../auth'
 
 const profileSchema = z.object({
   name: z.string().min(1).max(255),
@@ -22,13 +23,13 @@ const updateProfileSchema = profileSchema.partial()
 export const profileRoutes = new Hono()
 
 profileRoutes.get('/', async (c) => {
-  const rows = await db.select().from(brandProfiles).orderBy(brandProfiles.createdAt)
+  const rows = await db.select().from(brandProfiles).where(eq(brandProfiles.userId, getAuthenticatedUserId(c))).orderBy(brandProfiles.createdAt)
   return c.json(rows)
 })
 
 profileRoutes.get('/:id', async (c) => {
   const id = c.req.param('id')
-  const [profile] = await db.select().from(brandProfiles).where(eq(brandProfiles.id, id))
+  const [profile] = await db.select().from(brandProfiles).where(and(eq(brandProfiles.id, id), eq(brandProfiles.userId, getAuthenticatedUserId(c))))
   if (!profile) notFound('Perfil')
   return c.json(profile)
 })
@@ -37,13 +38,14 @@ profileRoutes.post('/', async (c) => {
   const input = await body(c, profileSchema)
   const handle = input.handle.startsWith('@') ? input.handle : `@${input.handle}`
   const slug = slugify(input.name)
-  const [created] = await db.insert(brandProfiles).values({ ...input, handle, slug }).returning()
+  const [created] = await db.insert(brandProfiles).values({ ...input, handle, slug, userId: getAuthenticatedUserId(c) }).returning()
   return c.json(created, 201)
 })
 
 profileRoutes.put('/:id', async (c) => {
   const id = c.req.param('id')
-  const [existing] = await db.select().from(brandProfiles).where(eq(brandProfiles.id, id))
+  const owner = getAuthenticatedUserId(c)
+  const [existing] = await db.select().from(brandProfiles).where(and(eq(brandProfiles.id, id), eq(brandProfiles.userId, owner)))
   if (!existing) notFound('Perfil')
   const input = await body(c, updateProfileSchema)
   const handle = input.handle
@@ -52,18 +54,19 @@ profileRoutes.put('/:id', async (c) => {
   const [updated] = await db
     .update(brandProfiles)
     .set({ ...input, ...(handle ? { handle } : {}), updatedAt: new Date() })
-    .where(eq(brandProfiles.id, id))
+    .where(and(eq(brandProfiles.id, id), eq(brandProfiles.userId, owner)))
     .returning()
   return c.json(updated)
 })
 
 profileRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id')
-  const [existing] = await db.select().from(brandProfiles).where(eq(brandProfiles.id, id))
+  const owner = getAuthenticatedUserId(c)
+  const [existing] = await db.select().from(brandProfiles).where(and(eq(brandProfiles.id, id), eq(brandProfiles.userId, owner)))
   if (!existing) notFound('Perfil')
   if (existing!.isDefault) {
     return c.json({ error: 'O perfil padrão não pode ser deletado.' }, 400)
   }
-  await db.delete(brandProfiles).where(eq(brandProfiles.id, id))
+  await db.delete(brandProfiles).where(and(eq(brandProfiles.id, id), eq(brandProfiles.userId, owner)))
   return c.json({ ok: true })
 })

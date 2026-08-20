@@ -14,6 +14,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "check:runtime-deps": "node scripts/check-runtime-deps.mjs",
+    "test:runtime-deps": "vitest run scripts/check-runtime-deps.test.mjs",
     "check:hashes": "node scripts/verify-baseline-hashes.mjs"
   },
   "devDependencies": {

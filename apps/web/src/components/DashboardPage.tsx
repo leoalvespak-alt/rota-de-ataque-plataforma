@@ -21,10 +21,10 @@ export function DashboardPage({
 
   return (
     <OperationalDashboard 
-      view={view} 
-      title={title} 
-      subtitle={subtitle} 
-      pane={pane} 
+      view={view}
+      title={title}
+      subtitle={subtitle}
+      pane={pane}
       searchParams={searchParams}
       helpContent={helpContent}
     />

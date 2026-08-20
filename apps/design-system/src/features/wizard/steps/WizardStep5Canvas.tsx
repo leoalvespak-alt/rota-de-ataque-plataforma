@@ -31,6 +31,8 @@ const BRAND_COLORS = [
 
 export function WizardStep5Canvas() {
   const templateId = useWizardStore((s) => s.templateId)
+  const slideTemplateIds = useWizardStore((s) => s.slideTemplateIds)
+  const setSlideTemplateId = useWizardStore((s) => s.setSlideTemplateId)
   const scriptCards = useWizardStore((s) => s.scriptCards)
   const profileId = useWizardStore((s) => s.profileId)
   const selectTemplate = useEditorStore((s) => s.selectTemplate)
@@ -50,12 +52,16 @@ export function WizardStep5Canvas() {
     align: 'left' as 'left' | 'center' | 'right',
   })
 
-  const tpl = useMemo(() => (templateId ? getTemplateById(templateId) : null), [templateId])
+  const activeTemplateId = slideTemplateIds[activeCardIndex] ?? templateId
+  const tpl = useMemo(
+    () => (activeTemplateId ? getTemplateById(activeTemplateId) : null),
+    [activeTemplateId],
+  )
   const filter = tpl?.filter
 
   const alternativeTemplates = useMemo(
-    () => (filter ? TEMPLATES.filter((t) => t.filter === filter && t.id !== templateId) : []),
-    [filter, templateId],
+    () => (filter ? TEMPLATES.filter((t) => t.filter === filter && t.id !== activeTemplateId) : []),
+    [filter, activeTemplateId],
   )
 
   const activeCard = scriptCards[activeCardIndex]
@@ -75,7 +81,7 @@ export function WizardStep5Canvas() {
   const handleSwapTemplate = (newId: string) => {
     const newTpl = getTemplateById(newId)
     if (!newTpl) return
-    useWizardStore.getState().setTemplateId(newId)
+    setSlideTemplateId(activeCardIndex, newId)
     setShowTemplateSwap(false)
   }
 
@@ -95,20 +101,30 @@ export function WizardStep5Canvas() {
       <div className="flex flex-1 flex-col items-center justify-center bg-ui-panel2 p-6">
         {scriptCards.length > 1 && (
           <div className="mb-4 flex gap-2">
-            {scriptCards.map((card, i) => (
-              <button
-                key={card.id}
-                onClick={() => setActiveCardIndex(i)}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                  activeCardIndex === i
-                    ? 'bg-brand-red text-white'
-                    : 'bg-ui-panel text-ui-muted hover:text-ui-text',
-                )}
-              >
-                {card.role === 'cover' ? 'Capa' : card.role === 'cta' ? 'CTA' : `Slide ${i}`}
-              </button>
-            ))}
+            {scriptCards.map((card, i) => {
+              const slideTplId = slideTemplateIds[i] ?? templateId
+              const slideTpl = slideTplId ? getTemplateById(slideTplId) : undefined
+              const label = card.role === 'cover' ? 'Capa' : card.role === 'cta' ? 'CTA' : `Slide ${i}`
+              return (
+                <button
+                  key={card.id}
+                  onClick={() => setActiveCardIndex(i)}
+                  className={cn(
+                    'flex max-w-[240px] items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                    activeCardIndex === i
+                      ? 'bg-brand-red text-white'
+                      : 'bg-ui-panel text-ui-muted hover:text-ui-text',
+                  )}
+                >
+                  <span className="shrink-0">{label}</span>
+                  {slideTpl && (
+                    <span className="truncate text-[10px] opacity-80">
+                      ({slideTpl.name})
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         )}
 

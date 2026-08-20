@@ -371,8 +371,9 @@ export const createDatabase = (connectionString: string) => {
 | 2 | Etapa 2 (login next-auth + `NEXTAUTH_URL`) | ✅ Concluído (19/08/2026) |
 | 3 | Etapa 3 (`appPath` em navegação) | ✅ Concluído (19/08/2026) |
 | 4 | Deploy + Etapa 4.1/4.2 (diagnóstico da Overview no VPS) | ⏳ Pendente — requer `pwsh -File deploy/deploy-all.ps1 -Only prospector` e leitura dos logs do container |
-| 5 | Etapa 4.3 (degradação suave) + Etapa 7 | ⏳ Pendente |
-| 6 | Etapa 6 (pool compartilhado), em PR separado | ⏳ Pendente |
+| 5 | Etapa 4.3 (degradação suave) | ✅ Concluído (19/08/2026) — `loadDashboardView` captura 55000/42P01 e devolve `{ items: [], stale: true }`; banner de aviso renderizado na UI |
+| 6 | Etapa 6 (pool compartilhado) | ✅ Concluído (19/08/2026) — singleton via Map, 92 `pool.end()` removidos, 33/33 testes verdes |
+| 7 | Etapa 7 (itens menores B4, B6–B9) | ⏳ Pendente |
 
 Etapas 1–3 são um único hotfix, buildado e publicado por:
 

@@ -22,6 +22,11 @@ export function createPostgresHeartbeatStore(pool: Pool): HeartbeatStore {
         VALUES($1,$2,now(),$3,$4,$5,$6,$7)
         ON CONFLICT(worker,instance_id) DO UPDATE SET last_beat_at=now(),jobs_done_window=EXCLUDED.jobs_done_window,jobs_failed_window=EXCLUDED.jobs_failed_window,backlog_seen=EXCLUDED.backlog_seen,p95_latency_ms=EXCLUDED.p95_latency_ms,state=EXCLUDED.state`,
       [worker, instanceId, snapshot.jobsDone, snapshot.jobsFailed, snapshot.backlog, snapshot.p95LatencyMs, snapshot.state])
+      // Purge stale instances of the same worker that haven't beaten in 10 minutes
+      await pool.query(
+        `DELETE FROM worker_heartbeats WHERE worker=$1 AND instance_id<>$2 AND last_beat_at < now() - interval '10 minutes'`,
+        [worker, instanceId],
+      )
     },
   }
 }

@@ -23,8 +23,8 @@ export function RunbooksClient({ runbooks }: { runbooks: any[] }) {
       <div style={{ marginTop: 'var(--space-6)', marginBottom: 'var(--space-4)' }}>
         <input 
           type="search" 
-          value={search} 
-          onChange={e => setSearch(e.target.value)} 
+          value={search}
+          onChange={e => setSearch(e.target.value)}
           placeholder="Buscar runbook por título ou tag..." 
           style={{ width: '100%', maxWidth: '400px' }}
         />

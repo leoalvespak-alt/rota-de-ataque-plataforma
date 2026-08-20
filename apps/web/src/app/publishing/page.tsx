@@ -6,14 +6,36 @@ export default async function PublishingPage() {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {
     const { selected } = await getCampaignContext(pool)
-    const publications = (await pool.query<{id:string;title:string;scheduled_for:Date|null;status:string;channel:'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group';external_id:string|null}>(`SELECT publication.id,item.hook title,publication.published_at scheduled_for,variant.status,publication.channel,publication.external_id FROM content_publications publication JOIN content_variants variant ON variant.id=publication.variant_id JOIN content_items item ON item.id=variant.content_item_id WHERE ($1::uuid IS NULL OR item.campaign_id=$1) UNION ALL SELECT scheduled.id,opportunity.thesis,scheduled.scheduled_for,scheduled.status,'instagram',scheduled.ig_media_id FROM scheduled_publications scheduled JOIN content_opportunities opportunity ON opportunity.id=scheduled.content_opportunity_id WHERE ($1::uuid IS NULL OR opportunity.campaign_id=$1) ORDER BY scheduled_for DESC NULLS LAST LIMIT 250`, [selected?.id??null])).rows
-    
-    const scheduled = publications.filter(item => item.status === 'scheduled').length
-    const published = publications.filter(item => item.status === 'published').length
-    const failed = publications.filter(item => item.status === 'failed').length
-    
-    return <PublishingClient publications={publications} scheduled={scheduled} published={published} failed={failed} />
-  } finally {
-    await pool.end()
-  }
+    const publications = (await pool.query(
+      `SELECT scheduled.id,COALESCE(scheduled.title,item.hook,opportunity.thesis) title,scheduled.caption,scheduled.scheduled_for,scheduled.status,scheduled.channel,
+        scheduled.origin,scheduled.locked_at,scheduled.subtype,scheduled.hashtags,scheduled.cta,scheduled.thesis_id,scheduled.pillar,scheduled.format,
+        scheduled.content_structure,scheduled.ig_media_id external_id
+       FROM scheduled_publications scheduled
+       LEFT JOIN content_opportunities opportunity ON opportunity.id=scheduled.content_opportunity_id
+       LEFT JOIN content_variants variant ON variant.id=scheduled.variant_id
+       LEFT JOIN content_items item ON item.id=variant.content_item_id
+       WHERE ($1::uuid IS NULL OR COALESCE(scheduled.campaign_id,opportunity.campaign_id)=$1)
+       ORDER BY scheduled.scheduled_for DESC NULLS LAST LIMIT 500`, [selected?.id ?? null],
+    )).rows
+
+    const [pillars, formats] = await Promise.all([
+      pool.query("SELECT name, slug FROM content_pillars WHERE active = true ORDER BY weekly_weight DESC"),
+      pool.query("SELECT format_name, slug FROM format_playbook WHERE active = true ORDER BY frequency_max DESC"),
+    ])
+
+    const scheduled = publications.filter((item: any) => item.status === 'scheduled').length
+    const published = publications.filter((item: any) => item.status === 'published').length
+    const failed = publications.filter((item: any) => item.status === 'failed').length
+
+    return (
+      <PublishingClient
+        publications={JSON.parse(JSON.stringify(publications))}
+        scheduled={scheduled}
+        published={published}
+        failed={failed}
+        pillars={pillars.rows}
+        formats={formats.rows}
+      />
+    )
+  } finally {}
 }

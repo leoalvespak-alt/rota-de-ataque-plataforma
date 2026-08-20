@@ -1,37 +1,57 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { EChartsOption } from 'echarts'
-import { bridgeTheme } from './echarts-theme'
+import { bridgeTheme, chartTokenFallbacks, createBridgeTheme, resolveFallbackChartToken } from './echarts-theme'
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false, loading: () => <div className="bridge-skeleton bridge-chart-skeleton" style={{ width: '100%', height: '300px' }} /> })
 
-// Register theme once at module level (client only)
-let themeRegistered = false
-function ensureTheme() {
-  if (themeRegistered || typeof window === 'undefined') return
-  import('echarts/core').then((echartsModule: any) => {
-    const echarts = echartsModule.default || echartsModule
-    echarts.registerTheme('bridge-theme', bridgeTheme)
-    themeRegistered = true
-  }).catch(() => {})
+type TokenResolver = (token: string, fallback: string) => string
+
+function resolveChartTokens<T>(value: T, resolve: TokenResolver): T {
+  if (typeof value === 'string') {
+    return value.replace(/var\((--[a-z0-9-]+)(?:,\s*([^)]+))?\)/gi, (_match, token: string, fallback?: string) =>
+      resolve(token, fallback?.trim() || chartTokenFallbacks[token] || '#888888')
+    ) as T
+  }
+  if (Array.isArray(value)) return value.map((entry) => resolveChartTokens(entry, resolve)) as T
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, resolveChartTokens(entry, resolve)])
+    ) as T
+  }
+  return value
 }
 
-export const ChartContainer = ({ 
-  option, 
-  height = '300px' 
-}: { 
+export const ChartContainer = ({
+  option,
+  height = '300px'
+}: {
   option: EChartsOption
   height?: string | number
 }) => {
-  useEffect(() => { ensureTheme() }, [])
+  const [chartState, setChartState] = useState(() => ({
+    option: resolveChartTokens(option, resolveFallbackChartToken),
+    theme: bridgeTheme,
+  }))
+
+  useEffect(() => {
+    const styles = getComputedStyle(document.documentElement)
+    const resolve: TokenResolver = (token, fallback) => styles.getPropertyValue(token).trim() || fallback
+    setChartState({
+      option: resolveChartTokens(option, resolve),
+      theme: createBridgeTheme(resolve),
+    })
+  }, [option])
+
   return (
     <div className="bridge-chart-container" style={{ height }}>
-      <ReactECharts 
-        option={option} 
+      <ReactECharts
+        option={chartState.option}
         style={{ height: '100%', width: '100%' }}
-        theme="bridge-theme"
+        theme={chartState.theme}
+        notMerge
       />
     </div>
   )

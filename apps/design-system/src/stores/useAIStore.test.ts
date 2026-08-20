@@ -1,62 +1,32 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { useAIStore } from './useAIStore'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { SAFE_DEFAULT_MODELS, useAIStore } from './useAIStore'
 
 describe('useAIStore', () => {
   beforeEach(() => {
-    useAIStore.persist.clearStorage()
+    localStorage.clear()
     useAIStore.setState({
-      deepseekKey: '',
-      claudeKey: '',
-      falKey: '',
       copyModel: 'deepseek-default',
-      models: [
-        {
-          id: 'deepseek-default',
-          label: 'DeepSeek',
-          provider: 'deepseek',
-          model: 'deepseek-chat',
-          keyRef: 'deepseekKey',
-          baseUrl: 'https://api.deepseek.com/chat/completions',
-          enabled: true,
-        },
-        {
-          id: 'claude-default',
-          label: 'Claude',
-          provider: 'claude',
-          model: 'claude-3-5-sonnet-20241022',
-          keyRef: 'claudeKey',
-          baseUrl: 'https://api.anthropic.com/v1/messages',
-          enabled: true,
-        },
-      ],
+      imageModel: 'fal-flux-schnell',
+      models: SAFE_DEFAULT_MODELS.map((model) => ({ ...model })),
       generatedImageUrl: null,
     })
   })
 
   it('não permite desabilitar o único modelo habilitado', () => {
-    useAIStore.getState().toggleModel('claude-default') // desabilita o segundo, ok
-    const ok = useAIStore.getState().toggleModel('deepseek-default') // só resta 1 habilitado
-    expect(ok).toBe(false)
-    expect(useAIStore.getState().models.find((m) => m.id === 'deepseek-default')?.enabled).toBe(true)
+    useAIStore.setState({ models: SAFE_DEFAULT_MODELS.map((model, index) => ({ ...model, enabled: index === 0 })) })
+    expect(useAIStore.getState().toggleModel('deepseek-default')).toBe(false)
   })
 
-  it('não permite excluir o único modelo habilitado', () => {
-    useAIStore.getState().toggleModel('claude-default')
-    const ok = useAIStore.getState().deleteModel('deepseek-default')
-    expect(ok).toBe(false)
-    expect(useAIStore.getState().models).toHaveLength(2)
+  it('persiste somente preferências sem credenciais ou URLs', () => {
+    useAIStore.getState().setCopyModel('claude-default')
+    const persisted = localStorage.getItem('rda_ai_preferences') ?? ''
+    expect(persisted).toContain('claude-default')
+    expect(persisted).not.toMatch(/api[_-]?key|secret|token|baseUrl|https:\/\//i)
   })
 
-  it('resolveKeyForModel prioriza customKey sobre a chave fixa (correção D6 da auditoria)', () => {
-    useAIStore.setState({ deepseekKey: 'chave-fixa' })
-    useAIStore.getState().updateModel('deepseek-default', { customKey: 'chave-propria' })
-    const model = useAIStore.getState().models.find((m) => m.id === 'deepseek-default')!
-    expect(useAIStore.getState().resolveKeyForModel(model)).toBe('chave-propria')
-  })
-
-  it('resolveKeyForModel cai para a chave fixa quando não há customKey', () => {
-    useAIStore.setState({ deepseekKey: 'chave-fixa' })
-    const model = useAIStore.getState().models.find((m) => m.id === 'deepseek-default')!
-    expect(useAIStore.getState().resolveKeyForModel(model)).toBe('chave-fixa')
+  it('substitui o catálogo somente com metadados sanitizados', () => {
+    const model = { ...SAFE_DEFAULT_MODELS[0]!, configured: true }
+    useAIStore.getState().setCatalog([model], [])
+    expect(useAIStore.getState().models).toEqual([model])
   })
 })

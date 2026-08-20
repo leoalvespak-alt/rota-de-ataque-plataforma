@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from './SessionProvider'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { LiveBadge, RoleBadge, Tooltip } from '@plataforma/ui-bridge'
+import { LiveBadge, Tooltip } from '@plataforma/ui-bridge'
 import { appPath, basePath } from '@/lib/base-path'
 import type { CampaignOption } from '@/lib/campaign-context'
 
@@ -25,19 +25,11 @@ const groups = [
   { label: 'Conteúdo', links: [['/theses', 'Teses', Lightbulb], ['/content-opportunity', 'Oportunidades', Sparkles], ['/content-items', 'Conteúdos', FileText], ['/creative-bridge', 'Creative Bridge', Palette], ['/publishing', 'Publicação', Calendar]] },
   { label: 'Canais', links: [['/email-flows', 'Fluxos de e-mail', Mail], ['/communities', 'Grupos WhatsApp', Phone], ['/conversations', 'Conversas', MessageSquare]] },
   { label: 'Governança', links: [['/contact-policies', 'Políticas de contato', Shield], ['/engagement-queue', 'Fila de engagement', ListTodo]] },
-  { label: 'Sistema', links: [['/accounts', 'Contas e integrações', LinkIcon], ['/ai-settings', 'Modelos de IA', Bot], ['/configs', 'Configurações', Settings], ['/source-roi', 'ROI por origem', TrendingUp], ['/notifications', 'Notificações e erros', Bell], ['/system-health', 'Saúde do sistema', Activity]] },
+  { label: 'Sistema', links: [['/automations', 'Automações', Bot], ['/accounts', 'Contas e integrações', LinkIcon], ['/ai-settings', 'Modelos de IA', Bot], ['/configs', 'Configurações', Settings], ['/source-roi', 'ROI por origem', TrendingUp], ['/notifications', 'Notificações e erros', Bell], ['/system-health', 'Saúde do sistema', Activity]] },
 ] as const
 
 // Routes where the period selector is shown
 const TEMPORAL_ROUTES = ['/', '/radar', '/community', '/competitive-intel', '/timeline']
-
-interface Session {
-  name: string
-  role: string
-  avatarUrl?: string
-}
-
-  
 
 function relativePath(pathname: string) {
   if (basePath && pathname.startsWith(basePath)) return pathname.slice(basePath.length) || '/'
@@ -109,20 +101,29 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
     return () => controller.abort()
   }, [pathname])
 
-  // Fetch notification count
+  // Fetch notification count on an interval instead of every navigation
   useEffect(() => {
-    let cancelled = false
-    fetch(appPath('/api/admin/notifications/count'), { cache: 'no-store' })
-      .then(r => r.json() as Promise<{ count: number; recent?: {id: string; message: string; created_at: string}[] }>)
-      .then(data => {
-        if (!cancelled) {
-          setNotifCount(data.count ?? 0)
-          setRecentNotifs(data.recent ?? [])
-        }
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [pathname])
+    if (session.role !== 'admin') {
+      setNotifCount(0)
+      setRecentNotifs([])
+      return
+    }
+    const controller = new AbortController()
+    const fetchCount = () => {
+      fetch(appPath('/api/admin/notifications/count'), { cache: 'no-store', signal: controller.signal })
+        .then(r => r.ok ? r.json() as Promise<{ count: number; recent?: {id: string; message: string; created_at: string}[] }> : null)
+        .then(data => {
+          if (data) {
+            setNotifCount(data.count ?? 0)
+            setRecentNotifs(data.recent ?? [])
+          }
+        })
+        .catch(() => {})
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 60_000)
+    return () => { controller.abort(); clearInterval(interval) }
+  }, [session.role])
 
   function changePeriod(newPeriod: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -160,7 +161,7 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
         <select id="campaign" value={selected?.id ?? ''} disabled={switching || campaigns.length === 0} onChange={(event) => void changeCampaign(event.target.value)}>
           {campaigns.map((campaign) => <option value={campaign.id} key={campaign.id}>{campaign.name}</option>)}
         </select>
-        <RoleBadge role={session.role as 'actor' | 'collector'}/>
+        <span className={`role ${session.role}`}>{session.role}</span>
         <small style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>{session.name}</small>
       </div>
     </aside>
@@ -232,7 +233,7 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
           </button>
 
           {/* Notification Bell */}
-          <div style={{ position: 'relative' }}>
+          {session.role === 'admin' && <div style={{ position: 'relative' }}>
             <button
               aria-label={`Notificações${notifCount > 0 ? ` — ${notifCount} não lidas` : ''}`}
               aria-haspopup="true"
@@ -287,7 +288,7 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
           <LiveBadge connected={health.connected} lastUpdate={health.text}/>
         </div>

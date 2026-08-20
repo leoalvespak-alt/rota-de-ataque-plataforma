@@ -19,5 +19,5 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       WHERE ($1::uuid IS NULL OR ls.campaign_id=$1) AND l.merged_into IS NULL
       ORDER BY ls.final_score DESC,CASE ls.priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END,l.id LIMIT 300`, [selected?.id ?? null])
     return <LeadsClient initialRows={result.rows} />
-  } finally { await pool.end() }
+  } finally {}
 }

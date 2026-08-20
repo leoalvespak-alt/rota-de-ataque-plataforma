@@ -1,1 +1,169 @@
-import{createDatabase,createPostgresHeartbeatStore}from'@plataforma/db';import{humanize}from'@plataforma/humanizer';import{HttpJsonLlmClient,LocalEmbeddingsClient}from'@plataforma/nlp';import{runWorker}from'@plataforma/queue/runtime';import{startWorkerHeartbeat}from'@plataforma/shared/worker';import{Redis}from'ioredis';import{createConversationProcessor,spec,type ConversationContext,type ConversationRepository}from'./index.js';const databaseUrl=process.env.DATABASE_URL,redisUrl=process.env.REDIS_URL,embeddingEndpoint=process.env.EMBEDDINGS_ENDPOINT,embeddingModel=process.env.EMBEDDINGS_MODEL,llmModel=process.env.LLM_MODEL,llmEndpoint=process.env.LLM_ENDPOINT;const provider=process.env.LLM_PROVIDER==='anthropic'?'anthropic':'openai-compatible';if(!databaseUrl||!redisUrl||!embeddingEndpoint||!embeddingModel||!llmModel||(provider!=='anthropic'&&!llmEndpoint))throw new Error('Conversation runtime configuration is incomplete');const{pool}=createDatabase(databaseUrl);const redis=new Redis(redisUrl,{maxRetriesPerRequest:null});const embeddings=new LocalEmbeddingsClient(embeddingEndpoint,embeddingModel,redis);await embeddings.assertDimension();const llm=new HttpJsonLlmClient(llmEndpoint,llmModel,process.env.LLM_API_KEY,provider);const repository:ConversationRepository={async context(payload){const row=(await pool.query(`SELECT t.id "threadId",$2::uuid "leadId",m.text message,s.current_stage stage FROM own_dm_threads t JOIN own_dm_messages m ON m.id=$3 LEFT JOIN conversation_state s ON s.thread_id=t.id WHERE t.id=$1 AND m.direction='inbound'`,[payload.threadId,payload.leadId,payload.messageId])).rows[0];if(!row)return null;row.history=(await pool.query(`SELECT direction,text,sent_at at FROM own_dm_messages WHERE thread_id=$1 ORDER BY sent_at DESC LIMIT 20`,[payload.threadId])).rows.reverse();return row},async save(context,result,traceId){const client=await pool.connect();try{await client.query('BEGIN');await client.query(`INSERT INTO conversation_state(thread_id,lead_id,current_stage,detected_intent,detected_objections,last_agent_action,requires_human_review,updated_at) VALUES($1,$2,COALESCE($3,'discovery'),$4,$5,'drafted',true,now()) ON CONFLICT(thread_id) DO UPDATE SET current_stage=COALESCE(EXCLUDED.current_stage,conversation_state.current_stage),detected_intent=EXCLUDED.detected_intent,detected_objections=EXCLUDED.detected_objections,last_agent_action='drafted',requires_human_review=true,updated_at=now()`,[context.threadId,context.leadId,context.stage,result.intent,JSON.stringify(result.objections)]);const draft=await client.query<{id:string}>(`INSERT INTO dm_drafts(lead_id,thread_id,context,variants,trigger_kind,expires_at,humanization_signature) VALUES($1,$2,$3,$4,'inbound',now()+interval '24 hours',$5) RETURNING id`,[context.leadId,context.threadId,JSON.stringify({history:context.history,intent:result.intent,objections:result.objections}),JSON.stringify([result.text]),process.env.BRAND_VOICE_VERSION??'v1']);const review=await client.query<{id:string}>(`INSERT INTO review_inbox(item_type,item_ref_id,reason,suggested_action,context) VALUES('conversation_reply',$1,$2,$3,$4) RETURNING id`,[draft.rows[0]!.id,result.sensitive?'Conteúdo sensível: revisão obrigatória':'Aprovação humana obrigatória',JSON.stringify({variants:[result.text]}),JSON.stringify({threadId:context.threadId,leadId:context.leadId,traceId})]);await client.query('COMMIT');return review.rows[0]!.id}catch(error){await client.query('ROLLBACK');throw error}finally{client.release()}}};const generator={async generate(context:ConversationContext){const analysis=await llm.complete(`Classifique a intenção e objeções em JSON estrito {"intent":"...","objections":["..."]}. Mensagem: ${context.message}`);let parsed:{intent?:string;objections?:string[]};try{parsed=JSON.parse(analysis)}catch{parsed={intent:'unknown',objections:[]}}const output=await humanize({purpose:'conversation_reply',basePrompt:'Gere uma resposta candidata curta e útil para a conversa inbound. Não prometa, não pressione e não peça dados sensíveis.',brandVoiceVersion:process.env.BRAND_VOICE_VERSION??'v1',context:{history:context.history,intent:parsed.intent,objections:parsed.objections},recent:[],generate:async(prompt)=>{const text=await llm.complete(prompt);return{text,embedding:await embeddings.embed(text)}}});return{text:output.text,intent:parsed.intent??'unknown',objections:parsed.objections??[]}}};const worker=runWorker(spec.queue,createConversationProcessor(repository,generator));const stop=startWorkerHeartbeat(spec.queue,createPostgresHeartbeatStore(pool),()=>({jobsDone:0,jobsFailed:0,backlog:0,p95LatencyMs:0,state:worker?.isRunning()?'running':'disabled'}));process.once('SIGTERM',()=>void stop().finally(()=>pool.end()).finally(()=>redis.quit()))
+import { createDatabase, createPostgresHeartbeatStore } from "@plataforma/db";
+import { humanize } from "@plataforma/humanizer";
+import { HttpJsonLlmClient, LocalEmbeddingsClient } from "@plataforma/nlp";
+import { runWorker } from "@plataforma/queue/runtime";
+import { startWorkerHeartbeat } from "@plataforma/shared/worker";
+import { Redis } from "ioredis";
+import {
+  createConversationProcessor,
+  spec,
+  type ConversationContext,
+  type ConversationRepository,
+} from "./index.js";
+const databaseUrl = process.env.DATABASE_URL,
+  redisUrl = process.env.REDIS_URL,
+  embeddingEndpoint = process.env.EMBEDDINGS_ENDPOINT,
+  embeddingModel = process.env.EMBEDDINGS_MODEL,
+  llmModel = process.env.LLM_MODEL,
+  llmEndpoint = process.env.LLM_ENDPOINT;
+const provider =
+  process.env.LLM_PROVIDER === "anthropic" ? "anthropic" : "openai-compatible";
+if (
+  !databaseUrl ||
+  !redisUrl ||
+  !embeddingEndpoint ||
+  !embeddingModel ||
+  !llmModel ||
+  (provider !== "anthropic" && !llmEndpoint)
+)
+  throw new Error("Conversation runtime configuration is incomplete");
+const { pool } = createDatabase(databaseUrl);
+const redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+const embeddings = new LocalEmbeddingsClient(
+  embeddingEndpoint,
+  embeddingModel,
+  redis,
+);
+await embeddings.assertDimension();
+const llm = new HttpJsonLlmClient(
+  llmEndpoint,
+  llmModel,
+  process.env.LLM_API_KEY,
+  provider,
+);
+const repository: ConversationRepository = {
+  async context(payload) {
+    const row = (
+      await pool.query(
+        `SELECT t.id "threadId",$2::uuid "leadId",m.text message,s.current_stage stage FROM own_dm_threads t JOIN own_dm_messages m ON m.id=$3 LEFT JOIN conversation_state s ON s.thread_id=t.id WHERE t.id=$1 AND m.direction='inbound'`,
+        [payload.threadId, payload.leadId, payload.messageId],
+      )
+    ).rows[0];
+    if (!row) return null;
+    row.history = (
+      await pool.query(
+        `SELECT direction,text,sent_at at FROM own_dm_messages WHERE thread_id=$1 ORDER BY sent_at DESC LIMIT 20`,
+        [payload.threadId],
+      )
+    ).rows.reverse();
+    return row;
+  },
+  async save(context, result, traceId) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `INSERT INTO conversation_state(thread_id,lead_id,current_stage,detected_intent,detected_objections,last_agent_action,requires_human_review,updated_at) VALUES($1,$2,COALESCE($3,'discovery'),$4,$5,'drafted',true,now()) ON CONFLICT(thread_id) DO UPDATE SET current_stage=COALESCE(EXCLUDED.current_stage,conversation_state.current_stage),detected_intent=EXCLUDED.detected_intent,detected_objections=EXCLUDED.detected_objections,last_agent_action='drafted',requires_human_review=true,updated_at=now()`,
+        [
+          context.threadId,
+          context.leadId,
+          context.stage,
+          result.intent,
+          JSON.stringify(result.objections),
+        ],
+      );
+      const draft = await client.query<{ id: string }>(
+        `INSERT INTO dm_drafts(lead_id,thread_id,context,variants,trigger_kind,expires_at,humanization_signature) VALUES($1,$2,$3,$4,'inbound',now()+interval '24 hours',$5) RETURNING id`,
+        [
+          context.leadId,
+          context.threadId,
+          JSON.stringify({
+            history: context.history,
+            intent: result.intent,
+            objections: result.objections,
+          }),
+          JSON.stringify([result.text]),
+          process.env.BRAND_VOICE_VERSION ?? "v1",
+        ],
+      );
+      const review = await client.query<{ id: string }>(
+        `INSERT INTO review_inbox(item_type,item_ref_id,reason,suggested_action,context) VALUES('conversation_reply',$1,$2,$3,$4) RETURNING id`,
+        [
+          draft.rows[0]!.id,
+          result.sensitive
+            ? "Conteúdo sensível: revisão obrigatória"
+            : "Aprovação humana obrigatória",
+          JSON.stringify({ variants: [result.text] }),
+          JSON.stringify({
+            threadId: context.threadId,
+            leadId: context.leadId,
+            traceId,
+          }),
+        ],
+      );
+      await client.query("COMMIT");
+      return review.rows[0]!.id;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+};
+const generator = {
+  async generate(context: ConversationContext) {
+    const analysis = await llm.complete(
+      `Classifique a intenção e objeções em JSON estrito {"intent":"...","objections":["..."]}. Mensagem: ${context.message}`,
+    );
+    let parsed: { intent?: string; objections?: string[] };
+    try {
+      parsed = JSON.parse(analysis);
+    } catch {
+      parsed = { intent: "unknown", objections: [] };
+    }
+    const output = await humanize({
+      purpose: "conversation_reply",
+      basePrompt:
+        "Gere uma resposta candidata curta e útil para a conversa inbound. Não prometa, não pressione e não peça dados sensíveis.",
+      brandVoiceVersion: process.env.BRAND_VOICE_VERSION ?? "v1",
+      context: {
+        history: context.history,
+        intent: parsed.intent,
+        objections: parsed.objections,
+      },
+      recent: [],
+      generate: async (prompt) => {
+        const text = await llm.complete(prompt);
+        return { text, embedding: await embeddings.embed(text) };
+      },
+    });
+    return {
+      text: output.text,
+      intent: parsed.intent ?? "unknown",
+      objections: parsed.objections ?? [],
+    };
+  },
+};
+const worker = runWorker(
+  spec.queue,
+  createConversationProcessor(repository, generator),
+);
+const stop = startWorkerHeartbeat(
+  spec.queue,
+  createPostgresHeartbeatStore(pool),
+  () => ({
+    jobsDone: 0,
+    jobsFailed: 0,
+    backlog: 0,
+    p95LatencyMs: 0,
+    state: worker?.isRunning() ? "running" : "disabled",
+  }),
+);
+process.once(
+  "SIGTERM",
+  () =>
+    void stop()
+      .finally(() => pool.end())
+      .finally(() => redis.quit()),
+);

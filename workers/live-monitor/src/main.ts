@@ -1,1 +1,185 @@
-import{collectInstagramLive,launchPersistentContext,withAccountMutex}from'@plataforma/browser';import{createDatabase,createPostgresHeartbeatStore}from'@plataforma/db';import{HttpJsonLlmClient}from'@plataforma/nlp';import{createQueueRegistry,enqueueOnce}from'@plataforma/queue';import{runWorker}from'@plataforma/queue/runtime';import{startWorkerHeartbeat}from'@plataforma/shared/worker';import{Redis}from'ioredis';import path from'node:path';import{createLiveProcessor,spec,type LiveRepository}from'./index.js';const databaseUrl=process.env.DATABASE_URL,redisUrl=process.env.REDIS_URL,llmModel=process.env.LLM_MODEL,llmEndpoint=process.env.LLM_ENDPOINT;const provider=process.env.LLM_PROVIDER==='anthropic'?'anthropic':'openai-compatible';if(!databaseUrl||!redisUrl||!llmModel||(provider!=='anthropic'&&!llmEndpoint))throw new Error('Live monitor runtime configuration is incomplete');const{pool}=createDatabase(databaseUrl);const redis=new Redis(redisUrl,{maxRetriesPerRequest:null});const registry=createQueueRegistry(redisUrl);const llm=new HttpJsonLlmClient(llmEndpoint,llmModel,process.env.LLM_API_KEY,provider);const repository:LiveRepository={async target(scheduleId){return(await pool.query(`SELECT c.id "competitorId",cs.campaign_id "campaignId",c.username FROM crawl_schedule cs JOIN competitors c ON c.id::text=cs.source_id WHERE cs.id=$1 AND cs.source_type='live' AND cs.next_run_at<=now() AND c.status='active'`,[scheduleId])).rows[0]??null},async save(scheduleId,target,capture,topic,traceId){const client=await pool.connect();const leads:string[]=[];try{await client.query('BEGIN');const live=await client.query<{id:string}>(`INSERT INTO live_events(competitor_id,ig_broadcast_id,started_at,topic_inferred,viewer_peak_seen,source) VALUES($1,$2,now(),$3,$4,'scrape') RETURNING id`,[target.competitorId,capture.broadcastId,topic,capture.interactions.length]);for(const item of capture.interactions){let lead=await client.query<{id:string}>('SELECT id FROM leads WHERE lower(username_current)=lower($1) LIMIT 1',[item.username]);if(!lead.rows[0])lead=await client.query<{id:string}>('INSERT INTO leads(username_current,profile_url) VALUES($1,$2) RETURNING id',[item.username,`https://instagram.com/${item.username}/`]);const leadId=lead.rows[0]!.id;if(!leads.includes(leadId))leads.push(leadId);await client.query(`INSERT INTO lead_sources(lead_id,campaign_id,competitor_id,source_kind) VALUES($1,$2,$3,'live') ON CONFLICT DO NOTHING`,[leadId,target.campaignId,target.competitorId]);await client.query(`INSERT INTO live_interactions(live_event_id,lead_id,kind,payload) VALUES($1,$2,'comment',$3)`,[live.rows[0]!.id,leadId,JSON.stringify({text:item.text,externalId:item.externalId})]);await client.query(`INSERT INTO lead_interactions(lead_id,kind,direction,source,ref_type,ref_id,payload) VALUES($1,'live_interaction','inbound','scrape','live_event',$2,$3)`,[leadId,live.rows[0]!.id,JSON.stringify({text:item.text,topic,traceId})])}await client.query(`UPDATE crawl_schedule SET last_run_at=now(),next_run_at=now()+current_interval_seconds*interval '1 second' WHERE id=$1`,[scheduleId]);await client.query('COMMIT');return leads}catch(error){await client.query('ROLLBACK');throw error}finally{client.release()}},async noLive(scheduleId){await pool.query(`UPDATE crawl_schedule SET last_run_at=now(),next_run_at=now()+current_interval_seconds*interval '1 second',consecutive_empty_runs=consecutive_empty_runs+1 WHERE id=$1`,[scheduleId])}};const collector={capture:(target:{username:string},accountId:string)=>withAccountMutex(redis,accountId,async()=>{const context=await launchPersistentContext(path.join(process.env.CHROMIUM_PROFILES_DIR??'/data/chromium_profiles',accountId));try{return await collectInstagramLive(await context.newPage(),`https://instagram.com/${target.username}/`)}finally{await context.close()}})};const classifier={async topic(capture:{interactions:Array<{text:string}>}){return(await llm.complete(`Resuma em até 8 palavras o tópico desta Live: ${capture.interactions.slice(0,100).map(x=>x.text).join('\n')}`)).trim().slice(0,160)}};const queue={score:(leadId:string,campaignId:string)=>enqueueOnce(registry.queues.scoring,'scoring',[leadId,campaignId,'live'],{leadId,campaignId,trigger:'live_interaction'}).then(()=>undefined),nba:(leadId:string,campaignId:string)=>enqueueOnce(registry.queues['nba-engine'],'nba-engine',[leadId,campaignId,'live'],{leadId,campaignId,trigger:'live_interaction'}).then(()=>undefined)};const worker=runWorker(spec.queue,createLiveProcessor(repository,collector,classifier,queue));const stop=startWorkerHeartbeat(spec.queue,createPostgresHeartbeatStore(pool),()=>({jobsDone:0,jobsFailed:0,backlog:0,p95LatencyMs:0,state:worker?.isRunning()?'running':'disabled'}));process.once('SIGTERM',()=>void stop().finally(()=>pool.end()).finally(()=>redis.quit()).finally(()=>registry.connection.quit()))
+import {
+  collectInstagramLive,
+  launchPersistentContext,
+  withAccountMutex,
+} from "@plataforma/browser";
+import { createDatabase, createPostgresHeartbeatStore } from "@plataforma/db";
+import { HttpJsonLlmClient } from "@plataforma/nlp";
+import { createQueueRegistry, enqueueOnce } from "@plataforma/queue";
+import { runWorker } from "@plataforma/queue/runtime";
+import { startWorkerHeartbeat } from "@plataforma/shared/worker";
+import { Redis } from "ioredis";
+import path from "node:path";
+import { createLiveProcessor, spec, type LiveRepository } from "./index.js";
+const databaseUrl = process.env.DATABASE_URL,
+  redisUrl = process.env.REDIS_URL,
+  llmModel = process.env.LLM_MODEL,
+  llmEndpoint = process.env.LLM_ENDPOINT;
+const provider =
+  process.env.LLM_PROVIDER === "anthropic" ? "anthropic" : "openai-compatible";
+if (
+  !databaseUrl ||
+  !redisUrl ||
+  !llmModel ||
+  (provider !== "anthropic" && !llmEndpoint)
+)
+  throw new Error("Live monitor runtime configuration is incomplete");
+const { pool } = createDatabase(databaseUrl);
+const redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+const registry = createQueueRegistry(redisUrl);
+const llm = new HttpJsonLlmClient(
+  llmEndpoint,
+  llmModel,
+  process.env.LLM_API_KEY,
+  provider,
+);
+const repository: LiveRepository = {
+  async target(scheduleId) {
+    return (
+      (
+        await pool.query(
+          `SELECT c.id "competitorId",cs.campaign_id "campaignId",c.username FROM crawl_schedule cs JOIN competitors c ON c.id::text=cs.source_id WHERE cs.id=$1 AND cs.source_type='live' AND cs.next_run_at<=now() AND c.status='active'`,
+          [scheduleId],
+        )
+      ).rows[0] ?? null
+    );
+  },
+  async save(scheduleId, target, capture, topic, traceId) {
+    const client = await pool.connect();
+    const leads: string[] = [];
+    try {
+      await client.query("BEGIN");
+      const live = await client.query<{ id: string }>(
+        `INSERT INTO live_events(competitor_id,ig_broadcast_id,started_at,topic_inferred,viewer_peak_seen,source) VALUES($1,$2,now(),$3,$4,'scrape') RETURNING id`,
+        [
+          target.competitorId,
+          capture.broadcastId,
+          topic,
+          capture.interactions.length,
+        ],
+      );
+      for (const item of capture.interactions) {
+        let lead = await client.query<{ id: string }>(
+          "SELECT id FROM leads WHERE lower(username_current)=lower($1) LIMIT 1",
+          [item.username],
+        );
+        if (!lead.rows[0])
+          lead = await client.query<{ id: string }>(
+            "INSERT INTO leads(username_current,profile_url) VALUES($1,$2) RETURNING id",
+            [item.username, `https://instagram.com/${item.username}/`],
+          );
+        const leadId = lead.rows[0]!.id;
+        if (!leads.includes(leadId)) leads.push(leadId);
+        await client.query(
+          `INSERT INTO lead_sources(lead_id,campaign_id,competitor_id,source_kind) VALUES($1,$2,$3,'live') ON CONFLICT DO NOTHING`,
+          [leadId, target.campaignId, target.competitorId],
+        );
+        await client.query(
+          `INSERT INTO live_interactions(live_event_id,lead_id,kind,payload) VALUES($1,$2,'comment',$3)`,
+          [
+            live.rows[0]!.id,
+            leadId,
+            JSON.stringify({ text: item.text, externalId: item.externalId }),
+          ],
+        );
+        await client.query(
+          `INSERT INTO lead_interactions(lead_id,kind,direction,source,ref_type,ref_id,payload) VALUES($1,'live_interaction','inbound','scrape','live_event',$2,$3)`,
+          [
+            leadId,
+            live.rows[0]!.id,
+            JSON.stringify({ text: item.text, topic, traceId }),
+          ],
+        );
+      }
+      await client.query(
+        `UPDATE crawl_schedule SET last_run_at=now(),next_run_at=now()+current_interval_seconds*interval '1 second' WHERE id=$1`,
+        [scheduleId],
+      );
+      await client.query("COMMIT");
+      return leads;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+  async noLive(scheduleId) {
+    await pool.query(
+      `UPDATE crawl_schedule SET last_run_at=now(),next_run_at=now()+current_interval_seconds*interval '1 second',consecutive_empty_runs=consecutive_empty_runs+1 WHERE id=$1`,
+      [scheduleId],
+    );
+  },
+};
+const collector = {
+  capture: (target: { username: string }, accountId: string) =>
+    withAccountMutex(redis, accountId, async () => {
+      const context = await launchPersistentContext(
+        path.join(
+          process.env.CHROMIUM_PROFILES_DIR ?? "/data/chromium_profiles",
+          accountId,
+        ),
+      );
+      try {
+        return await collectInstagramLive(
+          await context.newPage(),
+          `https://instagram.com/${target.username}/`,
+        );
+      } finally {
+        await context.close();
+      }
+    }),
+};
+const classifier = {
+  async topic(capture: { interactions: Array<{ text: string }> }) {
+    return (
+      await llm.complete(
+        `Resuma em até 8 palavras o tópico desta Live: ${capture.interactions
+          .slice(0, 100)
+          .map((x) => x.text)
+          .join("\n")}`,
+      )
+    )
+      .trim()
+      .slice(0, 160);
+  },
+};
+const queue = {
+  score: (leadId: string, campaignId: string) =>
+    enqueueOnce(
+      registry.queues.scoring,
+      "scoring",
+      [leadId, campaignId, "live"],
+      { leadId, campaignId, trigger: "live_interaction" },
+    ).then(() => undefined),
+  nba: (leadId: string, campaignId: string) =>
+    enqueueOnce(
+      registry.queues["nba-engine"],
+      "nba-engine",
+      [leadId, campaignId, "live"],
+      { leadId, campaignId, trigger: "live_interaction" },
+    ).then(() => undefined),
+};
+const worker = runWorker(
+  spec.queue,
+  createLiveProcessor(repository, collector, classifier, queue),
+);
+const stop = startWorkerHeartbeat(
+  spec.queue,
+  createPostgresHeartbeatStore(pool),
+  () => ({
+    jobsDone: 0,
+    jobsFailed: 0,
+    backlog: 0,
+    p95LatencyMs: 0,
+    state: worker?.isRunning() ? "running" : "disabled",
+  }),
+);
+process.once(
+  "SIGTERM",
+  () =>
+    void stop()
+      .finally(() => pool.end())
+      .finally(() => redis.quit())
+      .finally(() => registry.connection.quit()),
+);

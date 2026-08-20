@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useWizardStore } from '@/stores/useWizardStore'
 import { useUiStore } from '@/stores/useUiStore'
 import { WizardStep1Format } from './steps/WizardStep1Format'
@@ -7,7 +7,8 @@ import { WizardStep3Content } from './steps/WizardStep3Content'
 import { WizardStep4Script } from './steps/WizardStep4Script'
 import { WizardStep5Canvas } from './steps/WizardStep5Canvas'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react'
+import { useWizardAI } from './hooks/useWizardAI'
 
 const STEP_LABELS = ['Formato', 'Modelo', 'Conteúdo', 'Roteiro', 'Canvas']
 
@@ -38,13 +39,27 @@ export function WizardView() {
         if (cardCount < 1 || cardCount > 10) return false
         return freeText.trim().length > 0 || !!thesisId
       case 4:
-        return scriptCards.length > 0 && scriptCards.every((c) => c.title.trim().length > 0)
+        if (!scriptCards.length) return false
+        return useWizardStore.getState().canAdvance()
       case 5:
         return true
       default:
         return false
     }
   }, [step, creativeType, aspectRatio, templateId, freeText, thesisId, cardCount, scriptCards])
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const { generate, cancelGeneration, isGenerating } = useWizardAI({
+    onSuccess: () => setFeedback({ type: 'success', message: 'Copy gerada com sucesso!' }),
+    onError: (error) => setFeedback({ type: 'error', message: error.message }),
+  })
+
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => setFeedback(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback])
 
   if (!active) {
     return (
@@ -62,6 +77,24 @@ export function WizardView() {
 
   const handleFinish = () => {
     setTab('create')
+  }
+
+  const handleNextStep = async () => {
+    if (step === 3) {
+      try {
+        const result = await generate()
+        if (result?.ok) nextStep()
+      } catch {
+        // Error já tratado pelo onError do hook
+      }
+    } else {
+      nextStep()
+    }
+  }
+
+  const handleCancelGeneration = () => {
+    cancelGeneration()
+    setFeedback({ type: 'error', message: 'Geração cancelada.' })
   }
 
   return (
@@ -108,13 +141,21 @@ export function WizardView() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {step === 1 && <WizardStep1Format />}
-        {step === 2 && <WizardStep2Template />}
-        {step === 3 && <WizardStep3Content />}
-        {step === 4 && <WizardStep4Script />}
-        {step === 5 && <WizardStep5Canvas />}
-      </div>
+       {feedback && (
+         <div className={cn(
+           "fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg",
+           feedback.type === 'success' ? "bg-emerald-500" : "bg-red-500",
+         )}>
+           {feedback.message}
+         </div>
+       )}
+       <div className="flex-1 overflow-y-auto">
+         {step === 1 && <WizardStep1Format />}
+         {step === 2 && <WizardStep2Template />}
+         {step === 3 && <WizardStep3Content />}
+         {step === 4 && <WizardStep4Script />}
+         {step === 5 && <WizardStep5Canvas />}
+       </div>
 
       <div className="shrink-0 border-t border-ui-border bg-ui-panel px-6 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
@@ -126,21 +167,41 @@ export function WizardView() {
             {step === 1 ? 'Cancelar' : 'Voltar'}
           </button>
 
-          {step < 5 ? (
-            <button
-              onClick={nextStep}
-              disabled={!canAdvanceValue}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-medium transition-colors',
-                canAdvanceValue
-                  ? 'bg-brand-red text-white hover:bg-brand-red-hover'
-                  : 'cursor-not-allowed bg-ui-panel2 text-ui-muted',
-              )}
-            >
-              Avançar
-              <ChevronRight className="size-4" />
-            </button>
-          ) : (
+           {step < 5 ? (
+            <div className="flex items-center gap-2">
+             {isGenerating && (
+               <button
+                 onClick={handleCancelGeneration}
+                 className="rounded-lg border border-ui-border px-4 py-2 text-sm font-medium text-ui-text hover:bg-ui-panel2"
+                 type="button"
+               >
+                 Cancelar geração
+               </button>
+             )}
+             <button
+               onClick={handleNextStep}
+               disabled={!canAdvanceValue || isGenerating}
+               className={cn(
+                 'inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-medium transition-colors',
+                 canAdvanceValue
+                   ? 'bg-brand-red text-white hover:bg-brand-red-hover'
+                   : 'cursor-not-allowed bg-ui-panel2 text-ui-muted',
+               )}
+             >
+            {isGenerating ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Gerando...
+              </>
+            ) : (
+              <>
+                Avançar
+                <ChevronRight className="size-4" />
+              </>
+            )}
+             </button>
+            </div>
+           ) : (
             <button
               onClick={handleFinish}
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-red px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-red-hover"

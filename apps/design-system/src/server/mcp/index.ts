@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { z } from 'zod'
+import type { AnySchema } from '@modelcontextprotocol/sdk/server/zod-compat.js'
+import { z as zod } from 'zod/v4'
 import { TEMPLATES, getTemplateById, getDefaultElements } from '../../features/templates/registry'
 import { templateMetadataSchema } from '../../features/templates/schemas'
 
@@ -8,6 +9,15 @@ const server = new McpServer({
   name: 'rota-design-system',
   version: '1.0.0',
 })
+
+type McpSchema = AnySchema & { describe(description: string): AnySchema; optional(): McpSchema }
+const asMcpSchema = (schema: AnySchema): McpSchema => schema as McpSchema
+const z = {
+  string: () => asMcpSchema(zod.string() as unknown as AnySchema),
+  boolean: () => asMcpSchema(zod.boolean() as unknown as AnySchema),
+}
+const mcpString = (description: string): AnySchema => z.string().describe(description)
+const mcpBoolean = (description: string): AnySchema => z.boolean().optional().describe(description)
 
 server.tool(
   'list_templates',
@@ -35,9 +45,9 @@ server.tool(
 server.tool(
   'get_template_schema',
   'Retorna o schema Zod e os defaults de um template específico pelo ID.',
-  { templateId: z.string().describe('ID do template (ex: sq-cover, cr-slide, pt-content)') },
+  { templateId: mcpString('ID do template (ex: sq-cover, cr-slide, pt-content)') },
   async ({ templateId }) => {
-    const tpl = getTemplateById(templateId)
+    const tpl = getTemplateById(String(templateId))
     if (!tpl) {
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ error: `Template "${templateId}" não encontrado.` }) }],
@@ -68,9 +78,9 @@ server.tool(
 server.tool(
   'get_default_elements',
   'Retorna os elementos default de um template para preencher o canvas.',
-  { templateId: z.string().describe('ID do template') },
+  { templateId: mcpString('ID do template') },
   async ({ templateId }) => {
-    const elements = getDefaultElements(templateId)
+    const elements = getDefaultElements(String(templateId))
     if (Object.keys(elements).length === 0) {
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ error: `Template "${templateId}" não encontrado.` }) }],
@@ -86,10 +96,10 @@ server.tool(
 server.tool(
   'validate_template_metadata',
   'Valida um objeto de metadados contra o schema Zod de template.',
-  { metadata: z.string().describe('JSON string dos metadados do template para validar') },
+  { metadata: mcpString('JSON string dos metadados do template para validar') },
   async ({ metadata }) => {
     try {
-      const parsed = JSON.parse(metadata)
+      const parsed = JSON.parse(String(metadata))
       const result = templateMetadataSchema.safeParse(parsed)
       if (result.success) {
         return {
@@ -121,12 +131,13 @@ server.tool(
   'write_creative_json',
   'Gera um JSON estruturado pronto para alimentar o editor com um template e conteúdo.',
   {
-    templateId: z.string().describe('ID do template'),
+    templateId: mcpString('ID do template'),
     elements: z.string().describe('JSON string com os elementos (campos de texto, configurações)'),
-    darkMode: z.boolean().optional().describe('Modo escuro do card'),
+    darkMode: mcpBoolean('Modo escuro do card'),
   },
   async ({ templateId, elements, darkMode }) => {
-    const tpl = getTemplateById(templateId)
+    const templateIdValue = String(templateId)
+    const tpl = getTemplateById(templateIdValue)
     if (!tpl) {
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ error: `Template "${templateId}" não encontrado.` }) }],
@@ -135,14 +146,14 @@ server.tool(
     }
 
     try {
-      const parsedElements = JSON.parse(elements)
+      const parsedElements = JSON.parse(String(elements))
       const mergedElements = { ...tpl.defaults as Record<string, unknown>, ...parsedElements }
 
       const creative = {
-        templateId,
+        templateId: templateIdValue,
         format: tpl.format,
         filter: tpl.filter,
-        darkMode: darkMode ?? false,
+        darkMode: typeof darkMode === 'boolean' ? darkMode : false,
         elements: mergedElements,
         generatedAt: new Date().toISOString(),
       }

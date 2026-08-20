@@ -1,10 +1,8 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { BrandProfile } from '@/db/schema'
-
-const API_BASE = typeof window !== 'undefined'
-  ? (import.meta.env?.VITE_API_URL ?? 'http://localhost:3001')
-  : 'http://localhost:3001'
+import { isApiAvailable } from '@/lib/api/guards'
+import { apiFetch } from '@/lib/api/client'
 
 export type ProfileInput = {
   name: string
@@ -42,11 +40,13 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
     error: null,
 
     fetchProfiles: async () => {
+      if (!isApiAvailable()) {
+        set((s) => { s.loading = false; s.profiles = [] })
+        return
+      }
       set((s) => { s.loading = true; s.error = null })
       try {
-        const res = await fetch(`${API_BASE}/api/profiles`)
-        if (!res.ok) throw new Error('Falha ao carregar perfis')
-        const data: BrandProfile[] = await res.json()
+        const data = await apiFetch<BrandProfile[]>('/profiles')
         set((s) => {
           s.profiles = data
           if (!s.activeProfileId) {
@@ -62,31 +62,19 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
     },
 
     createProfile: async (data) => {
-      const res = await fetch(`${API_BASE}/api/profiles`, {
+      const created = await apiFetch<BrandProfile>('/profiles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as { error?: string }).error ?? 'Erro ao criar perfil')
-      }
-      const created: BrandProfile = await res.json()
       set((s) => { s.profiles.push(created) })
       return created
     },
 
     updateProfile: async (id, data) => {
-      const res = await fetch(`${API_BASE}/api/profiles/${id}`, {
+      const updated = await apiFetch<BrandProfile>(`/profiles/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as { error?: string }).error ?? 'Erro ao atualizar perfil')
-      }
-      const updated: BrandProfile = await res.json()
       set((s) => {
         const idx = s.profiles.findIndex((p) => p.id === id)
         if (idx >= 0) s.profiles[idx] = updated
@@ -95,11 +83,7 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
     },
 
     deleteProfile: async (id) => {
-      const res = await fetch(`${API_BASE}/api/profiles/${id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as { error?: string }).error ?? 'Erro ao deletar perfil')
-      }
+      await apiFetch<void>(`/profiles/${id}`, { method: 'DELETE' })
       set((s) => {
         s.profiles = s.profiles.filter((p) => p.id !== id)
         if (s.activeProfileId === id) s.activeProfileId = null

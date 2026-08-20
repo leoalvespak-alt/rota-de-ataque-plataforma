@@ -12,7 +12,11 @@ interface Queryable {
 }
 
 export async function listActiveCampaigns(database: Queryable): Promise<CampaignOption[]> {
-  return (await database.query<CampaignOption>(`SELECT id,name FROM campaigns WHERE status='active' ORDER BY name`)).rows
+  return (await database.query<CampaignOption>(
+    `SELECT id,name FROM campaigns
+     WHERE status='active'
+     ORDER BY (name = 'Rota de Ataque') DESC, name`,
+  )).rows
 }
 
 export async function getCampaignContext(database: Queryable) {

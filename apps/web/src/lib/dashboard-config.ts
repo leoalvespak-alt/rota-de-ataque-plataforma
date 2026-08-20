@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { DashboardView } from '@/lib/dashboard-data'
 
 type Setting = { empty: string; fields: string[]; primary: string; countLabel: string; scoreField?: string }
@@ -15,6 +14,7 @@ export const dashboardSettings: Record<DashboardView, Setting> = {
   'email-flows':{empty:'Nenhum fluxo de e-mail configurado.',fields:['name','campaign','active','version','subscribers','active_subscribers'],primary:'name',countLabel:'Fluxos'},
   'contact-policies':{empty:'Nenhuma política de contato configurada.',fields:['campaign','channel','cadence_seconds','enabled','rules'],primary:'channel',countLabel:'Políticas'},
   'source-roi':{empty:'Ainda não há janela de ROI calculada.',fields:['source_type','source_id','campaign','window_days','unique_leads','followback_rate','retention_7d_rate','conversion_rate','source_score','computed_at'],primary:'source_id',countLabel:'Origens',scoreField:'source_score'},
+  configs:{empty:'Nenhuma configuração de scoring encontrada.',fields:['campaign','p0_threshold','p1_threshold','p2_threshold','lambda_freshness','source_weights'],primary:'campaign',countLabel:'Configurações'},
 }
 
 export const dashboardLabels: Record<string, string> = {

@@ -2,6 +2,8 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { brandProfiles } from './schema'
 
+const OPERATOR_USER_ID = process.env.DESIGN_OPERATOR_USER_ID ?? '00000000-0000-4000-8000-000000000001'
+
 const connectionString = process.env.DATABASE_URL
 if (!connectionString) throw new Error('DATABASE_URL is not set')
 
@@ -12,6 +14,7 @@ async function seed() {
   await db
     .insert(brandProfiles)
     .values({
+      userId: OPERATOR_USER_ID,
       name: 'Rota de Ataque',
       handle: '@rotadeataque',
       slug: 'rotadeataque',

@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client'
 
 import React, { useEffect, useRef } from 'react'
@@ -13,7 +12,6 @@ import {
   useMatches,
   useRegisterActions,
   useKBar,
-  createAction,
   type Action
 } from 'kbar'
 import { helpRegistry } from '@/lib/help-registry'
@@ -125,12 +123,12 @@ function LeadsProvider() {
 export function CommandPalette({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
-  const staticActions = PAGE_ACTIONS.map(a => createAction({
+  const staticActions: Action[] = PAGE_ACTIONS.map(a => ({
     id: a.id,
     name: a.name,
     section: a.section,
     keywords: a.keywords,
-    shortcut: (a as any).shortcut ?? [],
+    shortcut: (a as { shortcut?: string[] }).shortcut,
     perform: () => router.push(a.href),
   }))
 

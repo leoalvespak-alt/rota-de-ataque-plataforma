@@ -1,7 +1,7 @@
 export interface IntegrationCapability {
   id: string
   name: string
-  status: 'ready'|'partial'|'not_configured'|'error'
+  status: 'ready'|'partial'|'not_configured'|'disabled'|'degraded'|'rate_limited'|'budget_blocked'|'error'
   detail: string
   missing: string[]
 }
@@ -14,11 +14,20 @@ function capability(id:string,name:string,required:string[],extraReady=true):Int
   return {id,name,status,missing,detail:status==='ready'?'Variáveis obrigatórias presentes.':`Faltam: ${missing.join(', ')||'vínculo da conta'}`}
 }
 
+function organicProvider(id:string,name:string,enabledKey:string,required:string[],budgetBlocked=false):IntegrationCapability {
+  const configured=capability(id,name,required)
+  if(process.env[enabledKey]!=='true') return {...configured,status:'disabled',detail:'Integração configurável, desativada por feature flag.'}
+  if(budgetBlocked) return {...configured,status:'budget_blocked',detail:'Hard limit do orçamento atingido antes da próxima chamada.'}
+  return configured
+}
+
 export async function getIntegrationCapabilities(database?:Queryable):Promise<IntegrationCapability[]> {
   let accounts:Array<{role:string;meta_access_token_encrypted:string|null;meta_token_expires_at:string|null;threads_user_id:string|null}>=[]
   let aiReady=false
+  let organicBudgetBlocked=false
   if(database){try{accounts=(await database.query(`SELECT role,meta_access_token_encrypted,meta_token_expires_at,threads_user_id FROM accounts`)).rows as typeof accounts}catch{accounts=[]}}
-  if(database){try{aiReady=Boolean((await database.query<{ready:boolean}>(`SELECT EXISTS(SELECT 1 FROM ai_models model JOIN ai_providers provider ON provider.id=model.provider_id WHERE model.is_default AND model.enabled AND provider.enabled AND (provider.kind='local' OR provider.api_key_encrypted IS NOT NULL)) ready`)).rows[0]?.ready)}catch{aiReady=false}}
+  if(database){try{aiReady=Boolean((await database.query<{ready:boolean}>(`SELECT EXISTS(SELECT 1 FROM ai_models model JOIN ai_providers provider ON provider.id=model.provider_id WHERE model.is_default AND model.enabled AND provider.enabled AND provider.deleted_at IS NULL AND (provider.kind='local' OR provider.secret_configured)) ready`)).rows[0]?.ready)}catch{aiReady=false}}
+  if(database){try{organicBudgetBlocked=Boolean((await database.query<{blocked:boolean}>(`SELECT EXISTS(SELECT 1 FROM organic_budgets WHERE hard_limit AND spent_usd+reserved_usd>=limit_usd AND period_started_at<=now()) blocked`)).rows[0]?.blocked)}catch{organicBudgetBlocked=false}}
   const actor=accounts.find((account)=>account.role==='actor'),collector=accounts.find((account)=>account.role==='collector')
   const metaLinked=Boolean(actor?.meta_access_token_encrypted||collector?.meta_access_token_encrypted||process.env.META_ACCESS_TOKEN)
   const meta=capability('meta','Meta / Instagram',['META_APP_ID','META_APP_SECRET','META_WEBHOOK_VERIFY_TOKEN'],metaLinked)
@@ -34,6 +43,9 @@ export async function getIntegrationCapabilities(database?:Queryable):Promise<In
     {id:'llm',name:'Modelos de IA',status:(aiReady||Boolean(process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY)?'ready':'not_configured') as IntegrationCapability['status'],missing:[],detail:aiReady?'Modelo padrão e provedor ativos no cofre do Prospector.':process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY?'Modelo configurado pelas variáveis de ambiente.':'Cadastre uma chave e ative o modelo padrão em Modelos de IA.'},
     capability('embeddings','Embeddings',['EMBEDDINGS_ENDPOINT']),
     capability('runtime','Banco e filas',['DATABASE_URL','REDIS_URL']),
+    organicProvider('exa','Exa discovery','EXA_ENABLED',['EXA_API_KEY'],organicBudgetBlocked),
+    organicProvider('apify','Apify collectors','APIFY_ENABLED',['APIFY_API_TOKEN'],organicBudgetBlocked),
+    organicProvider('bright-data','Bright Data fallback','BRIGHT_DATA_ENABLED',['BRIGHT_DATA_API_KEY','BRIGHT_DATA_DATASET_ID'],organicBudgetBlocked),
   ]
   const groups=capability('whatsapp-groups','WhatsApp Groups',['WHATSAPP_BUSINESS_ACCOUNT_ID'],process.env.WHATSAPP_GROUPS_AVAILABLE==='true')
   if(process.env.WHATSAPP_GROUPS_AVAILABLE!=='true'){groups.status=groups.missing.length?'not_configured':'partial';groups.detail='Aguardando disponibilidade da Groups API para esta conta Meta.'}

@@ -7,13 +7,28 @@ import {
   flexRender,
   createPaginatedRowModel,
   createSortedRowModel,
-  createColumnHelper
+  createColumnHelper,
+  tableFeatures,
+  rowSortingFeature,
+  rowSelectionFeature,
+  columnVisibilityFeature,
+  rowPaginationFeature,
 } from '@tanstack/react-table'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 
 import { SparklineInline } from './charts'
 
-// Re-export createColumnHelper so consumers can import from ui-bridge
+export const gridFeatures = tableFeatures({
+  rowSortingFeature,
+  rowSelectionFeature,
+  columnVisibilityFeature,
+  rowPaginationFeature,
+  coreRowModel: createCoreRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+})
+
+// Re-export for consumers
 export { createColumnHelper }
 
 export const KpiCard = ({
@@ -24,7 +39,8 @@ export const KpiCard = ({
   sparklineData,
   period,
   explanation,
-  drillDownHref
+  drillDownHref,
+  density = 'compact',
 }: {
   label: string
   value: string | number
@@ -34,8 +50,9 @@ export const KpiCard = ({
   period?: string
   explanation?: string
   drillDownHref?: string
+  density?: 'compact' | 'standard'
 }) => (
-  <article className="bridge-kpi-card">
+  <article className={`bridge-kpi-card bridge-kpi-card--${density}`}>
     <div className="bridge-kpi-header">
       <span className="bridge-kpi-label" title={explanation}>{label}</span>
       {sparklineData && (
@@ -123,19 +140,23 @@ export function DataGrid<TData>({
   const [sorting, setSorting] = React.useState<any[]>([])
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<Record<string, boolean>>({})
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [focusedRow, setFocusedRow] = React.useState(0)
   const tbodyRef = useRef<HTMLTableSectionElement>(null)
 
-  // @ts-ignore
   const table = useTable({
+    features: gridFeatures,
     data,
     columns,
     state: {
       sorting,
       rowSelection,
       columnVisibility,
+      pagination,
     },
+    onPaginationChange: setPagination as any,
     enableRowSelection: enableSelection,
+    enableSorting,
     onRowSelectionChange: (updaterOrValue: any) => {
       const next = typeof updaterOrValue === 'function' ? updaterOrValue(rowSelection) : updaterOrValue
       setRowSelection(next)
@@ -145,9 +166,6 @@ export function DataGrid<TData>({
     },
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    createCoreRowModel: createCoreRowModel(),
-    createSortedRowModel: enableSorting ? createSortedRowModel() : undefined,
-    createPaginatedRowModel: enablePagination ? createPaginatedRowModel() : undefined,
   } as any)
 
   const rows = (table as any).getRowModel().rows
@@ -263,7 +281,7 @@ export function DataGrid<TData>({
       {enablePagination && (
         <div className="bridge-data-grid-pagination" style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '13px' }}>
-            Página <strong>{t.getState().pagination.pageIndex + 1} de {t.getPageCount()}</strong>
+            Página <strong>{pagination.pageIndex + 1} de {t.getPageCount?.() ?? Math.ceil(data.length / pagination.pageSize)}</strong>
           </span>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => t.previousPage()} disabled={!t.getCanPreviousPage()}>
@@ -278,8 +296,3 @@ export function DataGrid<TData>({
     </div>
   )
 }
-
-
-
-
-

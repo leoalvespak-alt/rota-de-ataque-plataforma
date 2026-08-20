@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client'
 import { HealthDial, KpiCard, KpiRow, LiveBadge, PageHeader, PriorityChip, QuotaMeter, RoleBadge, StatusBadge, usePolling } from '@plataforma/ui-bridge'
 import { useMemo, useState, useTransition } from 'react'
@@ -30,7 +29,7 @@ export function EngagementClient({actions:initialActions,policies}:{actions:Acti
     } catch {
       setConnected(false)
     }
-  }, 15000);
+  }, { interval: 15000 });
   
   const grouped=useMemo(()=>['pending','awaiting_approval','approved','running','done','failed','blocked'].map(status=>({status,items:actions.filter(item=>item.status===status)})).filter(group=>group.items.length),[actions]);
   

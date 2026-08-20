@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useWizardStore } from '@/stores/useWizardStore'
 import { cn } from '@/lib/utils'
 import { FileText, Pencil, Sparkles, Minus, Plus, Upload } from 'lucide-react'
 import { MarkdownImportPanel } from './MarkdownImportPanel'
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+import { apiFetch } from '@/lib/api/client'
+import { buildCardSkeletons } from '@/features/wizard/buildCardSkeletons'
 
 interface ThesisOption {
   id: string
   title: string
   angle: string | null
+  coreStatement?: string
 }
 
 export function WizardStep3Content() {
@@ -17,13 +18,16 @@ export function WizardStep3Content() {
   const freeText = useWizardStore((s) => s.freeText)
   const cardCount = useWizardStore((s) => s.cardCount)
   const generateCoverWithAI = useWizardStore((s) => s.generateCoverWithAI)
-  const creativeType = useWizardStore((s) => s.creativeType)
   const setThesisId = useWizardStore((s) => s.setThesisId)
   const setFreeText = useWizardStore((s) => s.setFreeText)
-  const setCardCount = useWizardStore((s) => s.setCardCount)
+  const setCarouselCardCount = useWizardStore((s) => s.setCarouselCardCount)
   const setGenerateCoverWithAI = useWizardStore((s) => s.setGenerateCoverWithAI)
   const contentSource = useWizardStore((s) => s.contentSource)
   const setContentSource = useWizardStore((s) => s.setContentSource)
+  const setScriptCards = useWizardStore((s) => s.setScriptCards)
+  const templateId = useWizardStore((s) => s.templateId)
+  const presetId = useWizardStore((s) => s.presetId)
+  const creativeType = useWizardStore((s) => s.creativeType)
 
   const [contentMode, setContentMode] = useState<'thesis' | 'free' | 'markdown'>(
     contentSource === 'markdown' ? 'markdown' : thesisId ? 'thesis' : 'free',
@@ -32,16 +36,14 @@ export function WizardStep3Content() {
   const [loadingTheses, setLoadingTheses] = useState(false)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadingTheses(true)
-    fetch(`${API_BASE}/api/theses`)
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<ThesisOption[] | { theses: ThesisOption[] }>('/theses')
       .then((data) => {
         const items = Array.isArray(data) ? data : data.theses ?? []
-        setTheses(items.map((t: { id: string; title: string; angle?: string }) => ({
+        setTheses(items.map((t) => ({
           id: t.id,
           title: t.title,
           angle: t.angle ?? null,
+          coreStatement: t.coreStatement,
         })))
       })
       .catch(() => setTheses([]))
@@ -49,6 +51,21 @@ export function WizardStep3Content() {
   }, [])
 
   const showCardCount = creativeType === 'carousel'
+
+  const initializeCards = useCallback(() => {
+    if (!creativeType) return
+    const cards = buildCardSkeletons(templateId, cardCount, presetId, creativeType)
+    const current = useWizardStore.getState().scriptCards
+    const sameStructure = current.length === cards.length && current.every(
+      (card, index) => card.role === cards[index]?.role && card.templateId === cards[index]?.templateId,
+    )
+    if (!sameStructure) setScriptCards(cards)
+  }, [templateId, cardCount, presetId, creativeType, setScriptCards])
+
+  // Inicializar cards sempre que template, preset, creativeType ou cardCount mudar
+  useEffect(() => {
+    initializeCards()
+  }, [initializeCards])
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
@@ -124,7 +141,7 @@ export function WizardStep3Content() {
               {theses.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => { setThesisId(t.id); setFreeText(t.title) }}
+                  onClick={() => { setThesisId(t.id); setFreeText(t.coreStatement?.trim() || t.title) }}
                   className={cn(
                     'flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors',
                     thesisId === t.id
@@ -171,7 +188,7 @@ export function WizardStep3Content() {
           </label>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setCardCount(cardCount - 1)}
+              onClick={() => setCarouselCardCount(cardCount - 1)}
               disabled={cardCount <= 1}
               className="inline-flex size-9 items-center justify-center rounded-lg border border-ui-border bg-ui-panel text-ui-text transition-colors hover:border-brand-red disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -179,7 +196,7 @@ export function WizardStep3Content() {
             </button>
             <span className="w-8 text-center text-lg font-bold text-ui-text">{cardCount}</span>
             <button
-              onClick={() => setCardCount(cardCount + 1)}
+              onClick={() => setCarouselCardCount(cardCount + 1)}
               disabled={cardCount >= 10}
               className="inline-flex size-9 items-center justify-center rounded-lg border border-ui-border bg-ui-panel text-ui-text transition-colors hover:border-brand-red disabled:cursor-not-allowed disabled:opacity-40"
             >

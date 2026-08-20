@@ -1,16 +1,189 @@
-import { createDatabase, createPostgresHeartbeatStore } from '@plataforma/db'
-import { createQueueRegistry, enqueueOnce } from '@plataforma/queue'
-import { runWorker } from '@plataforma/queue/runtime'
-import { startWorkerHeartbeat } from '@plataforma/shared/worker'
-import { createWebhookProcessor, spec, type WebhookRepository } from './index.js'
-const databaseUrl=process.env.DATABASE_URL,redisUrl=process.env.REDIS_URL;if(!databaseUrl||!redisUrl)throw new Error('DATABASE_URL and REDIS_URL are required');const{pool}=createDatabase(databaseUrl);const registry=createQueueRegistry(redisUrl)
-async function account(igId:string){return(await pool.query<{id:string}>('SELECT id FROM accounts WHERE meta_ig_user_id=$1',[igId])).rows[0]?.id}
-async function campaign(){return(await pool.query<{id:string}>(`SELECT id FROM campaigns WHERE status='active' ORDER BY created_at LIMIT 1`)).rows[0]?.id}
-async function lead(username:string,igId?:string){let result=await pool.query<{id:string}>('SELECT id FROM leads WHERE instagram_user_id=$1 OR lower(username_current)=lower($2) ORDER BY last_seen_at DESC LIMIT 1',[igId??null,username]);if(!result.rows[0])result=await pool.query<{id:string}>('INSERT INTO leads(username_current,instagram_user_id) VALUES($1,$2) RETURNING id',[username||igId||'instagram_user',igId??null]);return result.rows[0]!.id}
-const repository:WebhookRepository={
-  async message(accountIgId,event){const accountId=await account(accountIgId);if(!accountId)return null;const message=(event.message??{})as Record<string,unknown>;if(message.is_echo)return null;const sender=(event.sender??{})as Record<string,unknown>,recipient=(event.recipient??{})as Record<string,unknown>;const eventId=String(message.mid??event.id??crypto.randomUUID()),participantId=String(sender.id??'');const leadId=await lead(participantId,participantId);const thread=await pool.query<{id:string}>(`INSERT INTO own_dm_threads(account_id,ig_thread_id,participant_username,participant_ig_user_id,last_message_at,unread_count) VALUES($1,$2,$3,$3,now(),1) ON CONFLICT(ig_thread_id) DO UPDATE SET last_message_at=now(),unread_count=own_dm_threads.unread_count+1 RETURNING id`,[accountId,`${accountIgId}:${participantId}`,participantId]);const inserted=await pool.query<{id:string}>(`INSERT INTO own_dm_messages(thread_id,ig_message_id,direction,text,sent_at) VALUES($1,$2,'inbound',$3,to_timestamp($4)) ON CONFLICT(ig_message_id) DO NOTHING RETURNING id`,[thread.rows[0]!.id,eventId,String(message.text??''),Number(event.timestamp??Date.now())/1000]);if(!inserted.rowCount)return null;await pool.query(`INSERT INTO lead_interactions(lead_id,account_id,kind,direction,source,ref_type,ref_id,payload) VALUES($1,$2,'dm_inbound','inbound','webhook','dm_message',$3,$4)`,[leadId,accountId,inserted.rows[0]!.id,JSON.stringify({sender,recipient})]);const count=Number((await pool.query<{count:string}>('SELECT COUNT(*)::text count FROM own_dm_messages WHERE thread_id=$1 AND direction=\'inbound\'',[thread.rows[0]!.id])).rows[0]?.count??1);return{eventId,messageId:inserted.rows[0]!.id,threadId:thread.rows[0]!.id,leadId,campaignId:(await campaign())??'',subsequent:count>1}},
-  async mention(accountIgId,value){const accountId=await account(accountIgId);if(!accountId)return null;const eventId=String(value.id??crypto.randomUUID());const result=await pool.query<{id:string}>(`INSERT INTO own_mentions(account_id,ig_mention_id,from_username,text,mentioned_at) VALUES($1,$2,$3,$4,COALESCE($5::timestamptz,now())) ON CONFLICT(ig_mention_id) DO NOTHING RETURNING id`,[accountId,eventId,String(value.username??value.from??''),String(value.text??value.caption??''),value.timestamp??null]);return result.rows[0]?{eventId,mentionId:result.rows[0].id}:null},
-  async comment(accountIgId,value){const accountId=await account(accountIgId);if(!accountId)return null;const from=(value.from??{})as Record<string,unknown>;const eventId=String(value.id??crypto.randomUUID()),username=String(from.username??value.username??from.id??'instagram_user');const leadId=await lead(username,String(from.id??''));const result=await pool.query<{id:string}>(`INSERT INTO own_comments(account_id,ig_comment_id,from_username,text,commented_at) VALUES($1,$2,$3,$4,COALESCE($5::timestamptz,now())) ON CONFLICT(ig_comment_id) DO NOTHING RETURNING id`,[accountId,eventId,username,String(value.text??''),value.timestamp??null]);if(!result.rows[0])return null;await pool.query(`INSERT INTO lead_interactions(lead_id,account_id,kind,direction,source,ref_type,ref_id,payload) VALUES($1,$2,'comment_received','inbound','webhook','own_comment',$3,$4)`,[leadId,accountId,result.rows[0].id,JSON.stringify(value)]);return{eventId,commentId:result.rows[0].id,leadId,campaignId:(await campaign())??''}}
+import { createDatabase, createPostgresHeartbeatStore } from "@plataforma/db";
+import { createQueueRegistry, enqueueOnce } from "@plataforma/queue";
+import { runWorker } from "@plataforma/queue/runtime";
+import { startWorkerHeartbeat } from "@plataforma/shared/worker";
+import {
+  createWebhookProcessor,
+  spec,
+  type WebhookRepository,
+} from "./index.js";
+const databaseUrl = process.env.DATABASE_URL,
+  redisUrl = process.env.REDIS_URL;
+if (!databaseUrl || !redisUrl)
+  throw new Error("DATABASE_URL and REDIS_URL are required");
+const { pool } = createDatabase(databaseUrl);
+const registry = createQueueRegistry(redisUrl);
+async function account(igId: string) {
+  return (
+    await pool.query<{ id: string }>(
+      "SELECT id FROM accounts WHERE meta_ig_user_id=$1",
+      [igId],
+    )
+  ).rows[0]?.id;
 }
-const queue={dm:(payload:Record<string,unknown>,id:string)=>enqueueOnce(registry.queues['dm-copilot'],'dm-copilot',['event',id],{...payload,accountRole:'actor',synthetic:false}).then(()=>undefined),conversation:(payload:Record<string,unknown>,id:string)=>enqueueOnce(registry.queues['conversation-agent'],'conversation-agent',['event',id],{...payload,accountRole:'actor'}).then(()=>undefined),mention:(payload:Record<string,unknown>,id:string)=>enqueueOnce(registry.queues['mention-monitor'],'mention-monitor',['event',id],payload).then(()=>undefined),classification:(payload:Record<string,unknown>,id:string)=>enqueueOnce(registry.queues.classification,'classification',['event',id],payload).then(()=>undefined)}
-const worker=runWorker(spec.queue,createWebhookProcessor(repository,queue));const stop=startWorkerHeartbeat(spec.queue,createPostgresHeartbeatStore(pool),()=>({jobsDone:0,jobsFailed:0,backlog:0,p95LatencyMs:0,state:worker?.isRunning()?'running':'disabled'}));process.once('SIGTERM',()=>void stop().finally(()=>pool.end()).finally(()=>registry.connection.quit()))
+async function campaign() {
+  return (
+    await pool.query<{ id: string }>(
+      `SELECT id FROM campaigns WHERE status='active' ORDER BY created_at LIMIT 1`,
+    )
+  ).rows[0]?.id;
+}
+async function lead(username: string, igId?: string) {
+  let result = await pool.query<{ id: string }>(
+    "SELECT id FROM leads WHERE instagram_user_id=$1 OR lower(username_current)=lower($2) ORDER BY last_seen_at DESC LIMIT 1",
+    [igId ?? null, username],
+  );
+  if (!result.rows[0])
+    result = await pool.query<{ id: string }>(
+      "INSERT INTO leads(username_current,instagram_user_id) VALUES($1,$2) RETURNING id",
+      [username || igId || "instagram_user", igId ?? null],
+    );
+  return result.rows[0]!.id;
+}
+const repository: WebhookRepository = {
+  async message(accountIgId, event) {
+    const accountId = await account(accountIgId);
+    if (!accountId) return null;
+    const message = (event.message ?? {}) as Record<string, unknown>;
+    if (message.is_echo) return null;
+    const sender = (event.sender ?? {}) as Record<string, unknown>,
+      recipient = (event.recipient ?? {}) as Record<string, unknown>;
+    const eventId = String(message.mid ?? event.id ?? crypto.randomUUID()),
+      participantId = String(sender.id ?? "");
+    const leadId = await lead(participantId, participantId);
+    const thread = await pool.query<{ id: string }>(
+      `INSERT INTO own_dm_threads(account_id,ig_thread_id,participant_username,participant_ig_user_id,last_message_at,unread_count) VALUES($1,$2,$3,$3,now(),1) ON CONFLICT(ig_thread_id) DO UPDATE SET last_message_at=now(),unread_count=own_dm_threads.unread_count+1 RETURNING id`,
+      [accountId, `${accountIgId}:${participantId}`, participantId],
+    );
+    const inserted = await pool.query<{ id: string }>(
+      `INSERT INTO own_dm_messages(thread_id,ig_message_id,direction,text,sent_at) VALUES($1,$2,'inbound',$3,to_timestamp($4)) ON CONFLICT(ig_message_id) DO NOTHING RETURNING id`,
+      [
+        thread.rows[0]!.id,
+        eventId,
+        String(message.text ?? ""),
+        Number(event.timestamp ?? Date.now()) / 1000,
+      ],
+    );
+    if (!inserted.rowCount) return null;
+    await pool.query(
+      `INSERT INTO lead_interactions(lead_id,account_id,kind,direction,source,ref_type,ref_id,payload) VALUES($1,$2,'dm_inbound','inbound','webhook','dm_message',$3,$4)`,
+      [
+        leadId,
+        accountId,
+        inserted.rows[0]!.id,
+        JSON.stringify({ sender, recipient }),
+      ],
+    );
+    const count = Number(
+      (
+        await pool.query<{ count: string }>(
+          "SELECT COUNT(*)::text count FROM own_dm_messages WHERE thread_id=$1 AND direction='inbound'",
+          [thread.rows[0]!.id],
+        )
+      ).rows[0]?.count ?? 1,
+    );
+    return {
+      eventId,
+      messageId: inserted.rows[0]!.id,
+      threadId: thread.rows[0]!.id,
+      leadId,
+      campaignId: (await campaign()) ?? "",
+      subsequent: count > 1,
+    };
+  },
+  async mention(accountIgId, value) {
+    const accountId = await account(accountIgId);
+    if (!accountId) return null;
+    const eventId = String(value.id ?? crypto.randomUUID());
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO own_mentions(account_id,ig_mention_id,from_username,text,mentioned_at) VALUES($1,$2,$3,$4,COALESCE($5::timestamptz,now())) ON CONFLICT(ig_mention_id) DO NOTHING RETURNING id`,
+      [
+        accountId,
+        eventId,
+        String(value.username ?? value.from ?? ""),
+        String(value.text ?? value.caption ?? ""),
+        value.timestamp ?? null,
+      ],
+    );
+    return result.rows[0] ? { eventId, mentionId: result.rows[0].id } : null;
+  },
+  async comment(accountIgId, value) {
+    const accountId = await account(accountIgId);
+    if (!accountId) return null;
+    const from = (value.from ?? {}) as Record<string, unknown>;
+    const eventId = String(value.id ?? crypto.randomUUID()),
+      username = String(
+        from.username ?? value.username ?? from.id ?? "instagram_user",
+      );
+    const leadId = await lead(username, String(from.id ?? ""));
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO own_comments(account_id,ig_comment_id,from_username,text,commented_at) VALUES($1,$2,$3,$4,COALESCE($5::timestamptz,now())) ON CONFLICT(ig_comment_id) DO NOTHING RETURNING id`,
+      [
+        accountId,
+        eventId,
+        username,
+        String(value.text ?? ""),
+        value.timestamp ?? null,
+      ],
+    );
+    if (!result.rows[0]) return null;
+    await pool.query(
+      `INSERT INTO lead_interactions(lead_id,account_id,kind,direction,source,ref_type,ref_id,payload) VALUES($1,$2,'comment_received','inbound','webhook','own_comment',$3,$4)`,
+      [leadId, accountId, result.rows[0].id, JSON.stringify(value)],
+    );
+    return {
+      eventId,
+      commentId: result.rows[0].id,
+      leadId,
+      campaignId: (await campaign()) ?? "",
+    };
+  },
+};
+const queue = {
+  dm: (payload: Record<string, unknown>, id: string) =>
+    enqueueOnce(registry.queues["dm-copilot"], "dm-copilot", ["event", id], {
+      ...payload,
+      accountRole: "actor",
+      synthetic: false,
+    }).then(() => undefined),
+  conversation: (payload: Record<string, unknown>, id: string) =>
+    enqueueOnce(
+      registry.queues["conversation-agent"],
+      "conversation-agent",
+      ["event", id],
+      { ...payload, accountRole: "actor" },
+    ).then(() => undefined),
+  mention: (payload: Record<string, unknown>, id: string) =>
+    enqueueOnce(
+      registry.queues["mention-monitor"],
+      "mention-monitor",
+      ["event", id],
+      payload,
+    ).then(() => undefined),
+  classification: (payload: Record<string, unknown>, id: string) =>
+    enqueueOnce(
+      registry.queues.classification,
+      "classification",
+      ["event", id],
+      payload,
+    ).then(() => undefined),
+};
+const worker = runWorker(spec.queue, createWebhookProcessor(repository, queue));
+const stop = startWorkerHeartbeat(
+  spec.queue,
+  createPostgresHeartbeatStore(pool),
+  () => ({
+    jobsDone: 0,
+    jobsFailed: 0,
+    backlog: 0,
+    p95LatencyMs: 0,
+    state: worker?.isRunning() ? "running" : "disabled",
+  }),
+);
+process.once(
+  "SIGTERM",
+  () =>
+    void stop()
+      .finally(() => pool.end())
+      .finally(() => registry.connection.quit()),
+);

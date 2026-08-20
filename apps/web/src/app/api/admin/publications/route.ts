@@ -9,6 +9,17 @@ const Status = z.enum(['idea', 'draft', 'ready', 'approved', 'scheduled', 'publi
 const Channel = z.enum(['instagram', 'threads'])
 const Subtype = z.enum(['feed', 'reels', 'stories', 'carousel', 'threads', 'static'])
 
+const ContentStructure = z.object({
+  roteiro: z.string().max(10000).optional(),
+  slides: z.array(z.object({
+    ordem: z.number().int().min(1),
+    titulo: z.string().max(200),
+    texto: z.string().max(2000),
+  })).max(20).optional(),
+  legenda_longa: z.string().max(5000).optional(),
+  observacoes: z.string().max(2000).optional(),
+}).nullable().optional()
+
 const PublicationInput = z.object({
   id: z.string().uuid().optional(),
   title: z.string().trim().max(180).nullable().optional(),
@@ -23,6 +34,7 @@ const PublicationInput = z.object({
   format: z.string().trim().max(100).nullable().optional(),
   hashtags: z.array(z.string().trim().min(1).max(100)).max(30).nullable().optional(),
   cta: z.string().trim().max(500).nullable().optional(),
+  content_structure: ContentStructure,
   origin: z.enum(['manual', 'ai_generated', 'automation']).optional(),
   external_id: z.string().nullable().optional(),
 }).strict()
@@ -55,12 +67,13 @@ export async function POST(request: Request) {
       const item = (await client.query(
         `INSERT INTO scheduled_publications(
           campaign_id,title,caption,channel,subtype,status,scheduled_for,origin,locked_at,locked_by,
-          thesis_id,pillar,format,hashtags,cta,curation_status,approved_by
-        ) VALUES($1,$2,$3,$4,$5,$6,$7,'manual',$8,$9,$10,$11,$12,$13,$14,'approved',$9)
+          thesis_id,pillar,format,hashtags,cta,content_structure,curation_status,approved_by
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,'manual',$8,$9,$10,$11,$12,$13,$14,$15::jsonb,'approved',$9)
         RETURNING *,ig_media_id AS external_id`,
         [selected.id, input.title ?? null, input.caption ?? null, input.channel ?? 'instagram', input.subtype ?? null,
           input.status ?? 'idea', input.scheduled_for ?? null, input.locked_at ?? null, user.email ?? 'operator',
-          input.thesis_id ?? null, input.pillar ?? null, input.format ?? null, input.hashtags ?? null, input.cta ?? null],
+          input.thesis_id ?? null, input.pillar ?? null, input.format ?? null, input.hashtags ?? null, input.cta ?? null,
+          input.content_structure ? JSON.stringify(input.content_structure) : '{}'],
       )).rows[0]
       await client.query(
         `INSERT INTO audit_log(actor_id,action,target,after) VALUES($1,'publication.manual_created',$2,$3::jsonb)`,
@@ -104,15 +117,18 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'invalid_state' }, { status: 409 })
       }
       const value = <T,>(key: string, supplied: T | undefined) => supplied === undefined ? before[key] : supplied
+      const csRaw = input.content_structure !== undefined ? input.content_structure : before.content_structure
       const item = (await client.query(
         `UPDATE scheduled_publications SET
           title=$2,caption=$3,channel=$4,subtype=$5,status=$6,scheduled_for=$7,locked_at=$8,
-          locked_by=CASE WHEN $8::timestamptz IS NULL THEN NULL ELSE $9 END,thesis_id=$10,pillar=$11,format=$12,hashtags=$13,cta=$14
+          locked_by=CASE WHEN $8::timestamptz IS NULL THEN NULL ELSE $9 END,thesis_id=$10,pillar=$11,format=$12,hashtags=$13,cta=$14,
+          content_structure=$15::jsonb
          WHERE id=$1 RETURNING *,ig_media_id AS external_id`,
         [input.id, value('title', input.title), value('caption', input.caption), value('channel', input.channel),
           value('subtype', input.subtype), nextStatus, value('scheduled_for', input.scheduled_for), value('locked_at', input.locked_at),
           user.email ?? 'operator', value('thesis_id', input.thesis_id), value('pillar', input.pillar), value('format', input.format),
-          value('hashtags', input.hashtags), value('cta', input.cta)],
+          value('hashtags', input.hashtags), value('cta', input.cta),
+          csRaw ? JSON.stringify(csRaw) : '{}'],
       )).rows[0]
       await client.query(
         `INSERT INTO audit_log(actor_id,action,target,before,after) VALUES($1,'publication.manual_updated',$2,$3::jsonb,$4::jsonb)`,

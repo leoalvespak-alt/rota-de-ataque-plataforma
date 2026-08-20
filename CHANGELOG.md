@@ -6,6 +6,19 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 
 ### Fixed
 
+- **Prospector — correções P0 e plano de controle de workers** (19/08/2026):
+  - C1: `news_sources.active` (não `enabled`) em `OverviewReadiness`; crash no `finally` corrigido para `catch` com `<EmptyState>`.
+  - C2: `audit_log.at` aliasado como `created_at` na página de Contas.
+  - C3: TanStack Table v9 — `ui-bridge` exporta `gridFeatures` com features e row models registrados; estado de paginação gerenciado externamente; `createColumnHelper` re-exportado; todos os consumidores atualizados.
+  - C4: Saúde do Sistema lê `worker_settings` do banco (não env vars).
+  - C5: `beat()` faz cleanup de heartbeats de instâncias antigas; migration `0027` remove heartbeats >2h e resolve alertas órfãos.
+  - C6: Agendamento configurável via UI (coluna inline) e API (`set_schedule` com retorno antecipado antes do INSERT em `worker_commands`).
+  - C7: Migration `0028` promove baseline manual a `content_opportunities` com CHECK constraint de status.
+  - C8: `content_structure` (roteiro/legenda/slides/obs) adicionado a `scheduled_publications`, API e `SlotEditor`.
+  - Migration `0029`: converte `hashtags`/`cta` de `text[]` para `jsonb` com cláusula `USING`.
+  - Worker `alerts`: lê `worker_settings` do banco; workers desabilitados não disparam alertas dead-man.
+  - Testes ui-bridge: 15/15 (9 arquivos).
+
 - **Prospector — hotfix auth/basePath** (19/08/2026): corrigidos 5 bugs críticos que impediam login e causavam loop de redirect com 502:
   - Middleware: `NextURL.clone()` duplicava `/prospector` no header `Location` → trocado por `new URL()` puro.
   - Middleware: `/login` não era isento, causando loop infinito de redirect.

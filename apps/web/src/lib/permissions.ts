@@ -1,3 +1,14 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from './auth'
-export async function requireRole(minimum:'viewer'|'operator'|'admin'){if(process.env.AUTH_BOOTSTRAP_VIEWER==='true'&&minimum==='viewer')return{id:'bootstrap-viewer',email:'bootstrap-viewer@local',role:'viewer' as const};const session=await getServerSession(authOptions);const rank={viewer:0,operator:1,admin:2};if(!session?.user||rank[session.user.role]<rank[minimum])throw Object.assign(new Error('Forbidden'),{status:403});return session.user}
+import { assertRoleAccess, type AppRole } from './role-access'
+
+export type AuthenticatedUser = { id?: string; email?: string | null; role: AppRole }
+
+export async function requireRole(minimum: AppRole): Promise<AuthenticatedUser> {
+  const localBootstrap = process.env.AUTH_BOOTSTRAP_VIEWER === 'true'
+    && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
+  if (localBootstrap && minimum === 'viewer') return { id: 'bootstrap-viewer', email: 'bootstrap-viewer@local', role: 'viewer' as const }
+  const session = await getServerSession(authOptions)
+  assertRoleAccess(session?.user as { role?: AppRole } | null, minimum)
+  return session!.user as AuthenticatedUser
+}

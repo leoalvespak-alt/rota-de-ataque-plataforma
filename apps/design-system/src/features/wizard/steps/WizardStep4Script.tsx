@@ -1,16 +1,20 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useWizardStore, type ScriptCard } from '@/stores/useWizardStore'
 import { getTemplateById } from '@/features/templates/registry'
 import { ProfileCanvasWrapper } from '@/features/templates/ProfileCanvasWrapper'
 import { cn } from '@/lib/utils'
-import { Eye, RefreshCw, Sparkles, X } from 'lucide-react'
+import { Eye, RefreshCw, Sparkles, X, Loader2 } from 'lucide-react'
+import { useWizardAI } from '@/features/wizard/hooks/useWizardAI'
+import { getTemplateContract } from '@/domain/templateContracts'
 
 function CardPreviewModal({ card, templateId, profileId, onClose }: { card: ScriptCard; templateId: string; profileId: string | null; onClose: () => void }) {
+  if (!templateId) return null
   const tpl = getTemplateById(templateId)
   if (!tpl) return null
 
   const elements = {
     ...tpl.defaults as Record<string, unknown>,
+    ...card.fields,
     title: card.title,
     subtitle: card.body,
     body: card.body,
@@ -50,18 +54,33 @@ function ScriptCardEditor({
   card,
   index,
   onUpdate,
-  onClear,
   onPreview,
+  onRegenerate,
+  generating,
 }: {
   card: ScriptCard
   index: number
   onUpdate: (id: string, patch: Partial<ScriptCard>) => void
-  onClear: (id: string) => void
-  onPreview: (card: ScriptCard) => void
+  onPreview: (card: ScriptCard, index: number) => void
+  onRegenerate: (id: string) => void
+  generating: boolean
 }) {
+  const textFields = getTemplateContract(card.templateId ?? '')?.fieldSchema.fields.filter(
+    (field) => field.type === 'text',
+  ) ?? []
+
+  const updateField = (name: string, value: string) => {
+    const fields = { ...card.fields, [name]: value }
+    onUpdate(card.id, {
+      fields,
+      ...(name === 'title' ? { title: value } : {}),
+      ...(['body', 'subtitle', 'text'].includes(name) ? { body: value } : {}),
+      ...(name === 'eyebrow' ? { eyebrow: value } : {}),
+    })
+  }
   const roleLabels: Record<string, string> = {
     cover: 'Capa',
-    slide: `Slide ${index}`,
+    slide: `Slide ${index + 1}`,
     cta: 'CTA Final',
   }
 
@@ -71,119 +90,143 @@ function ScriptCardEditor({
         <h4 className="text-sm font-semibold text-ui-text">{roleLabels[card.role] ?? card.role}</h4>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => onPreview(card)}
+            onClick={() => onPreview(card, index)}
             title="Prévia do card"
             className="rounded-lg p-1.5 text-ui-muted transition-colors hover:bg-ui-panel2 hover:text-ui-text"
           >
             <Eye className="size-4" />
           </button>
           <button
-            onClick={() => onClear(card.id)}
+            onClick={() => onRegenerate(card.id)}
             title="Regenerar conteúdo deste card"
-            className="rounded-lg p-1.5 text-ui-muted transition-colors hover:bg-ui-panel2 hover:text-brand-red"
+            disabled={generating}
+            className="rounded-lg p-1.5 text-ui-muted transition-colors hover:bg-ui-panel2 hover:text-brand-red disabled:opacity-50"
           >
-            <RefreshCw className="size-4" />
+            <RefreshCw className={cn("size-4", generating && "animate-spin")} />
           </button>
         </div>
       </div>
 
-      {card.eyebrow !== undefined && (
-        <div className="mb-3">
-          <label className="mb-1 block text-[11px] font-medium text-ui-muted">Eyebrow</label>
-          <input
-            type="text"
-            value={card.eyebrow ?? ''}
-            onChange={(e) => onUpdate(card.id, { eyebrow: e.target.value })}
-            placeholder="TAG CURTA"
-            className="w-full rounded-lg border border-ui-border bg-ui-panel2 px-3 py-2 text-sm text-ui-text placeholder:text-ui-muted/50 focus:border-brand-red focus:outline-none"
-          />
-        </div>
-      )}
-
-      <div className="mb-3">
-        <label className="mb-1 block text-[11px] font-medium text-ui-muted">Título</label>
-        <input
-          type="text"
-          value={card.title}
-          onChange={(e) => onUpdate(card.id, { title: e.target.value })}
-          placeholder="Título impactante"
-          className="w-full rounded-lg border border-ui-border bg-ui-panel2 px-3 py-2 text-sm text-ui-text placeholder:text-ui-muted/50 focus:border-brand-red focus:outline-none"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-[11px] font-medium text-ui-muted">Corpo</label>
-        <textarea
-          value={card.body}
-          onChange={(e) => onUpdate(card.id, { body: e.target.value })}
-          rows={3}
-          placeholder="Texto do corpo do card…"
-          className="w-full rounded-lg border border-ui-border bg-ui-panel2 px-3 py-2 text-sm text-ui-text placeholder:text-ui-muted/50 focus:border-brand-red focus:outline-none"
-        />
-      </div>
+      {(textFields.length ? textFields : [
+        { name: 'eyebrow', required: false, maxLength: 40 },
+        { name: 'title', required: true, maxLength: 90 },
+        { name: 'body', required: false, maxLength: 300 },
+      ]).map((field) => {
+        const multiline = !['eyebrow', 'title', 'cta'].includes(field.name)
+        return (
+          <div className="mb-3" key={field.name}>
+            <label className="mb-1 block text-[11px] font-medium text-ui-muted">
+              {field.name}{field.required ? ' *' : ''}
+            </label>
+            {multiline ? (
+              <textarea
+                value={card.fields[field.name] ?? ''}
+                onChange={(event) => updateField(field.name, event.target.value)}
+                maxLength={field.maxLength}
+                rows={3}
+                className="w-full rounded-lg border border-ui-border bg-ui-panel2 px-3 py-2 text-sm text-ui-text focus:border-brand-red focus:outline-none"
+              />
+            ) : (
+              <input
+                type="text"
+                value={card.fields[field.name] ?? ''}
+                onChange={(event) => updateField(field.name, event.target.value)}
+                maxLength={field.maxLength}
+                className="w-full rounded-lg border border-ui-border bg-ui-panel2 px-3 py-2 text-sm text-ui-text focus:border-brand-red focus:outline-none"
+              />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 export function WizardStep4Script() {
   const scriptCards = useWizardStore((s) => s.scriptCards)
-  const setScriptCards = useWizardStore((s) => s.setScriptCards)
   const updateScriptCard = useWizardStore((s) => s.updateScriptCard)
-  const clearScriptCard = useWizardStore((s) => s.clearScriptCard)
-  const templateId = useWizardStore((s) => s.templateId)
-  const cardCount = useWizardStore((s) => s.cardCount)
-  const creativeType = useWizardStore((s) => s.creativeType)
+  const getTemplateForSlide = useWizardStore((s) => s.getTemplateForSlide)
   const profileId = useWizardStore((s) => s.profileId)
 
-  const [previewCard, setPreviewCard] = useState<ScriptCard | null>(null)
+  const [preview, setPreview] = useState<{ card: ScriptCard; index: number } | null>(null)
   const [regenerateContext, setRegenerateContext] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [generatingCardId, setGeneratingCardId] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const { regenerateAll, regenerateCard } = useWizardAI({
+    onSuccess: () => setFeedback({ type: 'success', message: 'Copy regenerada com sucesso!' }),
+    onError: (error) => setFeedback({ type: 'error', message: error.message }),
+  })
 
+  // Limpar feedback após 5 segundos
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => setFeedback(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback])
+
+  // Removido: Cards agora são inicializados na Etapa 3
   const ensureCards = useMemo(() => {
-    if (scriptCards.length > 0) return scriptCards
-    const cards: ScriptCard[] = []
-    const isCarousel = creativeType === 'carousel'
-    const total = isCarousel ? cardCount : 1
+    return scriptCards.length > 0 ? scriptCards : []
+  }, [scriptCards])
 
-    cards.push({ id: crypto.randomUUID(), role: 'cover', title: '', body: '', eyebrow: '' })
-    for (let i = 1; i < total - 1; i++) {
-      cards.push({ id: crypto.randomUUID(), role: 'slide', title: '', body: '', eyebrow: '' })
+  const handleRegenerateAll = async () => {
+    setGenerating(true)
+    try {
+      await regenerateAll(regenerateContext)
+    } finally {
+      setGenerating(false)
     }
-    if (isCarousel && total > 1) {
-      cards.push({ id: crypto.randomUUID(), role: 'cta', title: '', body: '', eyebrow: '' })
-    }
-    return cards
-  }, [scriptCards, cardCount, creativeType])
-
-  if (scriptCards.length === 0 && ensureCards.length > 0) {
-    setTimeout(() => setScriptCards(ensureCards), 0)
   }
 
-  const handleRegenerateAll = () => {
-    setGenerating(true)
-    const newCards = ensureCards.map((c) => ({ ...c, title: '', body: '', eyebrow: '' }))
-    setScriptCards(newCards)
-    setTimeout(() => setGenerating(false), 100)
+  const handleRegenerateCard = async (cardId: string) => {
+    setGeneratingCardId(cardId)
+    try {
+      const copy = await regenerateCard(cardId, regenerateContext)
+      if (copy) {
+        updateScriptCard(cardId, copy)
+      }
+    } finally {
+      setGeneratingCardId(null)
+    }
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-ui-text font-heading">Roteiro</h2>
-          <p className="mt-1 text-sm text-ui-muted">
-            Edite o conteúdo de cada card. Use o botão de prévia para visualizar.
-          </p>
-        </div>
-        <button
-          onClick={handleRegenerateAll}
-          disabled={generating}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-ui-border px-3 py-2 text-xs font-medium text-ui-text transition-colors hover:border-brand-red hover:text-brand-red disabled:opacity-50"
-        >
-          <Sparkles className={cn('size-3.5', generating && 'animate-spin')} />
-          Regenerar Tudo
-        </button>
-      </div>
+       <div className="mx-auto max-w-2xl px-6 py-10">
+         {feedback && (
+           <div className={cn(
+             "fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-lg",
+             feedback.type === 'success' ? "bg-emerald-500" : "bg-red-500",
+           )}>
+             {feedback.message}
+           </div>
+         )}
+         <div className="mb-6 flex items-center justify-between">
+           <div>
+             <h2 className="text-xl font-bold text-ui-text font-heading">Roteiro</h2>
+             <p className="mt-1 text-sm text-ui-muted">
+               Edite o conteúdo de cada card. Use o botão de prévia para visualizar.
+             </p>
+           </div>
+           <button
+             onClick={handleRegenerateAll}
+             disabled={generating}
+             className="inline-flex items-center gap-1.5 rounded-lg border border-ui-border px-3 py-2 text-xs font-medium text-ui-text transition-colors hover:border-brand-red hover:text-brand-red disabled:opacity-50"
+           >
+             {generating ? (
+               <>
+                 <Loader2 className="size-3.5 animate-spin" />
+                 Regenerando...
+               </>
+             ) : (
+               <>
+                 <Sparkles className="size-3.5" />
+                 Regenerar Tudo
+               </>
+             )}
+           </button>
+         </div>
 
       <div className="mb-6 rounded-xl border border-ui-border bg-ui-panel p-3">
         <label className="mb-1 block text-[11px] font-medium text-ui-muted">
@@ -198,25 +241,26 @@ export function WizardStep4Script() {
         />
       </div>
 
-      <div className="space-y-4">
-        {(scriptCards.length > 0 ? scriptCards : ensureCards).map((card, i) => (
-          <ScriptCardEditor
-            key={card.id}
-            card={card}
-            index={i}
-            onUpdate={updateScriptCard}
-            onClear={clearScriptCard}
-            onPreview={setPreviewCard}
-          />
-        ))}
-      </div>
+       <div className="space-y-4">
+         {(scriptCards.length > 0 ? scriptCards : ensureCards).map((card, i) => (
+           <ScriptCardEditor
+             key={card.id}
+             card={card}
+             index={i}
+             onUpdate={updateScriptCard}
+             onPreview={(card, index) => setPreview({ card, index })}
+             onRegenerate={handleRegenerateCard}
+             generating={generatingCardId === card.id}
+           />
+         ))}
+       </div>
 
-      {previewCard && templateId && (
+      {preview && (
         <CardPreviewModal
-          card={previewCard}
-          templateId={templateId}
+          card={preview.card}
+          templateId={getTemplateForSlide(preview.index) ?? ''}
           profileId={profileId}
-          onClose={() => setPreviewCard(null)}
+          onClose={() => setPreview(null)}
         />
       )}
     </div>

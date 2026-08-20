@@ -1,10 +1,11 @@
 'use client'
 
 import React, { createContext, useContext } from 'react'
+import type { AppRole } from '@/lib/role-access'
 
 export interface Session {
   name: string
-  role: string
+role: AppRole
   avatarUrl?: string
 }
 

@@ -38,10 +38,14 @@ button,a{transition:background-color var(--motion-fast) ease-out,color var(--mot
    ============================================================ */
 
 /* Ensure minimum 44px tap targets */
-button, a, [role="button"], input[type="checkbox"], input[type="radio"], select {
+button, a, [role="button"], select {
   min-height: 44px;
   min-width: 44px;
 }
+
+/* A área de toque pertence ao label; o controle visual não deve virar um card. */
+input[type="checkbox"], input[type="radio"] { min-width: 18px; min-height: 18px; width: 18px; height: 18px; }
+.bridge-checkbox-field, .bridge-switch-field, .check-row { min-height: 44px; cursor: pointer; }
 
 /* Exceptions for inline/badge-style elements */
 .status-badge, .score, .priority, .role, .live, .runbook, .filter-chip {
@@ -132,3 +136,10 @@ kbd {
 }
 @keyframes bridge-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } } .bridge-skeleton { animation: bridge-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; background-color: var(--surface-overlay); }
 .bridge-data-grid tbody tr:hover { background-color: var(--surface-overlay); transition: background-color 0.15s ease; cursor: pointer; }
+
+/* Analytics surfaces consume the shared bridge visual language. */
+.dashboard-visual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.dashboard-chart-card{display:grid;grid-template-rows:auto minmax(220px,1fr);gap:12px;min-width:0;padding:16px;border:1px solid color-mix(in srgb,var(--border-default) 65%,transparent);border-radius:var(--radius-lg);background:linear-gradient(160deg,color-mix(in srgb,var(--surface-raised) 92%,transparent),color-mix(in srgb,var(--surface-subtle) 54%,transparent));box-shadow:var(--shadow-sm)}.dashboard-chart-card-wide{grid-column:1/-1}.dashboard-chart-card>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.dashboard-chart-card>header span{display:block;margin-bottom:3px;color:var(--text-tertiary);font-size:10px;font-weight:750;letter-spacing:.11em;text-transform:uppercase}.dashboard-chart-card h4{margin:0;font-size:15px;letter-spacing:-.01em}.dashboard-chart-card>header>strong{display:grid;min-width:42px;height:42px;place-items:center;border-radius:13px;background:color-mix(in srgb,var(--accent-primary) 11%,transparent);color:var(--accent-primary);font-size:18px}.dashboard-chart-empty{display:grid;min-height:220px;place-items:center;align-content:center;gap:8px;border-radius:var(--radius-lg);background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--accent-primary) 8%,transparent),transparent 64%);color:var(--text-tertiary);text-align:center}.dashboard-chart-empty span{font-size:32px;color:color-mix(in srgb,var(--accent-primary) 65%,var(--text-tertiary))}.dashboard-chart-empty p{max-width:260px;margin:0;font-size:13px}.overview-priority-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.overview-priority-strip>div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;border-radius:var(--radius-md);padding:12px 13px;background:color-mix(in srgb,var(--surface-subtle) 66%,transparent)}.overview-priority-strip span{overflow:hidden;color:var(--text-secondary);text-overflow:ellipsis;white-space:nowrap}.overview-priority-strip strong{font-size:17px}.bridge-metric-group{margin-bottom:18px}
+@media(max-width:900px){.dashboard-visual-grid{grid-template-columns:1fr}.dashboard-chart-card-wide{grid-column:auto}.overview-priority-strip{grid-template-columns:1fr}}
+.card,.operational-section,.data-table{border-color:color-mix(in srgb,var(--border-default) 68%,transparent);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}.bridge-inline-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--border-default) 65%,transparent);border-radius:var(--radius-md);background:color-mix(in srgb,var(--surface-raised) 78%,transparent);color:var(--text-secondary)}
+@media(max-width:720px){.bridge-inline-notice{align-items:flex-start;flex-direction:column}}
+.role.viewer{color:var(--text-secondary)}.role.operator{color:var(--status-info)}.role.admin{color:var(--accent-primary)}
