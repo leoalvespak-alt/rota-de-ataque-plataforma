@@ -7,7 +7,7 @@ import { ApiError } from './routes/helpers'
 export const OPERATOR_USER_ID = process.env.DESIGN_OPERATOR_USER_ID ?? '00000000-0000-4000-8000-000000000001'
 export const SESSION_COOKIE = 'rda_design_session'
 export const CSRF_COOKIE = 'rda_design_csrf'
-const SESSION_TTL_SECONDS = 12 * 60 * 60
+const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS ?? 30 * 24 * 60 * 60)
 
 function equalSecret(left: string, right: string): boolean {
   const a = Buffer.from(left)
