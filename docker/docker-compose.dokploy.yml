@@ -43,6 +43,7 @@ services:
     image: ghcr.io/leoalvespak-alt/prospector-platform-web:latest
     pull_policy: always
     restart: unless-stopped
+    env_file: .env
     environment:
       DATABASE_POOL_MAX: "10"
     ports:
