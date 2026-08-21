@@ -1,6 +1,8 @@
 import { Queue, type ConnectionOptions } from 'bullmq'
 
-const connection: ConnectionOptions = { host: process.env.REDIS_HOST ?? 'localhost', port: Number(process.env.REDIS_PORT ?? 6379) }
+import { getBullMQConnection } from '@/server/infra/redis'
+
+const connection: ConnectionOptions = getBullMQConnection()
 export const EDITORIAL_QUEUE_NAMES = ['editorial-plan', 'editorial-brief', 'editorial-copy', 'editorial-review', 'editorial-similarity', 'editorial-rewrite', 'editorial-template', 'editorial-visual', 'editorial-render', 'editorial-finalize'] as const
 export type EditorialQueueName = (typeof EDITORIAL_QUEUE_NAMES)[number]
 export type EditorialJobData = { generationJobId: string; planId?: string; planItemId?: string; contentItemId?: string; payload?: Record<string, unknown> }

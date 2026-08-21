@@ -73,12 +73,10 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   await next()
 }
 
-let redis: Redis | undefined
+import { getRedis } from '@/server/infra/redis'
+
 function rateLimitRedis(): Redis {
-  const url = process.env.REDIS_URL
-  if (!url) throw new ApiError(503, 'Rate limit distribuído não configurado.')
-  redis ??= new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 1, enableOfflineQueue: false })
-  return redis
+  return getRedis()
 }
 
 export function rateLimit(maxRequests: number, windowMs: number): MiddlewareHandler {
@@ -98,7 +96,9 @@ export function rateLimit(maxRequests: number, windowMs: number): MiddlewareHand
       if (count > maxRequests) throw new ApiError(429, 'Muitas requisições. Tente novamente mais tarde.')
     } catch (error) {
       if (error instanceof ApiError) throw error
-      throw new ApiError(503, 'Rate limit temporariamente indisponível.')
+      console.error(JSON.stringify({ level: 'warn', event: 'rate_limit_redis_unavailable', path: c.req.path }))
+      await next()
+      return
     }
     await next()
   }

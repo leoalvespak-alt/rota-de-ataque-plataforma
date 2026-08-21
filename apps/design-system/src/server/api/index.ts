@@ -22,6 +22,7 @@ import { authRoutes } from './routes/auth'
 import { requireAuth } from './auth'
 import { db } from './db'
 import { getEditorialMetrics } from '@/server/editorial/metrics'
+import { getRedis } from '@/server/infra/redis'
 
 const app = new Hono()
 app.use('*', async (c, next) => {
@@ -41,12 +42,16 @@ app.use('*', cors({
 app.get('/health', (c) => c.json({ status: 'ok', release: process.env.RELEASE_ID ?? 'development' }))
 app.get('/api/health', (c) => c.json({ status: 'ok', release: process.env.RELEASE_ID ?? 'development' }))
 app.get('/api/ready', async (c) => {
+  const checks: Record<string, string> = {}
+  try { await db.execute(sql`select 1`); checks.database = 'ok' } catch { checks.database = 'unavailable' }
   try {
-    await db.execute(sql`select 1`)
-    return c.json({ status: 'ready', database: 'ok' })
-  } catch {
-    return c.json({ status: 'not_ready', database: 'unavailable' }, 503)
-  }
+    const redis = getRedis()
+    if (redis.status === 'wait') await redis.connect()
+    await redis.ping()
+    checks.redis = 'ok'
+  } catch { checks.redis = 'unavailable' }
+  const ready = checks.database === 'ok'
+  return c.json({ status: ready ? 'ready' : 'not_ready', ...checks }, ready ? 200 : 503)
 })
 app.route('/api/auth', authRoutes)
 app.use('/api/*', requireAuth)
@@ -63,6 +68,35 @@ app.onError((error, c) => {
   console.error(JSON.stringify({ level: 'error', requestId, message: error instanceof Error ? error.message : 'unknown' }))
   return c.json({ error: 'Erro interno da API.', requestId }, 500)
 })
+import {
+  createEditorialBriefWorker,
+  createEditorialCopyWorker,
+  createEditorialReviewWorker,
+  createEditorialTemplateWorker,
+  createEditorialVisualWorker,
+  createEditorialFinalizeWorker,
+} from '@/server/editorial/workers'
+
+const workers = [
+  createEditorialBriefWorker(),
+  createEditorialCopyWorker(),
+  createEditorialReviewWorker(),
+  createEditorialTemplateWorker(),
+  createEditorialVisualWorker(),
+  createEditorialFinalizeWorker(),
+]
+
+process.on('SIGTERM', () => {
+  Promise.all(workers.map(w => w.close())).then(() => process.exit(0)).catch(() => process.exit(1))
+})
+
 const port = Number(process.env.API_PORT ?? 3001)
+
+setInterval(() => {
+  db.execute(sql`DELETE FROM ai_jobs WHERE expires_at < now() - interval '7 days'`).catch(error => {
+    console.error(JSON.stringify({ level: 'error', event: 'cleanup_failed', message: error instanceof Error ? error.message : 'unknown' }))
+  })
+}, 24 * 60 * 60 * 1000)
+
 serve({ fetch: app.fetch, port })
 export default app

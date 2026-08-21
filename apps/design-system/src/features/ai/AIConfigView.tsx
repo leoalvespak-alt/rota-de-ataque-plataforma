@@ -37,12 +37,14 @@ export function AIConfigView() {
             <div className="space-y-3">
               {models.map((model) => {
                 const result = tests[model.id]
+                const provider = providers.find(p => p.id === model.provider)
+                const isCircuitOpen = provider?.circuitOpen
                 return (
                   <div key={model.id} className="flex items-center gap-3 rounded-lg bg-ui-panel2 p-3">
-                    {model.configured ? <CheckCircle2 className="size-4 text-emerald-500" /> : <AlertCircle className="size-4 text-amber-500" />}
+                    {isCircuitOpen ? <AlertCircle className="size-4 text-red-500" /> : model.configured ? <CheckCircle2 className="size-4 text-emerald-500" /> : <AlertCircle className="size-4 text-amber-500" />}
                     <div className="min-w-0 flex-1">
                       <div className="font-medium">{model.label}</div>
-                      <div className="text-xs text-ui-muted">{model.provider} · {model.capabilities.join(', ')} · {model.configured ? 'configurado' : 'não configurado'}</div>
+                      <div className="text-xs text-ui-muted">{model.provider} · {model.capabilities.join(', ')} · {isCircuitOpen ? 'circuito aberto (indisponível)' : model.configured ? 'configurado' : 'não configurado'}</div>
                       {result && <div className={`text-xs ${result.success ? 'text-emerald-500' : 'text-red-500'}`}>{result.success ? `Conectado em ${result.latency ?? 0} ms` : result.error}</div>}
                     </div>
                     <button

@@ -69,8 +69,15 @@ async function providerFetch(config: ModelConfig, url: string, init: RequestInit
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
+    const start = Date.now()
     try {
       const response = await fetch(url, { ...init, signal: controller.signal })
+      console.log(JSON.stringify({
+        level: 'info', event: 'provider_call',
+        provider: config.provider, model: config.model,
+        attempt, statusCode: response.status,
+        latencyMs: Date.now() - start,
+      }))
       if (response.ok) { recordSuccess(config.provider); return response }
       if (![429, 502, 503, 504].includes(response.status) || attempt === 2) {
         recordFailure(config.provider)
@@ -127,6 +134,30 @@ async function generateText(config: ModelConfig, prompt: string, systemPrompt: s
     content: payload.choices?.[0]?.message?.content ?? '',
     inputTokens: payload.usage?.prompt_tokens ?? 0,
     outputTokens: payload.usage?.completion_tokens ?? 0,
+  }
+}
+
+async function generateTextWithFallback(
+  preferredModelId: string,
+  prompt: string,
+  systemPrompt: string,
+  maxTokens: number,
+  temperature: number,
+): Promise<{ content: string; inputTokens: number; outputTokens: number; config: ModelConfig; fallbackUsed: boolean }> {
+  const preferred = modelConfig(preferredModelId, 'text')
+  try {
+    const result = await generateText(preferred, prompt, systemPrompt, maxTokens, temperature)
+    return { ...result, config: preferred, fallbackUsed: false }
+  } catch (error) {
+    if (!(error instanceof ApiError) || ![502, 503].includes(error.status)) throw error
+    const fallback = MODELS.find(m =>
+      m.id !== preferredModelId &&
+      m.capabilities.includes('text') &&
+      process.env[m.keyEnv]
+    )
+    if (!fallback) throw error
+    const result = await generateText(fallback, prompt, systemPrompt, maxTokens, temperature)
+    return { ...result, config: fallback, fallbackUsed: true }
   }
 }
 
@@ -195,21 +226,39 @@ export const aiRoutes = new Hono()
       id: model.id, label: model.label, provider: model.provider, model: model.model,
       capabilities: model.capabilities, enabled: true, configured: Boolean(process.env[model.keyEnv]),
     }))
-    const providers = [...new Set(MODELS.map((model) => model.provider))].map((provider) => ({
-      id: provider,
-      label: provider === 'claude' ? 'Anthropic' : provider === 'fal' ? 'fal.ai' : 'DeepSeek',
-      capabilities: [...new Set(MODELS.filter((model) => model.provider === provider).flatMap((model) => model.capabilities))],
-      configured: MODELS.some((model) => model.provider === provider && process.env[model.keyEnv]),
-    }))
+    const providers = [...new Set(MODELS.map((model) => model.provider))].map((provider) => {
+      const circuitState = circuits.get(provider)
+      return {
+        id: provider,
+        label: provider === 'claude' ? 'Anthropic' : provider === 'fal' ? 'fal.ai' : 'DeepSeek',
+        capabilities: [...new Set(MODELS.filter((model) => model.provider === provider).flatMap((model) => model.capabilities))],
+        configured: MODELS.some((model) => model.provider === provider && process.env[model.keyEnv]),
+        circuitOpen: Boolean(circuitState && circuitState.openedUntil > Date.now()),
+        circuitResetAt: circuitState?.openedUntil ? new Date(circuitState.openedUntil).toISOString() : null,
+        consecutiveFailures: circuitState?.failures ?? 0,
+      }
+    })
     return c.json({ models, providers })
+  })
+  .get('/status', requireAuth, (c) => {
+    const providers = [...new Set(MODELS.map((model) => model.provider))].map((provider) => {
+      const circuitState = circuits.get(provider)
+      return {
+        id: provider,
+        configured: MODELS.some((model) => model.provider === provider && process.env[model.keyEnv]),
+        circuitOpen: Boolean(circuitState && circuitState.openedUntil > Date.now()),
+        consecutiveFailures: circuitState?.failures ?? 0,
+      }
+    })
+    return c.json({ providers })
   })
   .post('/copy/generate', requireAuth, rateLimit(20, 60_000), async (c) => {
     const data = await body(c, copySchema)
     const userId = getAuthenticatedUserId(c)
     const key = c.req.header('Idempotency-Key') ?? data.idempotencyKey
     const response = await runIdempotent(userId, 'ai-copy', key, data, async () => {
-      const config = modelConfig(data.model, 'text')
-      const result = await generateText(config, data.prompt, data.systemPrompt, data.maxTokens, data.temperature)
+      const result = await generateTextWithFallback(data.model, data.prompt, data.systemPrompt, data.maxTokens, data.temperature)
+      const config = result.config
       const cost = ((result.inputTokens * (config.inputUsdPerMillion ?? 0)) + (result.outputTokens * (config.outputUsdPerMillion ?? 0))) / 1_000_000
       await db.insert(aiTokenLogs).values({
         userId, model: config.model, provider: config.provider, operation: 'copy_generate',
@@ -217,7 +266,7 @@ export const aiRoutes = new Hono()
         totalTokens: result.inputTokens + result.outputTokens, costUsd: cost.toFixed(8),
         metadata: { promptVersion: PROMPT_VERSION, parameterVersion: PARAMETER_VERSION },
       })
-      return { content: result.content, usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: cost }, provider: config.provider, model: config.model, promptVersion: PROMPT_VERSION, parameterVersion: PARAMETER_VERSION }
+      return { content: result.content, usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: cost }, provider: config.provider, model: config.model, promptVersion: PROMPT_VERSION, parameterVersion: PARAMETER_VERSION, fallbackUsed: result.fallbackUsed }
     })
     return c.json(response)
   })

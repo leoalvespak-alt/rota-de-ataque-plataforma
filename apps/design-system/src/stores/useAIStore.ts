@@ -20,6 +20,7 @@ export interface AIProvider {
   label: string
   capabilities: AIModelCapability[]
   configured: boolean
+  circuitOpen?: boolean
 }
 
 interface AIState {
