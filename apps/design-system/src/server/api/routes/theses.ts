@@ -15,3 +15,38 @@ thesesRoutes.patch('/:id/status', async (c) => { const status = (await c.req.jso
 thesesRoutes.get('/:id/usage', async (c) => { const id = c.req.param('id'); const [usage] = await db.select({ count: sql<number>`count(*)::int`, lastUsedAt: sql<string | null>`max(${contentUsageLedger.usedAt})` }).from(contentUsageLedger).where(eq(contentUsageLedger.thesisId, id)); return c.json(usage) })
 thesesRoutes.get('/:id/content', async (c) => c.json(await db.select().from(contentItems).where(eq(contentItems.thesisId, c.req.param('id'))).orderBy(desc(contentItems.createdAt))))
 thesesRoutes.get('/:id/gaps', async (c) => { const usage = await db.select({ angleId: contentUsageLedger.angleId, count: sql<number>`count(*)::int` }).from(contentUsageLedger).where(eq(contentUsageLedger.thesisId, c.req.param('id'))).groupBy(contentUsageLedger.angleId); return c.json({ usedAngles: usage, message: 'Use esta lista para priorizar ângulos ainda não explorados.' }) })
+thesesRoutes.post('/sync', async (c) => {
+  const { prospector_thesis_id } = await c.req.json() as { prospector_thesis_id?: string }
+  if (!prospector_thesis_id) return c.json({ error: 'Falta prospector_thesis_id' }, 400)
+
+  const prospectorResult = await db.execute(sql`SELECT * FROM theses WHERE id = ${prospector_thesis_id}`)
+  const pt = prospectorResult.rows[0] as Record<string, unknown> | undefined
+  if (!pt) return c.json({ error: 'Tese não encontrada no Prospector' }, 404)
+
+  const title = String(pt.title || 'Sem título')
+  const summary = pt.description ? String(pt.description) : null
+  const coreStatement = summary || title
+  const slug = slugify(title) + '-p-' + prospector_thesis_id.slice(0, 8)
+
+  const result = await db.execute(sql`
+    INSERT INTO editorial_theses (
+      prospector_thesis_id, title, slug, summary, core_statement, status, version
+    ) VALUES (
+      ${prospector_thesis_id},
+      ${title},
+      ${slug},
+      ${summary},
+      ${coreStatement},
+      'active',
+      1
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+      title = EXCLUDED.title,
+      summary = EXCLUDED.summary,
+      prospector_thesis_id = EXCLUDED.prospector_thesis_id,
+      updated_at = now()
+    RETURNING id
+  `)
+
+  return c.json({ message: 'Sincronizado', id: (result.rows[0] as Record<string, unknown>)?.id }, 200)
+})
