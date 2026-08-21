@@ -1,5 +1,5 @@
 import { Worker, type Job } from 'bullmq'
-import { eq } from 'drizzle-orm'
+import { and, count, eq, ne } from 'drizzle-orm'
 import { editorialPlanItems, generationJobs } from '@/db/editorial-schema'
 import { db } from '@/server/api/db'
 import { getBullMQConnection } from '@/server/infra/redis'
@@ -51,8 +51,15 @@ export function createEditorialVisualWorker() {
 
 export function createEditorialFinalizeWorker() {
   return new Worker('editorial-finalize', async (job: Job) => {
-    if (job.data.planItemId) await db.update(editorialPlanItems).set({ status: 'ready_for_approval', updatedAt: new Date() }).where(eq(editorialPlanItems.id, job.data.planItemId))
-    // We would count items here and mark generationJobId as completed if all done
-    await db.update(generationJobs).set({ status: 'completed', completedAt: new Date() }).where(eq(generationJobs.id, job.data.generationJobId))
+    if (job.data.planItemId) {
+      await db.update(editorialPlanItems).set({ status: 'ready_for_approval', updatedAt: new Date() }).where(eq(editorialPlanItems.id, job.data.planItemId))
+    }
+    if (job.data.planId) {
+      const [pending] = await db.select({ count: count() }).from(editorialPlanItems)
+        .where(and(eq(editorialPlanItems.planId, job.data.planId), ne(editorialPlanItems.status, 'ready_for_approval')))
+      if ((pending?.count ?? 1) === 0) {
+        await db.update(generationJobs).set({ status: 'completed', completedAt: new Date() }).where(eq(generationJobs.id, job.data.generationJobId))
+      }
+    }
   }, { connection })
 }
