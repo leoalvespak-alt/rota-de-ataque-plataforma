@@ -95,28 +95,36 @@ export const publicationRoutes = new Hono()
   .patch('/:id', zValidator('json', UpdateCreativeSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
-    
-    // Constrói os campos para atualização dinamicamente
+
     const updates = []
     if (data.title !== undefined) updates.push(sql`title = ${data.title}`)
     if (data.caption !== undefined) updates.push(sql`caption = ${data.caption}`)
     if (data.channel !== undefined) updates.push(sql`channel = ${data.channel}`)
     if (data.format !== undefined) updates.push(sql`format = ${data.format}`)
     if (data.status !== undefined) updates.push(sql`status = ${data.status}`)
-    if (data.scheduled_for !== undefined) updates.push(sql`scheduled_for = ${data.scheduled_for ? sql`${data.scheduled_for}::timestamptz` : null}`)
-    if (data.thesis_id !== undefined) updates.push(sql`thesis_id = ${data.thesis_id}`)
-    
+    if (data.scheduled_for !== undefined) updates.push(sql`scheduled_for = ${data.scheduled_for ? sql`${data.scheduled_for}::timestamptz` : sql`NULL`}`)
+    if (data.thesis_id !== undefined) updates.push(sql`thesis_id = ${data.thesis_id ?? sql`NULL`}`)
+    if (data.origin !== undefined) updates.push(sql`origin = ${data.origin}`)
+
     if (updates.length === 0) return c.json({ error: 'Nenhum campo para atualizar' }, 400)
-      
+
     const joinedUpdates = sql.join(updates, sql`, `)
-    
+
     const row = await db.execute(sql`
-      UPDATE unified_creatives 
+      UPDATE unified_creatives
       SET ${joinedUpdates}
       WHERE id = ${id}
       RETURNING *
     `)
-    
+
     if (row.rows.length === 0) return c.json({ error: 'Criativo não encontrado' }, 404)
     return c.json(row.rows[0])
+  })
+  .delete('/:id', async (c) => {
+    const id = c.req.param('id')
+    const row = await db.execute(sql`
+      DELETE FROM unified_creatives WHERE id = ${id} RETURNING id
+    `)
+    if (row.rows.length === 0) return c.json({ error: 'Criativo não encontrado' }, 404)
+    return c.json({ deleted: true, id })
   })

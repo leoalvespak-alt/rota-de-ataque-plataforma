@@ -18,35 +18,35 @@ thesesRoutes.get('/:id/gaps', async (c) => { const usage = await db.select({ ang
 thesesRoutes.post('/sync', async (c) => {
   const { prospector_thesis_id } = await c.req.json() as { prospector_thesis_id?: string }
   if (!prospector_thesis_id) return c.json({ error: 'Falta prospector_thesis_id' }, 400)
-  
-  // Buscar no Prospector
+
   const prospectorResult = await db.execute(sql`SELECT * FROM theses WHERE id = ${prospector_thesis_id}`)
-  const pt = prospectorResult.rows[0]
+  const pt = prospectorResult.rows[0] as Record<string, unknown> | undefined
   if (!pt) return c.json({ error: 'Tese não encontrada no Prospector' }, 404)
-  
-  // Criar payload convertendo (string) para os campos do editorial_theses
+
   const title = String(pt.title || 'Sem título')
-  const description = pt.description ? String(pt.description) : null
-  
-  // Insere ou atualiza
-  const [synced] = await db.execute(sql`
+  const summary = pt.description ? String(pt.description) : null
+  const coreStatement = summary || title
+  const slug = slugify(title) + '-p-' + prospector_thesis_id.slice(0, 8)
+
+  const result = await db.execute(sql`
     INSERT INTO editorial_theses (
-      prospector_thesis_id, title, slug, description, status, author, version
+      prospector_thesis_id, title, slug, summary, core_statement, status, version
     ) VALUES (
-      ${prospector_thesis_id}, 
-      ${title}, 
-      ${slugify(title) + '-' + prospector_thesis_id.slice(0, 5)}, 
-      ${description}, 
-      'active', 
-      'sync',
+      ${prospector_thesis_id},
+      ${title},
+      ${slug},
+      ${summary},
+      ${coreStatement},
+      'active',
       1
     )
-    ON CONFLICT (slug) DO UPDATE SET 
+    ON CONFLICT (slug) DO UPDATE SET
       title = EXCLUDED.title,
-      description = EXCLUDED.description,
+      summary = EXCLUDED.summary,
+      prospector_thesis_id = EXCLUDED.prospector_thesis_id,
       updated_at = now()
     RETURNING id
   `)
-  
-  return c.json({ message: 'Sincronizado', id: synced.rows[0]?.id }, 200)
+
+  return c.json({ message: 'Sincronizado', id: (result.rows[0] as Record<string, unknown>)?.id }, 200)
 })

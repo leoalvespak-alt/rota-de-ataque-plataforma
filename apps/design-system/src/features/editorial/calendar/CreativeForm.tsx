@@ -16,7 +16,14 @@ const CHANNELS = [
   { value: 'instagram', label: 'Instagram' },
   { value: 'threads', label: 'Threads' },
   { value: 'feed', label: 'Feed' },
-  { value: 'stories', label: 'Stories' }
+  { value: 'stories', label: 'Stories' },
+]
+
+const FORMATS = [
+  { value: 'carrossel', label: 'Carrossel' },
+  { value: 'reels', label: 'Reels' },
+  { value: 'static', label: 'Estático' },
+  { value: 'stories', label: 'Stories' },
 ]
 
 const STATUSES = [
@@ -40,7 +47,7 @@ export function CreativeForm({
     title: initialData?.title ?? '',
     caption: initialData?.caption ?? '',
     channel: initialData?.channel ?? 'instagram',
-    format: initialData?.format ?? 'post',
+    format: initialData?.format ?? 'carrossel',
     status: initialData?.status ?? 'draft',
     scheduled_for: initialData?.scheduled_for ? new Date(initialData.scheduled_for).toISOString().slice(0, 16) : '',
     thesis_id: initialData?.thesis_id ?? ''
@@ -106,13 +113,13 @@ export function CreativeForm({
         
         <div className="space-y-2">
           <label className="block text-sm font-medium text-ui-text">Formato</label>
-          <input 
-            type="text"
-            required
+          <select
             value={data.format}
             onChange={e => setData({...data, format: e.target.value})}
             className="w-full rounded-md border border-ui-border bg-ui-panel p-2 text-ui-text"
-          />
+          >
+            {FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
         </div>
       </div>
 
