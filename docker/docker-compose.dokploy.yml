@@ -3,6 +3,8 @@ services:
     image: pgvector/pgvector:pg16
     command: ["postgres", "-c", "max_connections=200"]
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
