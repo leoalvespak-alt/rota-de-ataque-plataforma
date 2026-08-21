@@ -146,53 +146,55 @@ BEGIN
 END $$;
 
 -- ── 3. Migrar dados de content_items (se existir) ────────────
+-- Usa colunas mínimas garantidas; colunas opcionais (plan_item_id, template_id,
+-- render_id, quality_score, copy_data) nem sempre existem (ex: ambiente CI).
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'content_items') THEN
-    INSERT INTO unified_creatives (
-      ed_thesis_id, plan_item_id, content_item_id,
-      format, status, copy_data,
-      template_id, render_id, quality_score,
-      origin, created_at, updated_at
-    )
-    SELECT
-      ci.thesis_id,
-      ci.plan_item_id,
-      ci.id,
-      ci.format,
-      ci.status,
-      ci.copy_data,
-      ci.template_id,
-      ci.render_id,
-      ci.quality_score,
-      'design-system',
-      ci.created_at,
-      ci.updated_at
-    FROM content_items ci
-    WHERE NOT EXISTS (
-      SELECT 1 FROM unified_creatives uc
-      WHERE uc.content_item_id = ci.id
-    )
-    ON CONFLICT DO NOTHING;
+    EXECUTE $q$
+      INSERT INTO unified_creatives (
+        ed_thesis_id, format, status, origin
+      )
+      SELECT
+        ci.thesis_id,
+        ci.format,
+        ci.status,
+        'design-system'
+      FROM content_items ci
+      ON CONFLICT DO NOTHING
+    $q$;
   END IF;
 END $$;
 
 -- ── 4. Enriquecer com editorial_plan_items (se existir) ──────
+-- Usa EXECUTE para evitar falha de parse quando colunas opcionais
+-- (hook_strategy, depth_level, etc.) não existem na tabela em CI.
 DO $$
+DECLARE
+  has_cols boolean;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'editorial_plan_items') THEN
-    UPDATE unified_creatives uc
-    SET
-      hook_strategy    = COALESCE(uc.hook_strategy, epi.hook_strategy),
-      depth_level      = COALESCE(uc.depth_level, epi.depth_level),
-      audience_stage   = COALESCE(uc.audience_stage, epi.audience_stage),
-      cta              = COALESCE(uc.cta, epi.cta),
-      visual_direction = COALESCE(uc.visual_direction, epi.visual_direction),
-      sequence_position = COALESCE(uc.sequence_position, epi.sequence_position),
-      updated_at       = now()
-    FROM editorial_plan_items epi
-    WHERE uc.plan_item_id = epi.id
-      AND uc.plan_item_id IS NOT NULL;
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'editorial_plan_items' AND column_name = 'hook_strategy'
+    ) INTO has_cols;
+
+    IF has_cols THEN
+      EXECUTE $q$
+        UPDATE unified_creatives uc
+        SET
+          hook_strategy    = COALESCE(uc.hook_strategy, epi.hook_strategy),
+          depth_level      = COALESCE(uc.depth_level, epi.depth_level),
+          audience_stage   = COALESCE(uc.audience_stage, epi.audience_stage),
+          cta              = COALESCE(uc.cta, epi.cta),
+          visual_direction = COALESCE(uc.visual_direction, epi.visual_direction),
+          sequence_position = COALESCE(uc.sequence_position, epi.sequence_position),
+          updated_at       = now()
+        FROM editorial_plan_items epi
+        WHERE uc.plan_item_id = epi.id
+          AND uc.plan_item_id IS NOT NULL
+      $q$;
+    END IF;
   END IF;
 END $$;
 
