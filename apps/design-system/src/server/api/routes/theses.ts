@@ -15,3 +15,38 @@ thesesRoutes.patch('/:id/status', async (c) => { const status = (await c.req.jso
 thesesRoutes.get('/:id/usage', async (c) => { const id = c.req.param('id'); const [usage] = await db.select({ count: sql<number>`count(*)::int`, lastUsedAt: sql<string | null>`max(${contentUsageLedger.usedAt})` }).from(contentUsageLedger).where(eq(contentUsageLedger.thesisId, id)); return c.json(usage) })
 thesesRoutes.get('/:id/content', async (c) => c.json(await db.select().from(contentItems).where(eq(contentItems.thesisId, c.req.param('id'))).orderBy(desc(contentItems.createdAt))))
 thesesRoutes.get('/:id/gaps', async (c) => { const usage = await db.select({ angleId: contentUsageLedger.angleId, count: sql<number>`count(*)::int` }).from(contentUsageLedger).where(eq(contentUsageLedger.thesisId, c.req.param('id'))).groupBy(contentUsageLedger.angleId); return c.json({ usedAngles: usage, message: 'Use esta lista para priorizar ângulos ainda não explorados.' }) })
+thesesRoutes.post('/sync', async (c) => {
+  const { prospector_thesis_id } = await c.req.json() as { prospector_thesis_id?: string }
+  if (!prospector_thesis_id) return c.json({ error: 'Falta prospector_thesis_id' }, 400)
+  
+  // Buscar no Prospector
+  const prospectorResult = await db.execute(sql`SELECT * FROM theses WHERE id = ${prospector_thesis_id}`)
+  const pt = prospectorResult.rows[0]
+  if (!pt) return c.json({ error: 'Tese não encontrada no Prospector' }, 404)
+  
+  // Criar payload convertendo (string) para os campos do editorial_theses
+  const title = String(pt.title || 'Sem título')
+  const description = pt.description ? String(pt.description) : null
+  
+  // Insere ou atualiza
+  const [synced] = await db.execute(sql`
+    INSERT INTO editorial_theses (
+      prospector_thesis_id, title, slug, description, status, author, version
+    ) VALUES (
+      ${prospector_thesis_id}, 
+      ${title}, 
+      ${slugify(title) + '-' + prospector_thesis_id.slice(0, 5)}, 
+      ${description}, 
+      'active', 
+      'sync',
+      1
+    )
+    ON CONFLICT (slug) DO UPDATE SET 
+      title = EXCLUDED.title,
+      description = EXCLUDED.description,
+      updated_at = now()
+    RETURNING id
+  `)
+  
+  return c.json({ message: 'Sincronizado', id: synced.rows[0]?.id }, 200)
+})
