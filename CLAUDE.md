@@ -4,22 +4,24 @@ Monorepo pnpm + Turborepo. `apps/design-system` permanece independente e não po
 
 ## Deploy
 
-O deploy é feito pelo script unificado `deploy/deploy-all.ps1`. Ele cobre tudo: Design System, Prospector (web + workers), migrations e validações.
+Deploy automático: push para `main` → GitHub Actions builda imagens GHCR → SSH deploya na VPS.
 
 ```powershell
-# Deploy completo (design system + prospector + migrations + workers)
+# Deploy completo (todos os projetos)
 .\deploy\deploy-all.ps1
 
-# Só o Design System (build Vite local → SCP → swap atômico no nginx)
-.\deploy\deploy-all.ps1 -Only design
+# Projeto específico
+.\deploy\deploy-all.ps1 -Only design       # Design System (web + API)
+.\deploy\deploy-all.ps1 -Only design-api   # Só a API
+.\deploy\deploy-all.ps1 -Only prospector   # Prospector
+.\deploy\deploy-all.ps1 -Only gazeta       # Gazeta
+.\deploy\deploy-all.ps1 -Only plataforma   # Plataforma 2.0
 
-# Só o Prospector (código → VPS → Docker build remoto → migrations → web + workers)
-.\deploy\deploy-all.ps1 -Only prospector
+# Sem commit/push (usa imagens já no GHCR)
+.\deploy\deploy-all.ps1 -Only design -SkipPush
 
-# Pular build (publica o que já está em dist/ ou a imagem Docker existente)
-.\deploy\deploy-all.ps1 -SkipBuild
+# Sem migrations
+.\deploy\deploy-all.ps1 -Only prospector -NoMigrate
 ```
 
-Pré-requisitos: chave SSH em `~/.ssh/id_rsa` e `CREDENCIAIS_VPS.txt` na raiz do workspace. Ver `deploy/DEPLOY.md` para detalhes.
-
-**Não use** os scripts antigos em `apps/design-system/deploy/` — foram removidos. O único script de deploy é `deploy/deploy-all.ps1`.
+Ver `deploy/DEPLOY.md` para detalhes. Pré-requisitos: chave SSH em `~/.ssh/id_rsa` e `gh` CLI autenticado.

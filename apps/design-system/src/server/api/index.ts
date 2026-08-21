@@ -16,6 +16,7 @@ import { thesesRoutes } from './routes/theses'
 import { projectRoutes } from './routes/projects'
 import { tokenLogRoutes } from './routes/token-logs'
 import { profileRoutes } from './routes/profiles'
+import { publicationRoutes } from './routes/publications'
 import { aiRoutes } from './routes/ai'
 import { authRoutes } from './routes/auth'
 import { requireAuth } from './auth'
@@ -52,6 +53,7 @@ app.use('/api/*', requireAuth)
 app.route('/api/theses', thesesRoutes).route('/api/theses', thesisArgumentsRoutes).route('/api/theses', thesisStructurerRoutes)
 app.route('/api/knowledge', knowledgeRoutes).route('/api/campaigns', campaignRoutes).route('/api/plans', planRoutes).route('/api/batch', batchRoutes).route('/api/reviews', reviewRoutes).route('/api/prompts', promptRoutes).route('/api/taxonomy', taxonomyRoutes)
 app.route('/api/projects', projectRoutes).route('/api/token-logs', tokenLogRoutes).route('/api/profiles', profileRoutes)
+app.route('/api/publications', publicationRoutes)
 app.route('/api/ai', aiRoutes)
 app.get('/api/metrics', async (c) => c.json(await getEditorialMetrics()))
 app.notFound((c) => c.json({ error: 'Rota não encontrada.' }, 404))
