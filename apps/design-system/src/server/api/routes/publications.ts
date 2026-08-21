@@ -2,7 +2,6 @@ import { sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db'
 import { z } from 'zod'
-import { zValidator } from '@hono/zod-validator'
 
 const CreateCreativeSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
@@ -17,12 +16,25 @@ const CreateCreativeSchema = z.object({
 
 const UpdateCreativeSchema = CreateCreativeSchema.partial()
 
+async function parseBody<T>(c: { req: { json: () => Promise<unknown> } }, schema: z.ZodType<T>): Promise<{ data: T } | { error: Response }> {
+  try {
+    const raw = await (c as Parameters<typeof parseBody>[0]).req.json()
+    const result = schema.safeParse(raw)
+    if (!result.success) {
+      return { error: new Response(JSON.stringify({ error: result.error.errors[0]?.message ?? 'Dados inválidos' }), { status: 400, headers: { 'Content-Type': 'application/json' } }) }
+    }
+    return { data: result.data }
+  } catch {
+    return { error: new Response(JSON.stringify({ error: 'JSON inválido' }), { status: 400, headers: { 'Content-Type': 'application/json' } }) }
+  }
+}
+
 export const publicationRoutes = new Hono()
   .get('/', async (c) => {
     const channel = c.req.query('channel')
     const status = c.req.query('status')
     const origin = c.req.query('origin')
-    
+
     const rows = await db.execute(sql`
       SELECT
         uc.id,
@@ -73,8 +85,10 @@ export const publicationRoutes = new Hono()
     `)
     return c.json(rows.rows)
   })
-  .post('/', zValidator('json', CreateCreativeSchema), async (c) => {
-    const data = c.req.valid('json')
+  .post('/', async (c) => {
+    const parsed = await parseBody(c, CreateCreativeSchema)
+    if ('error' in parsed) return parsed.error
+    const data = parsed.data
     const row = await db.execute(sql`
       INSERT INTO unified_creatives (
         title, caption, channel, format, status, scheduled_for, thesis_id, origin
@@ -92,9 +106,11 @@ export const publicationRoutes = new Hono()
     `)
     return c.json(row.rows[0], 201)
   })
-  .patch('/:id', zValidator('json', UpdateCreativeSchema), async (c) => {
+  .patch('/:id', async (c) => {
     const id = c.req.param('id')
-    const data = c.req.valid('json')
+    const parsed = await parseBody(c, UpdateCreativeSchema)
+    if ('error' in parsed) return parsed.error
+    const data = parsed.data
 
     const updates = []
     if (data.title !== undefined) updates.push(sql`title = ${data.title}`)

@@ -81,33 +81,71 @@ CREATE TRIGGER unified_creatives_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_unified_creatives_updated_at();
 
 -- ── 2. Migrar dados de scheduled_publications (se existir) ───
--- Usa DO para ser idempotente em ambientes sem a tabela
+-- Usa DO para ser idempotente em ambientes sem a tabela.
+-- Verifica dinamicamente se a coluna copy_data existe (pode não existir em CI).
 DO $$
+DECLARE
+  has_copy_data boolean;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'scheduled_publications') THEN
-    INSERT INTO unified_creatives (
-      thesis_id, channel, format, status, curation_status,
-      scheduled_for, published_at, approved_by, batch_id,
-      title, caption, copy_data, origin, created_at, updated_at
-    )
-    SELECT
-      sp.thesis_id,
-      sp.channel,
-      sp.format,
-      sp.status,
-      sp.curation_status,
-      sp.scheduled_for,
-      sp.published_at,
-      sp.approved_by,
-      sp.batch_id,
-      COALESCE(sp.title, ''),
-      sp.caption,
-      COALESCE(sp.copy_data, '{}')::jsonb,
-      COALESCE(sp.origin, 'prospector'),
-      sp.created_at,
-      sp.updated_at
-    FROM scheduled_publications sp
-    ON CONFLICT DO NOTHING;
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'scheduled_publications' AND column_name = 'copy_data'
+    ) INTO has_copy_data;
+
+    IF has_copy_data THEN
+      EXECUTE $q$
+        INSERT INTO unified_creatives (
+          thesis_id, channel, format, status, curation_status,
+          scheduled_for, published_at, approved_by, batch_id,
+          title, caption, copy_data, origin, created_at, updated_at
+        )
+        SELECT
+          sp.thesis_id,
+          sp.channel,
+          sp.format,
+          sp.status,
+          sp.curation_status,
+          sp.scheduled_for,
+          sp.published_at,
+          sp.approved_by,
+          sp.batch_id,
+          COALESCE(sp.title, ''),
+          sp.caption,
+          COALESCE(sp.copy_data, '{}')::jsonb,
+          COALESCE(sp.origin, 'prospector'),
+          sp.created_at,
+          sp.updated_at
+        FROM scheduled_publications sp
+        ON CONFLICT DO NOTHING
+      $q$;
+    ELSE
+      EXECUTE $q$
+        INSERT INTO unified_creatives (
+          thesis_id, channel, format, status, curation_status,
+          scheduled_for, published_at, approved_by, batch_id,
+          title, caption, copy_data, origin, created_at, updated_at
+        )
+        SELECT
+          sp.thesis_id,
+          sp.channel,
+          sp.format,
+          sp.status,
+          sp.curation_status,
+          sp.scheduled_for,
+          sp.published_at,
+          sp.approved_by,
+          sp.batch_id,
+          COALESCE(sp.title, ''),
+          sp.caption,
+          '{}'::jsonb,
+          COALESCE(sp.origin, 'prospector'),
+          sp.created_at,
+          sp.updated_at
+        FROM scheduled_publications sp
+        ON CONFLICT DO NOTHING
+      $q$;
+    END IF;
   END IF;
 END $$;
 
