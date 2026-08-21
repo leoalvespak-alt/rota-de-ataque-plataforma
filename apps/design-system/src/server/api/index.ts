@@ -23,6 +23,14 @@ import { requireAuth } from './auth'
 import { db } from './db'
 import { getEditorialMetrics } from '@/server/editorial/metrics'
 import { getRedis } from '@/server/infra/redis'
+import {
+  createEditorialBriefWorker,
+  createEditorialCopyWorker,
+  createEditorialReviewWorker,
+  createEditorialTemplateWorker,
+  createEditorialVisualWorker,
+  createEditorialFinalizeWorker,
+} from '@/server/editorial/workers'
 
 const app = new Hono()
 app.use('*', async (c, next) => {
@@ -68,14 +76,6 @@ app.onError((error, c) => {
   console.error(JSON.stringify({ level: 'error', requestId, message: error instanceof Error ? error.message : 'unknown' }))
   return c.json({ error: 'Erro interno da API.', requestId }, 500)
 })
-import {
-  createEditorialBriefWorker,
-  createEditorialCopyWorker,
-  createEditorialReviewWorker,
-  createEditorialTemplateWorker,
-  createEditorialVisualWorker,
-  createEditorialFinalizeWorker,
-} from '@/server/editorial/workers'
 
 const workers = [
   createEditorialBriefWorker(),

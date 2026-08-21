@@ -3,6 +3,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { getCookie } from 'hono/cookie'
 import Redis from 'ioredis'
 import { ApiError } from './routes/helpers'
+import { getRedis } from '@/server/infra/redis'
 
 export const OPERATOR_USER_ID = process.env.DESIGN_OPERATOR_USER_ID ?? '00000000-0000-4000-8000-000000000001'
 export const SESSION_COOKIE = 'rda_design_session'
@@ -72,8 +73,6 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   c.set('userId' as never, userId as never)
   await next()
 }
-
-import { getRedis } from '@/server/infra/redis'
 
 function rateLimitRedis(): Redis {
   return getRedis()
