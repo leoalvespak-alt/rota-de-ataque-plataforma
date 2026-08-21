@@ -63,6 +63,7 @@ interface WizardActions {
   setContentSource: (source: ContentSource) => void
   setProfileId: (id: string | null) => void
   resetWizard: () => void
+  loadWizardData: (data: Partial<WizardState>) => void
   getResolvedFormat: () => CanvasFormat
   getResolvedFilter: () => FormatFilter
   canAdvance: () => boolean
@@ -199,6 +200,10 @@ export const useWizardStore = create<WizardState & WizardActions>()(
     setProfileId: (id) => set((s) => { s.profileId = id }),
 
     resetWizard: () => set(() => ({ ...initialState })),
+
+    loadWizardData: (data) => set((s) => {
+      Object.assign(s, { ...initialState, ...data, active: true })
+    }),
 
     getResolvedFormat: () => {
       const s = get()

@@ -26,6 +26,8 @@ interface ProjectItem {
   cardCount: number | null
   createdAt: string
   updatedAt: string
+  wizardData?: any
+  wizardStep?: number
 }
 
 const STATUS_CONFIG: Record<CreativeProjectStatus, { label: string; color: string; Icon: typeof FolderOpen }> = {
@@ -36,10 +38,30 @@ const STATUS_CONFIG: Record<CreativeProjectStatus, { label: string; color: strin
 
 function ProjectCard({ project, onDelete }: { project: ProjectItem; onDelete: (id: string) => void }) {
   const setTab = useUiStore((s) => s.setTab)
+  const loadWizardData = useWizardStore((s) => s.loadWizardData)
   const { label, color, Icon } = STATUS_CONFIG[project.status]
 
-  const handleContinue = () => {
-    setTab('wizard')
+  const handleContinue = async () => {
+    try {
+      // Usar os dados da lista ou buscar detalhes completos se precisar
+      const data = await apiFetch<any>(`/projects/${project.id}`)
+      if (data.wizardData) {
+        loadWizardData({
+          ...data.wizardData,
+          step: data.wizardStep || data.wizardData.step || 1,
+          projectId: project.id
+        })
+      } else {
+        // Se não tiver wizardData (projetos antigos?), tentamos inicializar o básico
+        loadWizardData({
+          projectId: project.id,
+          step: 1
+        })
+      }
+      setTab('wizard')
+    } catch (err) {
+      console.error('Failed to load project details', err)
+    }
   }
 
   return (
