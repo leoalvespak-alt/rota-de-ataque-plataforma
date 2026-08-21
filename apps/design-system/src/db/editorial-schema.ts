@@ -62,3 +62,55 @@ export const contentUsageLedger = pgTable('content_usage_ledger', { id: uuid('id
 export const generationJobs = pgTable('generation_jobs', { id: uuid('id').primaryKey().defaultRandom(), planId: uuid('plan_id').references(() => editorialPlans.id, { onDelete: 'set null' }), campaignId: uuid('campaign_id').references(() => editorialCampaigns.id, { onDelete: 'set null' }), type: varchar('type', { length: 50 }).notNull(), status: varchar('status', { length: 20 }).default('pending').notNull(), inputData: jsonb('input_data').$type<Record<string, unknown>>().notNull(), outputData: jsonb('output_data').$type<Record<string, unknown>>(), parentJobId: uuid('parent_job_id'), priority: integer('priority').default(0).notNull(), attempts: integer('attempts').default(0).notNull(), maxAttempts: integer('max_attempts').default(3).notNull(), error: text('error'), provider: varchar('provider', { length: 255 }), model: varchar('model', { length: 255 }), inputTokens: integer('input_tokens'), outputTokens: integer('output_tokens'), cost: numeric('cost', { precision: 12, scale: 6 }), durationMs: integer('duration_ms'), bullmqJobId: varchar('bullmq_job_id', { length: 255 }), createdAt: timestamp('created_at').defaultNow().notNull(), startedAt: timestamp('started_at'), completedAt: timestamp('completed_at') }, (table) => [index('generation_jobs_status_type_idx').on(table.status, table.type)])
 export const promptTemplates = pgTable('prompt_templates', { id: uuid('id').primaryKey().defaultRandom(), name: varchar('name', { length: 255 }).notNull(), type: varchar('type', { length: 100 }).notNull(), template: text('template').notNull(), variables: text('variables').array().default([]), outputSchema: jsonb('output_schema').$type<Record<string, unknown>>(), version: integer('version').default(1).notNull(), active: boolean('active').default(true).notNull(), ...editorialDates }, (table) => [uniqueIndex('prompt_templates_name_idx').on(table.name)])
 export const promptVersions = pgTable('prompt_versions', { id: uuid('id').primaryKey().defaultRandom(), promptTemplateId: uuid('prompt_template_id').references(() => promptTemplates.id, { onDelete: 'cascade' }).notNull(), version: integer('version').notNull(), template: text('template').notNull(), variables: text('variables').array().default([]), outputSchema: jsonb('output_schema').$type<Record<string, unknown>>(), createdAt: timestamp('created_at').defaultNow().notNull() })
+
+// ── Tabela unificada de criativos (migration 0032) ────────────────────────────
+// Referências externas (tabela `theses` do Prospector) são tratadas como texto/uuid
+// sem FK em nível Drizzle para evitar dependência cruzada de schema.
+export const unifiedCreatives = pgTable('unified_creatives', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+
+  // FKs — Design System side
+  edThesisId:       uuid('ed_thesis_id').references(() => editorialTheses.id, { onDelete: 'set null' }),
+  planItemId:       uuid('plan_item_id').references(() => editorialPlanItems.id, { onDelete: 'set null' }),
+  contentItemId:    uuid('content_item_id').references(() => contentItems.id, { onDelete: 'set null' }),
+
+  // FK — Prospector side (sem FK Drizzle: tabela `theses` não está neste schema)
+  thesisId:         uuid('thesis_id'),
+
+  // Campos canônicos
+  title:            text('title'),
+  caption:          text('caption'),
+  channel:          varchar('channel', { length: 50 }),
+  format:           varchar('format', { length: 50 }),
+  status:           varchar('status', { length: 30 }).default('draft').notNull(),
+  curationStatus:   varchar('curation_status', { length: 30 }),
+  scheduledFor:     timestamp('scheduled_for', { withTimezone: true }),
+  publishedAt:      timestamp('published_at', { withTimezone: true }),
+  approvedBy:       text('approved_by'),
+
+  // Proveniência
+  origin:           varchar('origin', { length: 50 }),
+  batchId:          uuid('batch_id'),
+
+  // Conteúdo gerado
+  copyData:         jsonb('copy_data').$type<Record<string, unknown>>().default({}),
+  visualDirection:  text('visual_direction'),
+  templateId:       varchar('template_id', { length: 100 }),
+  renderId:         uuid('render_id'),
+  qualityScore:     jsonb('quality_score').$type<Record<string, number>>(),
+
+  // Estratégia editorial
+  hookStrategy:     text('hook_strategy'),
+  depthLevel:       varchar('depth_level', { length: 100 }),
+  audienceStage:    varchar('audience_stage', { length: 100 }),
+  cta:              text('cta'),
+  sequencePosition: integer('sequence_position'),
+
+  ...editorialDates,
+}, (table) => [
+  index('unified_creatives_status_idx').on(table.status),
+  index('unified_creatives_thesis_idx').on(table.thesisId),
+  index('unified_creatives_ed_thesis_idx').on(table.edThesisId),
+  index('unified_creatives_batch_idx').on(table.batchId),
+])
+

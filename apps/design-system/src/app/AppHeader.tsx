@@ -8,6 +8,8 @@ import { HeaderPrimaryButton, HeaderSecondaryButton } from './HeaderButtons'
 import { useSeriesExport } from '@/features/series/useSeriesExport'
 import { ProjectSessionControls } from '@/features/projects/ProjectSessionControls'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { NavLink } from 'react-router-dom'
+import { TAB_TO_PATH } from '@/hooks/useRouteSync'
 import {
   ArrowLeft,
   Download,
@@ -91,16 +93,19 @@ export function AppHeader({ onDownload, onSave }: { onDownload: () => void; onSa
 
       <nav className="order-3 flex w-full gap-1 overflow-x-auto md:order-none md:w-auto" aria-label="Abas principais">
         {TABS.map((tab) => (
-          <button
+          <NavLink
             key={tab.id}
-            className={cn(
-              'shrink-0 rounded-md px-3 py-1.5 font-sans text-[13px] font-medium whitespace-nowrap text-ui-muted transition-all hover:bg-ui-panel2 hover:text-ui-text lg:px-4',
-              activeTab === tab.id && 'bg-ui-panel2 text-ui-text',
-            )}
-            onClick={() => setTab(tab.id)}
+            to={TAB_TO_PATH[tab.id]}
+            end={tab.id === 'dashboard'}
+            className={({ isActive }) =>
+              cn(
+                'shrink-0 rounded-md px-3 py-1.5 font-sans text-[13px] font-medium whitespace-nowrap text-ui-muted transition-all hover:bg-ui-panel2 hover:text-ui-text lg:px-4',
+                isActive && 'bg-ui-panel2 text-ui-text',
+              )
+            }
           >
             {tab.label}
-          </button>
+          </NavLink>
         ))}
       </nav>
 
