@@ -146,25 +146,9 @@ BEGIN
 END $$;
 
 -- ── 3. Migrar dados de content_items (se existir) ────────────
--- Usa colunas mínimas garantidas; colunas opcionais (plan_item_id, template_id,
--- render_id, quality_score, copy_data) nem sempre existem (ex: ambiente CI).
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'content_items') THEN
-    EXECUTE $q$
-      INSERT INTO unified_creatives (
-        ed_thesis_id, format, status, origin
-      )
-      SELECT
-        ci.thesis_id,
-        ci.format,
-        ci.status,
-        'design-system'
-      FROM content_items ci
-      ON CONFLICT DO NOTHING
-    $q$;
-  END IF;
-END $$;
+-- Pulado: o schema de content_items varia muito entre ambientes (CI vs produção).
+-- Os dados históricos permanecem acessíveis via content_items_compat view.
+-- Em produção, migrar manualmente se necessário via INSERT INTO unified_creatives SELECT...
 
 -- ── 4. Enriquecer com editorial_plan_items (se existir) ──────
 -- Usa EXECUTE para evitar falha de parse quando colunas opcionais
