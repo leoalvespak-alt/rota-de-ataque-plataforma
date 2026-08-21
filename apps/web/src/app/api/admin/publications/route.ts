@@ -65,15 +65,15 @@ export async function POST(request: Request) {
       }
       const input = parsed.data
       const item = (await client.query(
-        `INSERT INTO scheduled_publications(
-          campaign_id,title,caption,channel,subtype,status,scheduled_for,origin,locked_at,locked_by,
-          thesis_id,pillar,format,hashtags,cta,content_structure,curation_status,approved_by
-        ) VALUES($1,$2,$3,$4,$5,$6,$7,'manual',$8,$9,$10,$11,$12,$13,$14,$15::jsonb,'approved',$9)
-        RETURNING *,ig_media_id AS external_id`,
-        [selected.id, input.title ?? null, input.caption ?? null, input.channel ?? 'instagram', input.subtype ?? null,
-          input.status ?? 'idea', input.scheduled_for ?? null, input.locked_at ?? null, user.email ?? 'operator',
-          input.thesis_id ?? null, input.pillar ?? null, input.format ?? null, input.hashtags ?? null, input.cta ?? null,
-          input.content_structure ? JSON.stringify(input.content_structure) : '{}'],
+        `INSERT INTO unified_creatives(
+          batch_id,title,caption,channel,format,status,scheduled_for,origin,
+          thesis_id,cta,copy_data,curation_status,approved_by
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,'prospector',
+        $8,$9,$10::jsonb,'approved',$11)
+        RETURNING *,id AS external_id`,
+        [selected.id, input.title ?? null, input.caption ?? null, input.channel ?? 'instagram', input.subtype ?? 'post',
+          input.status ?? 'idea', input.scheduled_for ?? null, input.thesis_id ?? null, input.cta ?? null,
+          input.content_structure ? JSON.stringify(input.content_structure) : '{}', user.email ?? 'operator'],
       )).rows[0]
       await client.query(
         `INSERT INTO audit_log(actor_id,action,target,after) VALUES($1,'publication.manual_created',$2,$3::jsonb)`,
@@ -103,7 +103,7 @@ export async function PATCH(request: Request) {
       await client.query('BEGIN')
       await client.query("SET LOCAL app.actor_type = 'human'")
       const before = (await client.query<Record<string, unknown>>(
-        `SELECT * FROM scheduled_publications WHERE id=$1 FOR UPDATE`, [parsed.data.id],
+        `SELECT * FROM unified_creatives WHERE id=$1 FOR UPDATE`, [parsed.data.id],
       )).rows[0]
       if (!before) {
         await client.query('ROLLBACK')
@@ -117,17 +117,15 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'invalid_state' }, { status: 409 })
       }
       const value = <T,>(key: string, supplied: T | undefined) => supplied === undefined ? before[key] : supplied
-      const csRaw = input.content_structure !== undefined ? input.content_structure : before.content_structure
+      const csRaw = input.content_structure !== undefined ? input.content_structure : before.copy_data
       const item = (await client.query(
-        `UPDATE scheduled_publications SET
-          title=$2,caption=$3,channel=$4,subtype=$5,status=$6,scheduled_for=$7,locked_at=$8,
-          locked_by=CASE WHEN $8::timestamptz IS NULL THEN NULL ELSE $9 END,thesis_id=$10,pillar=$11,format=$12,hashtags=$13,cta=$14,
-          content_structure=$15::jsonb
-         WHERE id=$1 RETURNING *,ig_media_id AS external_id`,
+        `UPDATE unified_creatives SET
+          title=$2,caption=$3,channel=$4,format=$5,status=$6,scheduled_for=$7,
+          thesis_id=$8,cta=$9,copy_data=$10::jsonb
+         WHERE id=$1 RETURNING *,id AS external_id`,
         [input.id, value('title', input.title), value('caption', input.caption), value('channel', input.channel),
-          value('subtype', input.subtype), nextStatus, value('scheduled_for', input.scheduled_for), value('locked_at', input.locked_at),
-          user.email ?? 'operator', value('thesis_id', input.thesis_id), value('pillar', input.pillar), value('format', input.format),
-          value('hashtags', input.hashtags), value('cta', input.cta),
+          value('format', input.subtype ?? before.format), nextStatus, value('scheduled_for', input.scheduled_for),
+          value('thesis_id', input.thesis_id), value('cta', input.cta),
           csRaw ? JSON.stringify(csRaw) : '{}'],
       )).rows[0]
       await client.query(

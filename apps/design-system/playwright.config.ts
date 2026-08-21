@@ -13,8 +13,8 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Usa o Chrome já instalado no sistema em vez de baixar um Chromium próprio.
-        channel: 'chrome',
+        // Em CI só o Chromium bundled está disponível; 'chrome' pode não existir.
+        channel: process.env.CI ? undefined : 'chrome',
       },
     },
   ],

@@ -16,8 +16,9 @@ test('abre a criação e filtra templates do formato escolhido', async ({ page }
 
 test('as abas principais continuam navegáveis', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Marca', exact: true }).click()
+  // Abas são NavLinks (<a>) desde a migração para React Router
+  await page.getByRole('link', { name: 'Marca', exact: true }).click()
   await expect(page.getByText('Guia de Identidade Visual')).toBeVisible()
-  await page.getByRole('button', { name: 'Início', exact: true }).click()
+  await page.getByRole('link', { name: 'Início', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Gerador de Criativos' })).toBeVisible()
 })
