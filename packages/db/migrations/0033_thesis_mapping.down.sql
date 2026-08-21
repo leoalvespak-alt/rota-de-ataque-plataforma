@@ -8,6 +8,6 @@ DROP FUNCTION IF EXISTS audit_creative_published();
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'editorial_theses') THEN
-    ALTER TABLE editorial_theses DROP COLUMN IF NOT EXISTS prospector_thesis_id;
+    ALTER TABLE editorial_theses DROP COLUMN IF EXISTS prospector_thesis_id;
   END IF;
 END $$;
