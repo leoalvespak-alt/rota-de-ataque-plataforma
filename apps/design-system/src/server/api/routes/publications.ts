@@ -21,7 +21,7 @@ async function parseBody<T>(c: { req: { json: () => Promise<unknown> } }, schema
     const raw = await (c as Parameters<typeof parseBody>[0]).req.json()
     const result = schema.safeParse(raw)
     if (!result.success) {
-      return { error: new Response(JSON.stringify({ error: result.error.errors[0]?.message ?? 'Dados inválidos' }), { status: 400, headers: { 'Content-Type': 'application/json' } }) }
+      return { error: new Response(JSON.stringify({ error: result.error.issues[0]?.message ?? 'Dados inválidos' }), { status: 400, headers: { 'Content-Type': 'application/json' } }) }
     }
     return { data: result.data }
   } catch {

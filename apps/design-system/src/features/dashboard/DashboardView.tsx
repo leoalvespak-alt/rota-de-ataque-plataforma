@@ -48,14 +48,14 @@ function ProjectCard({ project, onDelete }: { project: ProjectItem; onDelete: (i
       if (data.wizardData) {
         loadWizardData({
           ...data.wizardData,
-          step: data.wizardStep || data.wizardData.step || 1,
+          step: (data.wizardStep ?? (data.wizardData.step as number | undefined) ?? 1) as import('@/stores/useWizardStore').WizardStep,
           projectId: project.id
         })
       } else {
         // Se não tiver wizardData (projetos antigos?), tentamos inicializar o básico
         loadWizardData({
           projectId: project.id,
-          step: 1
+          step: 1 as const
         })
       }
       setTab('wizard')

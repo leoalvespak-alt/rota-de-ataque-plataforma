@@ -98,7 +98,7 @@ BEGIN
         INSERT INTO unified_creatives (
           thesis_id, channel, format, status, curation_status,
           scheduled_for, published_at, approved_by, batch_id,
-          title, caption, copy_data, origin, created_at, updated_at
+          title, caption, copy_data, origin
         )
         SELECT
           sp.thesis_id,
@@ -113,9 +113,7 @@ BEGIN
           COALESCE(sp.title, ''),
           sp.caption,
           COALESCE(sp.copy_data, '{}')::jsonb,
-          COALESCE(sp.origin, 'prospector'),
-          sp.created_at,
-          sp.updated_at
+          COALESCE(sp.origin, 'prospector')
         FROM scheduled_publications sp
         ON CONFLICT DO NOTHING
       $q$;
@@ -124,7 +122,7 @@ BEGIN
         INSERT INTO unified_creatives (
           thesis_id, channel, format, status, curation_status,
           scheduled_for, published_at, approved_by, batch_id,
-          title, caption, copy_data, origin, created_at, updated_at
+          title, caption, copy_data, origin
         )
         SELECT
           sp.thesis_id,
@@ -139,9 +137,7 @@ BEGIN
           COALESCE(sp.title, ''),
           sp.caption,
           '{}'::jsonb,
-          COALESCE(sp.origin, 'prospector'),
-          sp.created_at,
-          sp.updated_at
+          COALESCE(sp.origin, 'prospector')
         FROM scheduled_publications sp
         ON CONFLICT DO NOTHING
       $q$;

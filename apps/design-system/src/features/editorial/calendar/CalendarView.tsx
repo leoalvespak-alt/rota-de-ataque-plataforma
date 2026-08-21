@@ -77,7 +77,7 @@ export function CalendarView() {
           {isCreating ? 'Novo Criativo' : 'Editar Criativo'}
         </h2>
         <CreativeForm
-          initialData={editingItem || {}}
+          initialData={(editingItem || {}) as Partial<import('./CreativeForm').CreativeFormData>}
           onSave={() => {
             setEditingItem(null)
             setIsCreating(false)
