@@ -43,7 +43,6 @@ export function CalendarView() {
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(() => {
-    setLoading(true)
     apiFetch<Publication[]>('/publications')
       .then(setItems)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Não foi possível carregar o calendário.'))
@@ -51,7 +50,7 @@ export function CalendarView() {
   }, [])
 
   useEffect(() => {
-    load()
+    void load()
   }, [load])
 
   const byChannel = useMemo(() => {
@@ -79,7 +78,10 @@ export function CalendarView() {
         </div>
         <button
           className="rounded-md border border-ui-border px-3 py-2 text-sm text-ui-text hover:bg-ui-panel2"
-          onClick={load}
+          onClick={() => {
+            setLoading(true)
+            load()
+          }}
         >
           Atualizar
         </button>
