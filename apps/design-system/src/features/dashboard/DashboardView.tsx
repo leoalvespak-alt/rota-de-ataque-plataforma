@@ -26,7 +26,7 @@ interface ProjectItem {
   cardCount: number | null
   createdAt: string
   updatedAt: string
-  wizardData?: any
+  wizardData?: Record<string, unknown>
   wizardStep?: number
 }
 
@@ -44,7 +44,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectItem; onDelete: (i
   const handleContinue = async () => {
     try {
       // Usar os dados da lista ou buscar detalhes completos se precisar
-      const data = await apiFetch<any>(`/projects/${project.id}`)
+      const data = await apiFetch<ProjectItem>(`/projects/${project.id}`)
       if (data.wizardData) {
         loadWizardData({
           ...data.wizardData,
