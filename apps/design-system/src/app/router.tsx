@@ -6,7 +6,7 @@ const TabLoading = () => (
   <div className="flex flex-1 items-center justify-center text-sm text-ui-muted">Carregando…</div>
 )
 
-const wrap = (fn: () => Promise<{ default: React.ComponentType }>) =>
+const wrap = (fn: () => Promise<{ default: React.ComponentType<Record<string, never>> }>) =>
   lazy(fn)
 
 // ── Tabs principais ──────────────────────────────────────────────

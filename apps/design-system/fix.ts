@@ -30,14 +30,14 @@ async function fix() {
     }
     const existing = await db.select().from(creativeProjects).where(sql`metadata->>'contentItemId' = ${item.id}`)
     if (existing.length === 0) {
-      const copy = item.copyData as any || {}
-      const title = copy.headline || `Criativo ${item.format} - ${item.scheduledDate || 'Sem data'}`
+      const copy = (item.copyData as Record<string, unknown>) || {}
+      const title = (copy['headline'] as string | undefined) || `Criativo ${item.format} - ${item.scheduledDate || 'Sem data'}`
       const wizardData = {
         step: 4,
         creativeType: item.format === 'story' ? 'story' : (item.format === 'carousel' ? 'carousel' : 'post'),
-        freeText: copy.body || copy.headline || '',
+        freeText: (copy['body'] as string | undefined) || (copy['headline'] as string | undefined) || '',
         templateId: item.templateId || null,
-        scriptCards: copy.slides ? copy.slides.map((s: any, i: number) => ({ id: `slide-${i}`, role: i === 0 ? 'cover' : 'slide', title: '', body: typeof s === 'string' ? s : JSON.stringify(s), fields: {} })) : []
+        scriptCards: Array.isArray(copy['slides']) ? (copy['slides'] as unknown[]).map((s, i: number) => ({ id: `slide-${i}`, role: i === 0 ? 'cover' : 'slide', title: '', body: typeof s === 'string' ? s : JSON.stringify(s), fields: {} })) : []
       }
       await db.insert(creativeProjects).values({ userId, title: title.substring(0, 490), status: 'em_andamento', format: item.format, templateId: item.templateId, wizardStep: 4, wizardData, metadata: { contentItemId: item.id, planItemId: item.planItemId, scheduledDate: item.scheduledDate } })
       inserted++

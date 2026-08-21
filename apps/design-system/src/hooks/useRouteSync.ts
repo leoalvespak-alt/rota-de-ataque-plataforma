@@ -13,13 +13,13 @@ import { useUiStore, type AppTab } from '@/stores/useUiStore'
 /** Mapeia segmento de URL → AppTab */
 const PATH_TO_TAB: Record<string, AppTab> = {
   '': 'dashboard',
-  'marca': 'brand',
-  'ia': 'ai-config',
-  'renders': 'renders',
-  'historico': 'history',
-  'criar': 'create',
-  'wizard': 'wizard',
-  'teses': 'editorial',
+  marca: 'brand',
+  ia: 'ai-config',
+  renders: 'renders',
+  historico: 'history',
+  criar: 'create',
+  wizard: 'wizard',
+  teses: 'editorial',
 }
 
 /** Mapeia AppTab → URL */
@@ -39,28 +39,30 @@ function pathToTab(pathname: string): AppTab {
   return PATH_TO_TAB[first] ?? 'dashboard'
 }
 
+type NavigateFn = ReturnType<typeof useNavigate>
+
 export function useRouteSync() {
   const location = useLocation()
   const navigate = useNavigate()
-  const setTab = useUiStore((s) => s.setTab)
   const activeTab = useUiStore((s) => s.activeTab)
+
+  // Manter referência estável ao navigate sem re-executar o efeito de patch
+  const navigateRef = useRef<NavigateFn>(navigate)
+  useEffect(() => {
+    navigateRef.current = navigate
+  }, [navigate])
 
   // Rota → Store: quando a URL muda, sincroniza o store
   useEffect(() => {
     const tab = pathToTab(location.pathname)
-    setTab(tab)
+    useUiStore.getState().setTab(tab)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
-  // Store → Rota: quando setTab é chamado programaticamente (atalhos, palette)
-  // substitui a função setTab no store para que também navegue.
-  const navigateRef = useRef(navigate)
-  navigateRef.current = navigate
-
+  // Store → Rota: patch de setTab para que atalhos/CommandPalette também naveguem
   useEffect(() => {
-    // Patch setTab: intercepta chamadas externas e navega
     const originalSetTab = useUiStore.getState().setTab
-    const patchedSetTab = (tab: AppTab) => {
+    const patchedSetTab = (tab: AppTab): void => {
       originalSetTab(tab)
       const path = TAB_TO_PATH[tab]
       navigateRef.current(path, { replace: false })
@@ -68,11 +70,9 @@ export function useRouteSync() {
     useUiStore.setState({ setTab: patchedSetTab })
 
     return () => {
-      // Restaura ao desmontar (não deve ocorrer em condições normais)
       useUiStore.setState({ setTab: originalSetTab })
     }
-  // Só executa uma vez na montagem
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Só executa uma vez na montagem
   }, [])
 
   return { activeTab }
