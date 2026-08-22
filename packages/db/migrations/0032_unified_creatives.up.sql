@@ -155,16 +155,27 @@ END $$;
 -- (hook_strategy, depth_level, etc.) não existem na tabela em CI.
 DO $$
 DECLARE
+  editorial_plan_items_table regclass;
   has_cols boolean;
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'editorial_plan_items') THEN
-    SELECT EXISTS (
-      SELECT 1 FROM information_schema.columns
-      WHERE table_name = 'editorial_plan_items' AND column_name = 'hook_strategy'
-    ) INTO has_cols;
+  editorial_plan_items_table := COALESCE(
+    to_regclass('design.editorial_plan_items'),
+    to_regclass('public.editorial_plan_items')
+  );
+
+  IF editorial_plan_items_table IS NOT NULL THEN
+    SELECT count(*) = 7
+    FROM pg_attribute
+    WHERE attrelid = editorial_plan_items_table
+      AND attname IN (
+        'id', 'hook_strategy', 'depth_level', 'audience_stage',
+        'cta', 'visual_direction', 'sequence_position'
+      )
+      AND NOT attisdropped
+    INTO has_cols;
 
     IF has_cols THEN
-      EXECUTE $q$
+      EXECUTE format($q$
         UPDATE unified_creatives uc
         SET
           hook_strategy    = COALESCE(uc.hook_strategy, epi.hook_strategy),
@@ -174,10 +185,10 @@ BEGIN
           visual_direction = COALESCE(uc.visual_direction, epi.visual_direction),
           sequence_position = COALESCE(uc.sequence_position, epi.sequence_position),
           updated_at       = now()
-        FROM editorial_plan_items epi
+        FROM %s epi
         WHERE uc.plan_item_id = epi.id
           AND uc.plan_item_id IS NOT NULL
-      $q$;
+      $q$, editorial_plan_items_table);
     END IF;
   END IF;
 END $$;

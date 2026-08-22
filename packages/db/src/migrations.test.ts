@@ -31,6 +31,30 @@ describe('unified 15-day batch migration', () => {
   })
 })
 
+describe('unified creatives migration', () => {
+  it('resolves editorial plan items in either the Design or public schema', async () => {
+    const up = await migration('0032_unified_creatives.up.sql')
+
+    expect(up).toMatch(/to_regclass\('design\.editorial_plan_items'\)/u)
+    expect(up).toMatch(/to_regclass\('public\.editorial_plan_items'\)/u)
+    expect(up).toMatch(/attrelid = editorial_plan_items_table/u)
+    expect(up).toMatch(/FROM %s epi/u)
+    expect(up).not.toMatch(/FROM editorial_plan_items epi/u)
+  })
+
+  it('qualifies thesis mapping and audit tables across schemas', async () => {
+    const up = await migration('0033_thesis_mapping.up.sql')
+    const down = await migration('0033_thesis_mapping.down.sql')
+
+    expect(up).toMatch(/to_regclass\('design\.editorial_theses'\)/u)
+    expect(up).toMatch(/to_regclass\('public\.editorial_theses'\)/u)
+    expect(up).toMatch(/INSERT INTO public\.audit_log/u)
+    expect(up).not.toMatch(/ALTER TABLE editorial_theses/u)
+    expect(down).toMatch(/editorial_theses_table regclass/u)
+    expect(down).not.toMatch(/ALTER TABLE editorial_theses/u)
+  })
+})
+
 describe('organic budget migration reconciliation', () => {
   it('extends the 0010 table instead of recreating or replacing it', async () => {
     const up = await migration('0015_budget_reservations.up.sql')

@@ -6,8 +6,18 @@ DROP TRIGGER IF EXISTS creative_status_audit ON unified_creatives;
 DROP FUNCTION IF EXISTS audit_creative_published();
 
 DO $$
+DECLARE
+  editorial_theses_table regclass;
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'editorial_theses') THEN
-    ALTER TABLE editorial_theses DROP COLUMN IF EXISTS prospector_thesis_id;
+  editorial_theses_table := COALESCE(
+    to_regclass('design.editorial_theses'),
+    to_regclass('public.editorial_theses')
+  );
+
+  IF editorial_theses_table IS NOT NULL THEN
+    EXECUTE format(
+      'ALTER TABLE %s DROP COLUMN IF EXISTS prospector_thesis_id',
+      editorial_theses_table
+    );
   END IF;
 END $$;

@@ -5,16 +5,27 @@
 
 -- 1. Adicionar mapeamento na editorial_theses (se existir)
 DO $$
+DECLARE
+  editorial_theses_table regclass;
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'editorial_theses') THEN
+  editorial_theses_table := COALESCE(
+    to_regclass('design.editorial_theses'),
+    to_regclass('public.editorial_theses')
+  );
+
+  IF editorial_theses_table IS NOT NULL THEN
     -- Adicionamos sem FK estrita (REFERENCES) para não quebrar no CI onde o schema `public` está limpo, 
     -- da mesma forma que fizemos na migration 0032.
-    ALTER TABLE editorial_theses 
-      ADD COLUMN IF NOT EXISTS prospector_thesis_id uuid;
+    EXECUTE format(
+      'ALTER TABLE %s ADD COLUMN IF NOT EXISTS prospector_thesis_id uuid',
+      editorial_theses_table
+    );
       
-    CREATE INDEX IF NOT EXISTS editorial_theses_prospector_idx 
-      ON editorial_theses (prospector_thesis_id)
-      WHERE prospector_thesis_id IS NOT NULL;
+    EXECUTE format(
+      'CREATE INDEX IF NOT EXISTS editorial_theses_prospector_idx '
+      'ON %s (prospector_thesis_id) WHERE prospector_thesis_id IS NOT NULL',
+      editorial_theses_table
+    );
   END IF;
 END $$;
 
@@ -25,8 +36,8 @@ BEGIN
   -- Se o status mudou para 'published'
   IF NEW.status = 'published' AND OLD.status IS DISTINCT FROM 'published' THEN
     -- Inserir no audit_log de forma segura, se a tabela audit_log existir
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_log') THEN
-      INSERT INTO audit_log(actor_id, action, target, after)
+    IF to_regclass('public.audit_log') IS NOT NULL THEN
+      INSERT INTO public.audit_log(actor_id, action, target, after)
       VALUES (
         'system',
         'creative.status_changed',

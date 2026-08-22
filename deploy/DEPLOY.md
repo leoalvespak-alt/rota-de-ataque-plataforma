@@ -72,7 +72,9 @@ As migrations usam exclusivamente
 com o project name do Dokploy, profile `tools`, `--no-deps` e a imagem
 imutável já puxada. O compose local com blocos `build:` nunca é usado em
 produção. O serviço `migrate` recebe o `.env` materializado pelo Dokploy;
-o script não aceita mais “warning” de migration como sucesso.
+o script não aceita mais “warning” de migration como sucesso. As migrations
+compartilhadas resolvem explicitamente tabelas do Design no schema `design` e
+continuam válidas no banco isolado do Prospector.
 
 ## Secrets exigidos no GitHub
 
