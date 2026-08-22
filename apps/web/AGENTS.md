@@ -1,5 +1,21 @@
 @RTK.md
 
+## ⚠️ REGRA CRÍTICA — Branch e commit
+
+**Sempre commitar diretamente em `main`. NUNCA criar branches nem PRs.**
+
+A proteção de branch foi removida no GitHub para este repositório.
+Fluxo correto após qualquer alteração:
+
+```bash
+git add <arquivos-modificados>
+git commit -m "tipo: descrição"
+git push origin main
+```
+
+Push em `main` → CI builda Docker → GHCR → deploy automático na VPS.
+Ver regras completas em `../../AGENTS.md`.
+
 # Regras obrigatórias — apps/web (Prospector)
 
 ## basePath (`/prospector`)
