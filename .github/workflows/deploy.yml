@@ -1,4 +1,4 @@
-name: Dokploy CI/CD (Design System)
+name: CI/CD (Design System + Prospector)
 
 on:
   push:
@@ -10,12 +10,19 @@ env:
   REGISTRY: ghcr.io
   IMAGE_OWNER: ${{ github.repository_owner }}
 
+concurrency:
+  group: production-design-prospector
+  cancel-in-progress: false
+
 jobs:
   build-and-push:
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
+    outputs:
+      tag: ${{ steps.prep.outputs.tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,7 +46,7 @@ jobs:
           echo "owner=$OWNER" >> $GITHUB_ENV
 
       - name: Build and push Design Web (Vite SPA)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./apps/design-system/Dockerfile.web
@@ -47,7 +54,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-web:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/rota-design-web:latest
 
       - name: Build and push Design API
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./apps/design-system/Dockerfile.api
@@ -55,7 +62,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-api:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/rota-design-api:latest
 
       - name: Build and push Prospector Web
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./apps/web/Dockerfile
@@ -63,7 +70,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-web:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-web:latest
 
       - name: Build and push Prospector Worker
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./docker/worker.Dockerfile
@@ -73,6 +80,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     steps:
       - name: Deploy to VPS
         env:
@@ -85,17 +93,4 @@ jobs:
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -o ServerAliveCountMax=20 root@$VPS_HOST"
 
-          echo "=== Deploying Design Web ==="
-          $SSH '/opt/rota-deploy/deploy.sh design-web'
-
-          echo "=== Deploying Design API ==="
-          $SSH '/opt/rota-deploy/deploy.sh design-api --migrate'
-
-          echo "=== Deploying Prospector ==="
-          $SSH '/opt/rota-deploy/deploy.sh prospector --migrate'
-
-          echo "=== Cleanup old images ==="
-          $SSH '/opt/rota-deploy/deploy.sh cleanup'
-
-          echo "=== Final status ==="
-          $SSH '/opt/rota-deploy/deploy.sh status'
+          $SSH "/opt/rota-deploy/deploy.sh design-prospector '${{ needs.build-and-push.outputs.tag }}'"

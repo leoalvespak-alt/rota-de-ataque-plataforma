@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import pg from 'pg'
+import { migrationChecksums } from './migration-checksum'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL é obrigatório para migrations.')
@@ -38,10 +38,16 @@ try {
   const files = (await readdir(migrationsDirectory)).filter((file) => /^\d{4}_.+\.sql$/.test(file)).sort()
   for (const file of files) {
     const sql = await readFile(resolve(migrationsDirectory, file), 'utf8')
-    const checksum = createHash('sha256').update(sql).digest('hex')
+    const { canonical: checksum, acceptedLegacy } = migrationChecksums(sql)
     const existing = await client.query<{ checksum: string }>('select checksum from design_schema_migrations where version = $1', [file])
     if (existing.rows[0]) {
-      if (existing.rows[0].checksum !== checksum) throw new Error(`Checksum alterado para migration aplicada: ${file}`)
+      if (existing.rows[0].checksum !== checksum) {
+        if (!acceptedLegacy.has(existing.rows[0].checksum)) {
+          throw new Error(`Checksum alterado para migration aplicada: ${file}`)
+        }
+        await client.query('update design_schema_migrations set checksum = $1 where version = $2', [checksum, file])
+        console.info(`Checksum normalizado (LF/CRLF): ${file}`)
+      }
       continue
     }
 
