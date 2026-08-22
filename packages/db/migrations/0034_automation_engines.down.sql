@@ -1,4 +1,4 @@
-﻿BEGIN;
+BEGIN;
 
 -- Reverter Etapa 1
 DROP TABLE IF EXISTS engine_commands;

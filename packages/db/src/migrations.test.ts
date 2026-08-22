@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -8,6 +8,15 @@ const migrationsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.
 async function migration(name: string) {
   return readFile(path.join(migrationsDirectory, name), 'utf8')
 }
+
+describe('migration file encoding', () => {
+  it('does not ship SQL files with a UTF-8 BOM', async () => {
+    const files = (await readdir(migrationsDirectory)).filter((file) => file.endsWith('.sql'))
+    const contents = await Promise.all(files.map((file) => migration(file)))
+
+    expect(contents.every((sql) => sql.charCodeAt(0) !== 0xfeff)).toBe(true)
+  })
+})
 
 describe('organic budget migration reconciliation', () => {
   it('extends the 0010 table instead of recreating or replacing it', async () => {

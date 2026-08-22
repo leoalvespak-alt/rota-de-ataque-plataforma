@@ -1,4 +1,4 @@
-﻿BEGIN;
+BEGIN;
 
 -- Etapa 1: Catálogo dos 7 motores de automação
 -- GARANTIA: somente aditivo. Nenhuma linha existente é alterada. enabled NÃO aparece em nenhum UPDATE.

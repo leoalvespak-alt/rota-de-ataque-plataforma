@@ -43,6 +43,8 @@ nos workflows ou nesta documentação.
 
 - Um lock global impede dois repositórios de alterarem a VPS ao mesmo tempo.
 - Migrations rodam antes da troca do serviço e qualquer erro encerra o workflow.
+- O loader remove defensivamente um BOM UTF-8 inicial, e a suíte proíbe novos
+  arquivos SQL com BOM.
 - O deploy do Prospector confere que o container usa a imagem recém-publicada;
   um health check da versão anterior não produz falso positivo.
 - O Design web é trocado de forma atômica e restaura os arquivos anteriores se
