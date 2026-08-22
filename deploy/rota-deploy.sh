@@ -103,11 +103,11 @@ cleanup_images() {
   done
 }
 
-find_prospector_compose_dir() {
+find_prospector_compose_file() {
   local compose_file
-  compose_file="$(find /etc/dokploy/compose -type f -path '*/prospector*/code/docker/docker-compose.yml' -print -quit 2>/dev/null || true)"
+  compose_file="$(find /etc/dokploy/compose -type f -path '*prospector*/code/docker/docker-compose.dokploy.yml' -print -quit 2>/dev/null || true)"
   [[ -n "$compose_file" ]] || return 1
-  dirname "$compose_file"
+  printf '%s\n' "$compose_file"
 }
 
 wait_for_image() {
@@ -158,19 +158,20 @@ deploy_design_web() {
 }
 
 deploy_design_api() {
-  local tag image latest_image expected_image running_image
+  local tag image latest_image expected_image running_image migration_url
 
   tag="$(standard_image_tag)"
   image="$GHCR/rota-design-api:$tag"
   latest_image="$GHCR/rota-design-api:latest"
+  migration_url="${DESIGN_MIGRATION_DATABASE_URL:-}"
   log "Deploying Design System API"
-  [[ -n "${DESIGN_DATABASE_URL:-}" ]] || fail "DESIGN_DATABASE_URL is missing from $DEPLOY_CONFIG"
+  [[ -n "$migration_url" ]] || fail "DESIGN_MIGRATION_DATABASE_URL is missing from $DEPLOY_CONFIG"
   docker pull "$image"
   [[ "$tag" == "latest" ]] || docker tag "$image" "$latest_image"
   expected_image="$(docker image inspect --format '{{.Id}}' "$image")"
 
   log "Running Design API migrations before restart"
-  DATABASE_URL="$DESIGN_DATABASE_URL" docker run --rm --network host \
+  DATABASE_URL="$migration_url" docker run --rm --network host \
     --env DATABASE_URL \
     "$image" pnpm --filter @plataforma/design-system db:migrate
 
@@ -183,7 +184,7 @@ deploy_design_api() {
 
 deploy_prospector() {
   local tag web_image worker_image expected_image expected_worker_image
-  local compose_dir web_container migration_container migration_image
+  local compose_file compose_dir web_container migration_container migration_image
 
   tag="$(standard_image_tag)"
   web_image="$GHCR/prospector-platform-web:$tag"
@@ -198,14 +199,19 @@ deploy_prospector() {
   fi
   expected_image="$(docker image inspect --format '{{.Id}}' "$web_image")"
   expected_worker_image="$(docker image inspect --format '{{.Id}}' "$worker_image")"
-  compose_dir="$(find_prospector_compose_dir)" || fail "Prospector compose directory not found under /etc/dokploy/compose"
+  compose_file="$(find_prospector_compose_file)" || fail "Prospector Dokploy compose file not found under /etc/dokploy/compose"
+  compose_dir="$(dirname "$compose_file")"
 
   log "Running Prospector migrations before web replacement"
   migration_container="prospector-migrate-$(date +%s)-$$"
   TEMP_CONTAINER="$migration_container"
   (
     cd "$compose_dir"
-    docker compose --profile tools run --name "$migration_container" migrate
+    docker compose \
+      --project-name rotadeataque-prospector-czj6hb \
+      --file "$compose_file" \
+      --profile tools \
+      run --no-deps --pull never --env-from-file .env --name "$migration_container" migrate
   )
   migration_image="$(docker inspect --format '{{.Image}}' "$migration_container")"
   [[ "$migration_image" == "$expected_worker_image" ]] \

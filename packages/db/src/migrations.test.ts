@@ -18,6 +18,19 @@ describe('migration file encoding', () => {
   })
 })
 
+describe('unified 15-day batch migration', () => {
+  it('removes publications before the opportunities they reference', async () => {
+    const up = await migration('0031_unified_15day_batch.up.sql')
+    const publicationsDelete = up.indexOf('DELETE FROM scheduled_publications')
+    const opportunitiesDelete = up.indexOf('DELETE FROM content_opportunities')
+
+    expect(publicationsDelete).toBeGreaterThan(-1)
+    expect(opportunitiesDelete).toBeGreaterThan(publicationsDelete)
+    expect(up).toMatch(/d15db4a0-2026-4a08-8a15-d00000000031/u)
+    expect(up).toMatch(/content_opportunity_id IN[\s\S]*PLANO-DE-PUBLICACAO-15-DIAS%/u)
+  })
+})
+
 describe('organic budget migration reconciliation', () => {
   it('extends the 0010 table instead of recreating or replacing it', async () => {
     const up = await migration('0015_budget_reservations.up.sql')

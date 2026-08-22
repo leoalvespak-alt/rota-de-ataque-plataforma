@@ -1,7 +1,18 @@
 BEGIN;
 
--- Remover todos os agendamentos do ciclo antigo de 15 dias para limpar o ambiente e aplicar os 30 novos criativos unificados
-DELETE FROM scheduled_publications WHERE batch_id = 'd15db4a0-2026-4a08-8a15-d00000000030';
+-- Remover os ciclos antigo e unificado antes das oportunidades que eles
+-- referenciam. O lote unificado pode existir em bancos nos quais o seed foi
+-- aplicado antes de a migration ter sido registrada no ledger.
+DELETE FROM scheduled_publications
+WHERE batch_id IN (
+  'd15db4a0-2026-4a08-8a15-d00000000030'::uuid,
+  'd15db4a0-2026-4a08-8a15-d00000000031'::uuid
+)
+OR content_opportunity_id IN (
+  SELECT id
+  FROM content_opportunities
+  WHERE evidence->>'source' LIKE 'PLANO-DE-PUBLICACAO-15-DIAS%'
+);
 DELETE FROM content_variants WHERE origin = 'manual' AND status IN ('ready', 'draft') AND locked_by = 'organic-15day-batch-v1';
 DELETE FROM content_items WHERE origin = 'manual' AND status IN ('ready', 'draft') AND locked_by = 'organic-15day-batch-v1';
 DELETE FROM content_opportunities WHERE id IN (SELECT id FROM content_opportunities WHERE evidence->>'source' LIKE 'PLANO-DE-PUBLICACAO-15-DIAS%');

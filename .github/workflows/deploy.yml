@@ -82,6 +82,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Deploy to VPS
         env:
           SSH_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
@@ -92,5 +95,13 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -o ServerAliveCountMax=20 root@$VPS_HOST"
+
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=20 \
+            deploy/rota-deploy.sh "root@$VPS_HOST:/opt/rota-deploy/deploy.sh.candidate"
+          $SSH 'bash -n /opt/rota-deploy/deploy.sh.candidate &&
+            cp -a /opt/rota-deploy/deploy.sh /opt/rota-deploy/deploy.sh.previous &&
+            install -o root -g root -m 755 /opt/rota-deploy/deploy.sh.candidate /opt/rota-deploy/deploy.sh &&
+            rm -f /opt/rota-deploy/deploy.sh.candidate'
 
           $SSH "/opt/rota-deploy/deploy.sh design-prospector '${{ needs.build-and-push.outputs.tag }}'"

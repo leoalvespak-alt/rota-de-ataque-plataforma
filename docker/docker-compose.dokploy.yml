@@ -64,6 +64,7 @@ services:
     pull_policy: always
     restart: "no"
     profiles: ["tools"]
+    env_file: .env
     depends_on:
       postgres: { condition: service_healthy }
     command: ["pnpm", "--filter", "@plataforma/db", "migrate"]

@@ -21,6 +21,10 @@ O arquivo versionado é `deploy/rota-deploy.sh`; a instalação operacional fica
 `/opt/rota-deploy/deploy.sh` com modo `755`. Todos os deploys usam o lock global
 `/run/lock/rota-deploy.lock`, inclusive o build longo da Plataforma 2.0.
 
+Antes da ativação, o próprio workflow envia o script versionado como `.candidate`,
+valida com `bash -n`, preserva `.previous` e instala em modo `755`. Isso evita
+drift e torna a correção de permissão parte do fluxo automático.
+
 ```bash
 deploy.sh design-prospector [tag] # Design web + API + Prospector, com migrations
 deploy.sh design-web
@@ -38,6 +42,10 @@ manuais preservam o comportamento de usar `latest`.
 O arquivo root-only `/etc/rota-deploy.env` (modo `600`) contém somente os
 segredos operacionais necessários ao script. Nunca grave esses valores no Git,
 nos workflows ou nesta documentação.
+
+A API usa uma conta restrita no seu unit do systemd. O deploy usa separadamente
+`DESIGN_MIGRATION_DATABASE_URL`, com o owner do schema, apenas dentro do
+container efêmero de migration. Não conceda ownership/DDL à conta da aplicação.
 
 ## Gates obrigatórios
 
@@ -59,9 +67,12 @@ serviço web usa `env_file: .env`; essa linha é parte do contrato atual e não 
 ser removida sem substituir explicitamente todas as variáveis no bloco
 `environment`.
 
-As migrations usam o compose efetivo em
-`/etc/dokploy/compose/*prospector*/code/docker/docker-compose.yml` e o profile
-`tools`. O script não aceita mais “warning” de migration como sucesso.
+As migrations usam exclusivamente
+`/etc/dokploy/compose/*prospector*/code/docker/docker-compose.dokploy.yml`,
+com o project name do Dokploy, profile `tools`, `--no-deps` e a imagem
+imutável já puxada. O compose local com blocos `build:` nunca é usado em
+produção. O serviço `migrate` recebe o `.env` materializado pelo Dokploy;
+o script não aceita mais “warning” de migration como sucesso.
 
 ## Secrets exigidos no GitHub
 
