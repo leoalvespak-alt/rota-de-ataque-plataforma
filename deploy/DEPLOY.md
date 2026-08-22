@@ -54,11 +54,16 @@ deploy.sh design-web          # Extrai SPA do container nginx → /var/www/
 deploy.sh design-api --migrate # Reinicia systemd + migrations Drizzle
 deploy.sh prospector --migrate # Dokploy compose redeploy + migrations
 deploy.sh gazeta              # Dokploy app redeploy
-deploy.sh plataforma          # Dokploy app redeploy
+deploy.sh plataforma          # Dokploy app redeploy (legado)
+deploy.sh plataforma-v2 <tag> # Plataforma 2.0 via GHCR (usado pelo CI do repo v2)
 deploy.sh all                 # Todos os projetos
 deploy.sh cleanup             # Remove imagens antigas (mantém latest + 1)
 deploy.sh status              # Health check de todos os serviços
 ```
+
+> **Importante:** o arquivo `/opt/rota-deploy/deploy.sh` na VPS precisa de permissão
+> de execução (`chmod +x`). Sem o bit `+x` o CI falha com
+> `bash: line 1: /opt/rota-deploy/deploy.sh: Permission denied` (exit 126).
 
 ## Para IDE AI ("faça deploy")
 

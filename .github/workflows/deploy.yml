@@ -83,7 +83,7 @@ jobs:
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@$VPS_HOST"
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -o ServerAliveCountMax=20 root@$VPS_HOST"
 
           echo "=== Deploying Design Web ==="
           $SSH '/opt/rota-deploy/deploy.sh design-web'
