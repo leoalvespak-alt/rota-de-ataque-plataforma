@@ -94,12 +94,40 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(appPath('/api/health'), { cache: 'no-store', signal: controller.signal }).then(async (response) => {
+    fetch(appPath('/api/admin/health'), { cache: 'no-store', signal: controller.signal }).then(async (response) => {
       const body = await response.json() as { at?: string }
       setHealth({ connected: response.ok, text: body.at ? new Date(body.at).toLocaleTimeString('pt-BR') : response.ok ? 'agora' : 'indisponível' })
     }).catch(() => { if (!controller.signal.aborted) setHealth({ connected: false, text: 'indisponível' }) })
     return () => controller.abort()
   }, [pathname])
+
+  const [killSwitch, setKillSwitch] = useState<{ active: boolean; origin: string } | null>(null)
+  const [togglingKillSwitch, setTogglingKillSwitch] = useState(false)
+  
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch(appPath('/api/admin/publishing/kill-switch'), { signal: controller.signal })
+      .then(async response => response.ok ? response.json() as Promise<{ active: boolean; origin?: string }> : null)
+      .then(body => setKillSwitch(body ? { active: body.active, origin: body.origin ?? 'operational_settings' } : null))
+      .catch(() => setKillSwitch(null))
+    return () => controller.abort()
+  }, [pathname])
+
+  async function toggleKillSwitch() {
+    if (!killSwitch || togglingKillSwitch) return
+    const next = !killSwitch.active
+    setTogglingKillSwitch(true)
+    try {
+      const res = await fetch(appPath('/api/admin/publishing/kill-switch'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: next })
+      })
+      if (res.ok) setKillSwitch({ active: next, origin: 'manual' })
+    } finally {
+      setTogglingKillSwitch(false)
+    }
+  }
 
   // Fetch notification count on an interval instead of every navigation
   useEffect(() => {
@@ -289,6 +317,32 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
               </div>
             )}
           </div>}
+
+          {/* Kill Switch Global */}
+          {session.role === 'admin' && killSwitch && (
+            <button
+              onClick={toggleKillSwitch}
+              disabled={togglingKillSwitch}
+              title={killSwitch.active ? `Bloqueio ativo por: ${killSwitch.origin}` : 'Clique para bloquear publicações'}
+              style={{
+                background: killSwitch.active ? 'var(--status-error)' : 'transparent',
+                color: killSwitch.active ? '#fff' : 'var(--text-secondary)',
+                border: killSwitch.active ? 'none' : '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                height: '32px',
+              }}
+            >
+              <Shield size={16} />
+              {killSwitch.active && <span>Bloqueio Ativo</span>}
+            </button>
+          )}
 
           <LiveBadge connected={health.connected} lastUpdate={health.text}/>
         </div>

@@ -8,6 +8,7 @@ export * from "./multichannel-scoring.js";
 export * from "./timeline.js";
 export * from "./creative-job-schema.js";
 export * from "./budget-gate.js";
+export * from "./automation-engines.js";
 
 export const ActionTypeSchema = z.enum([
   "follow",

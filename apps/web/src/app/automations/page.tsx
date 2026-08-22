@@ -1,6 +1,6 @@
 import { createDatabase } from '@plataforma/db'
 import { createQueueRegistry } from '@plataforma/queue'
-import { AutomationsClient } from './AutomationsClient'
+import { AutomationsTabs } from './AutomationsTabs'
 
 export default async function AutomationsPage() {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
@@ -44,7 +44,7 @@ export default async function AutomationsPage() {
       }
     }))
 
-    return <AutomationsClient workers={JSON.parse(JSON.stringify(enriched))} />
+    return <AutomationsTabs workers={JSON.parse(JSON.stringify(enriched))} />
   } finally {
     await Promise.all(Object.values(registry.queues).map(q => q.close()))
     await registry.connection.quit()

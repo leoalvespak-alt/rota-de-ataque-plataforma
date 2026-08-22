@@ -9,7 +9,7 @@ import { AccountsClient } from './app/accounts/AccountsClient'
 import { SystemHealthClient } from './app/system-health/SystemHealthClient'
 import { EngagementClient } from './app/engagement-queue/EngagementClient'
 import { NotificationsClient } from './app/notifications/NotificationsClient'
-import { AutomationsClient } from './app/automations/AutomationsClient'
+import { AutomationsTabs } from './app/automations/AutomationsTabs'
 import { AISettingsClient } from './app/ai-settings/AISettingsClient'
 import { PublishingClient } from './app/publishing/PublishingClient'
 import { TooltipProvider } from '@plataforma/ui-bridge'
@@ -23,7 +23,7 @@ const pages = [
 createElement(SystemHealthClient, { heartbeats: [], alerts: [], healthScore: 100, canaries: [], capabilities: [], killSwitchEnabled: false, workers: [] }),
   createElement(EngagementClient, { actions: [], policies: [] }),
   createElement(NotificationsClient, { triggers: [], alerts: [], deliveries: [] }),
-  createElement(AutomationsClient, { workers: [] }),
+  createElement(AutomationsTabs, { workers: [] }),
   createElement(AISettingsClient, { initialProviders: [], initialModels: [] }),
   createElement(PublishingClient, { publications: [], scheduled: 0, published: 0, failed: 0 }),
 ]
