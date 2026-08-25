@@ -19,11 +19,11 @@ async function desiredWorkers() {
   const fallback = new Set(workers.filter((worker) => process.env[flagName(worker)] === 'true'))
   if (!process.env.DATABASE_URL) return fallback
   const { pool } = createDatabase(process.env.DATABASE_URL)
-  try {
-    const result = await pool.query<{ worker_name: string; enabled: boolean }>('SELECT worker_name,enabled FROM worker_settings WHERE worker_name = ANY($1::text[])', [workers])
-    const rows = new Map(result.rows.map((row) => [row.worker_name, row.enabled]))
-    return new Set(workers.filter((worker) => rows.get(worker) ?? process.env[flagName(worker)] === 'true'))
-  } finally { await pool.end() }
+  // O pool é compartilhado por createDatabase() com os módulos importados
+  // abaixo; fechá-lo aqui antes do boot quebra os heartbeats dos workers.
+  const result = await pool.query<{ worker_name: string; enabled: boolean }>('SELECT worker_name,enabled FROM worker_settings WHERE worker_name = ANY($1::text[])', [workers])
+  const rows = new Map(result.rows.map((row) => [row.worker_name, row.enabled]))
+  return new Set(workers.filter((worker) => rows.get(worker) ?? process.env[flagName(worker)] === 'true'))
 }
 
 async function main() {
