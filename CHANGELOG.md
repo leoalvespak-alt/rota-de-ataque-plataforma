@@ -11,6 +11,7 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 - Agendamentos cron agora fixam UTC tanto na prévia quanto no BullMQ, removendo divergência de horário entre Windows, CI e containers Linux.
 - Os 41 consumidores foram consolidados em sete supervisores Node por motor, preservando filas, controles e heartbeats individuais. O manifesto é validado contra todos os entrypoints e o deploy exige scheduler + sete supervisores na imagem da release; a mudança elimina a saturação comprovada na VPS com 41 processos isolados.
 - Pré-requisitos opcionais que bloqueiam o import de um worker agora geram diagnóstico estruturado e runtime de fallback pausado, sem derrubar os demais consumidores do motor; uma execução indevida falha com reason code catalogado.
+- O runtime reserva o heartbeat canônico antes de qualquer leitura assíncrona de estado, evitando que métricas legadas publiquem `disabled` sobre o estado operacional `paused`.
 
 - Entry point client-safe separado em `@plataforma/shared/client`; o Turbo agora aguarda o build do próprio pacote antes de lint, typecheck e testes, evitando corrida com `.next/types` e testes contra `dist` obsoleto.
 

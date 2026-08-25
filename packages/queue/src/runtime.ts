@@ -154,8 +154,15 @@ export function runWorker<T extends object = Record<string, unknown>>(queue: Que
         throw error
       } finally { latencies.push(Date.now() - started); if (latencies.length > 500) latencies.shift() }
     }, { connection, concurrency: Number(process.env.WORKER_CONCURRENCY ?? 1) })
+    const sortedLatency = () => { const sorted = [...latencies].sort((a,b)=>a-b); return sorted[Math.max(0,Math.ceil(sorted.length*.95)-1)] ?? 0 }
     activeWorker = worker
-    let desiredEnabled = (await readWorkerControl(queue, database?.pool)).enabled
+    // Reserve o heartbeat canônico antes do primeiro await. Alguns workers
+    // legados ainda tentam registrar métricas próprias logo após runWorker()
+    // retornar; sem esta ordem, eles vencem a deduplicação por worker/instância
+    // e publicam o estado obsoleto `disabled` em vez de `paused`.
+    let desiredEnabled = false
+    const stopHeartbeat = database ? startWorkerHeartbeat(queue, createPostgresHeartbeatStore(database.pool), () => ({ jobsDone, jobsFailed, backlog, p95LatencyMs: sortedLatency(), state: desiredEnabled && worker.isRunning() ? 'running' : 'paused' })) : async () => undefined
+    desiredEnabled = (await readWorkerControl(queue, database?.pool)).enabled
     if (!desiredEnabled) await worker.pause()
     const reconcile = async () => {
       const nextEnabled = (await readWorkerControl(queue, database?.pool)).enabled
@@ -181,8 +188,6 @@ export function runWorker<T extends object = Record<string, unknown>>(queue: Que
         .catch(() => undefined),
       15_000,
     )
-    const sortedLatency = () => { const sorted = [...latencies].sort((a,b)=>a-b); return sorted[Math.max(0,Math.ceil(sorted.length*.95)-1)] ?? 0 }
-    const stopHeartbeat = database ? startWorkerHeartbeat(queue, createPostgresHeartbeatStore(database.pool), () => ({ jobsDone, jobsFailed, backlog, p95LatencyMs: sortedLatency(), state: desiredEnabled && worker.isRunning() ? 'running' : 'paused' })) : async () => undefined
     const shutdown = async () => { clearInterval(backlogTimer); clearInterval(controlTimer); await stopHeartbeat(); await worker.close(); await metricsQueue.close(); await connection.quit(); await database?.pool.end() }
     process.once('SIGTERM', () => void shutdown()); process.once('SIGINT', () => void shutdown())
     return worker
