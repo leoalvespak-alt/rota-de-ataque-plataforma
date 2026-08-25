@@ -5,7 +5,7 @@ package=''
 if [ "${1:-}" = 'supervisor' ]; then
 engine="${2:-}"
 printf '{"level":"info","component":"worker-supervisor","engine":"%s","state":"starting_controlled_runtime"}\n' "$engine"
-exec node --import tsx --enable-source-maps /app/docker/worker-supervisor.ts "$engine"
+exec node --import tsx --enable-source-maps /app/docker/worker-supervisor.mts "$engine"
 fi
 
 for argument in "$@"; do
