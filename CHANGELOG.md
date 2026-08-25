@@ -8,6 +8,8 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 
 - Auditoria de fechamento (25/08): allowlist pública passou a respeitar método HTTP; `run-now` exige consumer `running`; scheduler remove recorrências de workers desligados; health exige a migration exata; runtime consulta papel/saúde da conta no banco; canário sintético conclui `worker_runs`; e o catálogo cobre todos os reason codes emitidos.
 - Gate SQL executado em PostgreSQL descartável com as 35 migrations e 777 literais; corrigido o contrato de `whatsapp_messages.created_at`. Compose renderizado pelo Docker real com scheduler e 41 workers, sem tocar a base de produção.
+- Agendamentos cron agora fixam UTC tanto na prévia quanto no BullMQ, removendo divergência de horário entre Windows, CI e containers Linux.
+- Entrypoint dos 41 workers agora executa o artefato compilado diretamente com Node, eliminando um processo `pnpm` residente por container e a saturação observada no primeiro deploy completo.
 
 - Entry point client-safe separado em `@plataforma/shared/client`; o Turbo agora aguarda o build do próprio pacote antes de lint, typecheck e testes, evitando corrida com `.next/types` e testes contra `dist` obsoleto.
 

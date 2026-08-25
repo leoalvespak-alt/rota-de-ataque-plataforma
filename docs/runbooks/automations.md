@@ -4,6 +4,8 @@
 
 O contrato auditado contém scheduler, Compose com 41 workers, health separado e a migration `0035_reconcile_automation_runtime`. O checker de deploy exige os 42 runtimes na imagem exata da release; a implantação e o canário são confirmados separadamente no registro pós-deploy.
 
+Cada container de worker preserva no Compose o pacote que executa, mas o entrypoint substitui o processo intermediário do `pnpm` por `node workers/<nome>/dist/main.js`. Assim, os 41 runtimes continuam isolados e auditáveis sem manter outros 41 processos residentes nem repetir a pressão de startup observada no primeiro rollout.
+
 Estados devem ser lidos separadamente: `desiredState` (intenção persistida), `runtimeState` (heartbeat real), `lastRunState` (`succeeded`, `skipped`, `blocked` ou `failed`) e `queueState`. `NO_INPUT` é trabalho inexistente, não sucesso silencioso; `RUNTIME_UNAVAILABLE` impede `run-now` quando não existe consumer `running`; `SQL_CONTRACT_ERROR` aponta para drift de query/schema. Todos os reason codes do runtime têm mensagem e próxima ação catalogadas. Incidentes podem ser reconhecidos pelo operador com nota e são resolvidos por uma execução posterior bem-sucedida.
 
 Endpoints públicos de operação: `/api/health/live`, `/api/health/ready`, `/api/health/operational` e `/api/health`. O último só deve ser usado como agregado; para decidir se uma ação pode ser enfileirada, use o estado operacional.
@@ -49,7 +51,7 @@ Para `0034_automation_engines` + `0035_reconcile_automation_runtime`, o gate inc
 A aba `/automacoes?aba=agendamentos` permite editar somente os nove workers com `schedulable=true`. Os demais mostram `Acionado por …` na visão avançada e recebem HTTP 409 se alguém tentar `set_schedule` diretamente:
 
 - **Formato `every:<ms>`** — intervalo fixo em milissegundos (ex: `every:900000` = 15 min).
-- **Formato cron** — expressão cron padrão (ex: `0 */6 * * *` = a cada 6h).
+- **Formato cron** — expressão cron padrão em UTC (ex: `0 */6 * * *` = a cada 6h). A prévia da UI e o BullMQ usam explicitamente o mesmo fuso, independentemente do sistema operacional do navegador, runner ou container.
 
 A ação `preview_schedule` valida cron/intervalo no servidor e devolve a próxima execução sem persistir. Depois da confirmação visual, `set_schedule`:
 1. valida novamente a cadência;
