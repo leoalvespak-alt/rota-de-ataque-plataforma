@@ -44,4 +44,34 @@ describe('middleware — Location header', () => {
     const response = await middleware(req)
     expect(response.headers.get('location')).toBeNull()
   })
+
+  it.each([
+    ['/prospector/api/meta/webhook', 'GET'],
+    ['/prospector/api/whatsapp/webhook', 'GET'],
+    ['/prospector/api/email/webhook/resend', 'POST'],
+    ['/prospector/api/email/confirm/token', 'GET'],
+  ])('libera rota pública %s para validação no handler', async (url, method) => {
+    const { default: middleware } = await import('./middleware')
+    const { NextRequest } = await import('next/server')
+    const response = await middleware(new NextRequest(new URL(`https://design.rotadeataque.com.br${url}`), { method }))
+    expect(response.headers.get('location')).toBeNull()
+    expect(response.status).toBe(200)
+  })
+
+  it('mantém rota administrativa em 401 sem sessão', async () => {
+    const { default: middleware } = await import('./middleware')
+    const { NextRequest } = await import('next/server')
+    const response = await middleware(new NextRequest(new URL('https://design.rotadeataque.com.br/prospector/api/admin/automations')))
+    expect(response.status).toBe(401)
+  })
+
+  it('não transforma método não declarado em acesso público', async () => {
+    const { default: middleware } = await import('./middleware')
+    const { NextRequest } = await import('next/server')
+    const response = await middleware(new NextRequest(
+      new URL('https://design.rotadeataque.com.br/prospector/api/email/confirm/token'),
+      { method: 'POST' },
+    ))
+    expect(response.status).toBe(401)
+  })
 })

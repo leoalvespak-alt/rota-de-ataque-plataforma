@@ -90,7 +90,7 @@ describe('publisher', () => {
     const repo = makeRepo([row()])
     const processor = createPublisherProcessor(repo, makeStore(), makeMeta(), makeNotifications())
 
-    await expect(processor(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, migrationsCurrent: false } }))).rejects.toMatchObject({ reasonCode: 'PREFLIGHT_FAILED' })
+    await expect(processor(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, migrationsCurrent: false } }))).rejects.toMatchObject({ reasonCode: 'MIGRATION_DRIFT' })
     expect(repo.due).not.toHaveBeenCalled()
   })
 
@@ -98,7 +98,7 @@ describe('publisher', () => {
     const repo = makeRepo([row()])
     const processor = createPublisherProcessor(repo, makeStore(), makeMeta(), makeNotifications())
 
-    await expect(processor(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, accountStatus: 'STOPPED' } }))).rejects.toMatchObject({ reasonCode: 'PREFLIGHT_FAILED' })
+    await expect(processor(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, accountStatus: 'STOPPED' } }))).rejects.toMatchObject({ reasonCode: 'ACCOUNT_AUTH_REQUIRED' })
     expect(repo.due).not.toHaveBeenCalled()
   })
 

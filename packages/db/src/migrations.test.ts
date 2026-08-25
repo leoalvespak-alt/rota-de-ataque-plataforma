@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { AUTOMATION_ENGINES, ReasonCodeSchema } from '@plataforma/shared'
 import { describe, expect, it } from 'vitest'
 
 const migrationsDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations')
@@ -101,6 +102,71 @@ describe('editorial doctrine seed migration', () => {
     expect(up).toMatch(/ADD COLUMN IF NOT EXISTS handle/u)
     expect(up).toMatch(/ADD COLUMN IF NOT EXISTS display_name/u)
     expect(down).toMatch(/DROP COLUMN IF EXISTS display_name/u)
+  })
+})
+
+describe('automation engines migration', () => {
+  it('maps every worker exactly once without changing enabled', async () => {
+    const up = await migration('0034_automation_engines.up.sql')
+    const reconciliation = await migration('0035_reconcile_automation_runtime.up.sql')
+    const schema = `${up}\n${reconciliation}`
+    const updates = [...schema.matchAll(/UPDATE worker_settings\s+SET ([\s\S]*?) WHERE worker_name = '([^']+)'/gu)]
+    const workerNames = updates.map((match) => match[2])
+    const migrationMapping = Object.fromEntries(updates.map((match) => {
+      const engineKey = match[1]?.match(/engine_key\s*=\s*'([^']+)'/u)?.[1]
+      return [match[2], engineKey]
+    }))
+    const catalogMapping = Object.fromEntries(AUTOMATION_ENGINES.flatMap((engine) => (
+      engine.workers.map((workerName) => [workerName, engine.key])
+    )))
+    const effectiveMapping = {
+      ...migrationMapping,
+      'threads-adapter': 'M2',
+      'reciprocity-detector': 'M6',
+    }
+    const schedulable = updates
+      .filter((match) => /\bschedulable\s*=\s*true\b/u.test(match[1] ?? ''))
+      .map((match) => match[2])
+      .sort()
+
+    expect(up.charCodeAt(0)).not.toBe(0xfeff)
+    expect(new Set(workerNames).size).toBe(41)
+    expect(effectiveMapping).toEqual(catalogMapping)
+    expect(reconciliation).toMatch(/SET engine_key = 'M2',[\s\S]*WHERE worker_name = 'threads-adapter'/u)
+    expect(reconciliation).toMatch(/SET engine_key = 'M6',[\s\S]*WHERE worker_name = 'reciprocity-detector'/u)
+    expect(updates.every((match) => !/\benabled\s*=/u.test(match[1] ?? ''))).toBe(true)
+    expect(schedulable).toEqual([
+      'adaptive-crawler',
+      'community-map',
+      'competitive-intel',
+      'data-quality',
+      'email-flow-engine',
+      'news-radar',
+      'publisher',
+      'reddit-intelligence',
+      'threads-publisher',
+    ])
+    expect(up).toContain('ALTER TABLE worker_settings')
+    expect(up).toContain('ADD COLUMN IF NOT EXISTS engine_key')
+    expect(up).toMatch(/CREATE TABLE automation_engines/u)
+    expect(up).toMatch(/CREATE TABLE engine_commands/u)
+    expect(reconciliation).toMatch(/CREATE TABLE IF NOT EXISTS automation_reason_codes/u)
+    expect(reconciliation).toMatch(/CREATE TABLE IF NOT EXISTS automation_incidents/u)
+    expect(reconciliation).toMatch(/source_suggestion_id/u)
+    for (const reasonCode of ReasonCodeSchema.options) {
+      expect(reconciliation, `missing automation reason-code catalog entry: ${reasonCode}`).toContain(`('${reasonCode}'`)
+    }
+  })
+
+  it('rolls back only the additive automation schema', async () => {
+    const down = await migration('0034_automation_engines.down.sql')
+
+    expect(down.charCodeAt(0)).not.toBe(0xfeff)
+    expect(down).toMatch(/DROP TABLE IF EXISTS engine_commands/u)
+    expect(down).toMatch(/DROP COLUMN IF EXISTS engine_key/u)
+    expect(down).toMatch(/DROP TABLE IF EXISTS automation_engines/u)
+    expect(down).not.toMatch(/\benabled\b/u)
+    expect(down).not.toMatch(/DELETE FROM/u)
   })
 })
 

@@ -1,75 +1,75 @@
 'use client'
 
 import { PageHeader } from '@plataforma/ui-bridge'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { AutomationsClient, type WorkerInfo } from './AutomationsClient'
 import { MotoresTab } from './components/MotoresTab'
-import { WorkersTab, type WorkerInfo } from './components/WorkersTab'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { QueuesTab } from './components/QueuesTab'
+import { SchedulesTab } from './components/SchedulesTab'
+import { useUiMode } from '@/components/UiModeProvider'
+import { useEffect } from 'react'
 
-type TabValue = 'motores' | 'workers' | 'filas' | 'agendamentos'
+const tabs = [
+  { id: 'motores', label: 'Motores' },
+  { id: 'workers', label: 'Workers (Avançado)' },
+  { id: 'filas', label: 'Filas (Avançado)' },
+  { id: 'agendamentos', label: 'Agendamentos (Avançado)' },
+] as const
+type TabValue = typeof tabs[number]['id']
+
+function isTab(value: string | null): value is TabValue {
+  return tabs.some((tab) => tab.id === value)
+}
 
 export function AutomationsTabs({ workers }: { workers: WorkerInfo[] }) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  
-  const activeTab = (searchParams.get('tab') as TabValue) || 'motores'
+  const { mode, revealAdvanced } = useUiMode()
+  const requestedTab = searchParams.get('aba')
+  const activeTab: TabValue = isTab(requestedTab) ? requestedTab : 'motores'
+  const visibleTabs = mode === 'advanced' ? tabs : tabs.filter((tab) => tab.id === 'motores')
 
-  const setActiveTab = (tab: TabValue) => {
+  useEffect(() => {
+    if (activeTab !== 'motores') revealAdvanced()
+  }, [activeTab, revealAdvanced])
+
+  function setActiveTab(tab: TabValue) {
     const params = new URLSearchParams(searchParams.toString())
-    if (tab === 'motores') params.delete('tab')
-    else params.set('tab', tab)
+    params.set('aba', tab)
     router.replace(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false })
   }
 
-  const tabs: Array<{ id: TabValue; label: string }> = [
-    { id: 'motores', label: 'Motores' },
-    { id: 'workers', label: 'Workers (Avançado)' },
-    { id: 'filas', label: 'Filas (Redis)' },
-    { id: 'agendamentos', label: 'Agendamentos' },
-  ]
+  function moveTab(index: number, direction: 1 | -1) {
+    const next = visibleTabs[(index + direction + visibleTabs.length) % visibleTabs.length]
+    if (!next) return
+    setActiveTab(next.id)
+    requestAnimationFrame(() => document.getElementById(`automation-tab-${next.id}`)?.focus())
+  }
 
-  return (
-    <main className="bridge-page-content">
-      <PageHeader 
-        title="Automações" 
-        subtitle="Gerencie os motores do Prospector, workers individuais e saúde das filas." 
-      />
-
-      {/* Tabs Header */}
-      <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '8px 16px',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
-              background: 'transparent',
-              color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-              fontWeight: activeTab === tab.id ? 600 : 400,
-              cursor: 'pointer',
-              marginBottom: '-1px', // Para sobrepor a borda do container
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tabs Content */}
+  return <div className="bridge-page-content">
+    <PageHeader title="Automações" subtitle="Gerencie os motores, workers individuais, filas e agendamentos." />
+    <nav role="tablist" aria-label="Seções de automações" className="tabs">
+      {visibleTabs.map((tab, index) => <button
+        id={`automation-tab-${tab.id}`}
+        key={tab.id}
+        type="button"
+        role="tab"
+        aria-selected={activeTab === tab.id}
+        aria-controls={`automation-panel-${tab.id}`}
+        tabIndex={activeTab === tab.id ? 0 : -1}
+        onClick={() => setActiveTab(tab.id)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowRight') { event.preventDefault(); moveTab(index, 1) }
+          if (event.key === 'ArrowLeft') { event.preventDefault(); moveTab(index, -1) }
+        }}
+      >{tab.label}</button>)}
+    </nav>
+    <div id={`automation-panel-${activeTab}`} role="tabpanel" aria-labelledby={`automation-tab-${activeTab}`}>
       {activeTab === 'motores' && <MotoresTab />}
-      {activeTab === 'workers' && <WorkersTab workers={workers} />}
-      {activeTab === 'filas' && (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-          Interface de Filas do BullMQ (Mantida da v1)
-        </div>
-      )}
-      {activeTab === 'agendamentos' && (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-          Interface de Agendamentos do Postgres (Mantida da v1)
-        </div>
-      )}
-    </main>
-  )
+      {activeTab === 'workers' && <AutomationsClient workers={workers} />}
+      {activeTab === 'filas' && <QueuesTab workers={workers} />}
+      {activeTab === 'agendamentos' && <SchedulesTab workers={workers} />}
+    </div>
+  </div>
 }

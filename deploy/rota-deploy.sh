@@ -225,6 +225,23 @@ deploy_prospector() {
     || fail "Prospector did not switch to the image built by this workflow"
   health_check "https://design.rotadeataque.com.br/prospector/api/health" 30 5 \
     || fail "Prospector health check failed"
+  (
+    cd "$compose_dir"
+    runtime_count=0
+    while IFS= read -r service; do
+      case "$service" in
+        scheduler|worker-*)
+          container_id="$(docker compose --project-name rotadeataque-prospector-czj6hb --file "$compose_file" ps -q "$service")"
+          [[ -n "$container_id" ]] || fail "Prospector runtime service $service is not running"
+          running_worker_image="$(docker inspect --format '{{.Image}}' "$container_id")"
+          [[ "$running_worker_image" == "$expected_worker_image" ]] \
+            || fail "Prospector runtime service $service still uses an older worker image"
+          runtime_count=$((runtime_count + 1))
+          ;;
+      esac
+    done < <(docker compose --project-name rotadeataque-prospector-czj6hb --file "$compose_file" config --services)
+    [[ "$runtime_count" -eq 42 ]] || fail "Prospector runtime expected 42 scheduler/worker services, found $runtime_count"
+  )
   cleanup_images "prospector-platform-web"
   cleanup_images "prospector-platform-worker"
 }

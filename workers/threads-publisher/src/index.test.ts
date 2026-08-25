@@ -76,8 +76,8 @@ describe('threads-publisher', () => {
     const client = makeClient()
     const publisher = createThreadsPublisher(repo, () => client, makeNotifications())
 
-    await expect(publisher(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, migrationsCurrent: false } }))).rejects.toMatchObject({ reasonCode: 'PREFLIGHT_FAILED' })
-    await expect(publisher(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, accountStatus: 'STOPPED' } }))).rejects.toMatchObject({ reasonCode: 'PREFLIGHT_FAILED' })
+    await expect(publisher(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, migrationsCurrent: false } }))).rejects.toMatchObject({ reasonCode: 'MIGRATION_DRIFT' })
+    await expect(publisher(makeWorkerJob({}, { preflight: { ...validWorkerPreflight, accountStatus: 'STOPPED' } }))).rejects.toMatchObject({ reasonCode: 'ACCOUNT_AUTH_REQUIRED' })
     expect(repo.due).not.toHaveBeenCalled()
     expect(client.createContainer).not.toHaveBeenCalled()
   })

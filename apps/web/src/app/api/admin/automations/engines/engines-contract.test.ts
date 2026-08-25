@@ -1,111 +1,213 @@
-/**
- * engines-contract.test.ts
- *
- * Testes de contrato para as rotas novas de motores.
- * Critério de aceite (passo 3.6):
- * - Sem sessão → 401
- * - viewer em POST → 403
- * - Pré-requisito faltando → 409 com corpo tipado
- * - Dependência de motor faltando → 409
- * - Replay da mesma ação → 200 com changed: []
- *
- * NOTA: estes são testes unitários das lógicas de validação.
- * Testes de integração HTTP seriam feitos com a stack completa.
- */
+import { AUTOMATION_ENGINES, ENGINE_BY_KEY } from '@plataforma/shared'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { describe, it, expect } from 'vitest'
-import {
-  AUTOMATION_ENGINES,
-  ENGINE_BY_KEY,
-  resolveEnableCascade,
-  resolveDisableCascade,
-} from '@plataforma/shared'
+const mocks = vi.hoisted(() => ({
+  requireRole: vi.fn(),
+  poolQuery: vi.fn(),
+  poolConnect: vi.fn(),
+  clientQuery: vi.fn(),
+  clientRelease: vi.fn(),
+  evaluatePrerequisites: vi.fn(),
+  createQueueRegistry: vi.fn(),
+}))
 
-describe('Contrato da API de motores — lógica de validação', () => {
-  describe('resolveEnableCascade — dependências para enable', () => {
-    it('M3 precisa de M1 e M2 antes de ser ligado', () => {
-      const deps = resolveEnableCascade('M3')
-      expect(deps).toContain('M1')
-      expect(deps).toContain('M2')
-      expect(deps).not.toContain('M3')
-    })
+vi.mock('@/lib/permissions', () => ({ requireRole: mocks.requireRole }))
+vi.mock('@/lib/automation-prerequisites', () => ({
+  evaluateAutomationPrerequisites: mocks.evaluatePrerequisites,
+}))
+vi.mock('@plataforma/db', () => ({
+  createDatabase: () => ({
+    pool: { query: mocks.poolQuery, connect: mocks.poolConnect },
+  }),
+}))
+vi.mock('@plataforma/queue', () => ({
+  createQueueRegistry: mocks.createQueueRegistry,
+}))
+vi.mock('ioredis', () => ({
+  Redis: class {
+    quit = vi.fn().mockResolvedValue(undefined)
+  },
+}))
 
-    it('M6 precisa de M1, M2, M3, M4, M5 (transitivo)', () => {
-      const deps = resolveEnableCascade('M6')
-      expect(deps).toContain('M1')
-      expect(deps).toContain('M2')
-      expect(deps).toContain('M3')
-      expect(deps).toContain('M4')
-      expect(deps).toContain('M5')
-    })
+import { GET, POST } from './route'
 
-    it('M0 e M1 não têm dependências', () => {
-      expect(resolveEnableCascade('M0')).toEqual([])
-      expect(resolveEnableCascade('M1')).toEqual([])
+const allSatisfied = [
+  'news_source_active',
+  'connected_account_healthy',
+  'budget_ceiling_set',
+  'embeddings_healthy',
+  'ai_provider_configured',
+  'thesis_exists',
+  'actor_account_healthy',
+  'kill_switch_off',
+  'approved_variant_exists',
+  'contact_policy_configured',
+].map((key) => ({ key, satisfied: true, label_pt: key, href: '/' }))
+
+function request(body: unknown) {
+  return new Request('http://localhost/api/admin/automations/engines', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+function statesFor(engineKeys: Array<keyof typeof ENGINE_BY_KEY>, enabled: boolean) {
+  return engineKeys.flatMap((key) => ENGINE_BY_KEY[key].workers)
+    .map((worker_name) => ({ worker_name, enabled }))
+}
+
+describe('POST /api/admin/automations/engines', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.requireRole.mockResolvedValue({ email: 'operator@example.test', role: 'operator' })
+    mocks.poolConnect.mockResolvedValue({ query: mocks.clientQuery, release: mocks.clientRelease })
+    mocks.evaluatePrerequisites.mockResolvedValue(allSatisfied)
+    mocks.createQueueRegistry.mockReturnValue({
+      connection: { quit: vi.fn().mockResolvedValue(undefined) },
+      queues: Object.fromEntries(AUTOMATION_ENGINES.flatMap((engine) => engine.workers).map((worker) => [worker, {
+        getJobCounts: vi.fn().mockResolvedValue({ waiting: 0, active: 0, failed: 0 }),
+        close: vi.fn().mockResolvedValue(undefined),
+      }])),
     })
   })
 
-  describe('resolveDisableCascade — cascata de desativação', () => {
-    it('desligar M2 afeta M3, M4, M5, M6', () => {
-      const affected = resolveDisableCascade('M2')
-      expect(affected).toContain('M3')
-      expect(affected).toContain('M4')
-      expect(affected).toContain('M5')
-      expect(affected).toContain('M6')
-    })
+  it('retorna 401 sem sessão', async () => {
+    mocks.requireRole.mockRejectedValue(Object.assign(new Error('session missing'), {
+      status: 401,
+      code: 'authentication_required',
+    }))
 
-    it('desligar M5 afeta M6', () => {
-      const affected = resolveDisableCascade('M5')
-      expect(affected).toContain('M6')
-    })
+    const response = await POST(request({ engineKey: 'M1', action: 'enable', cascade: false }))
 
-    it('desligar M6 não afeta ninguém', () => {
-      expect(resolveDisableCascade('M6')).toEqual([])
-    })
+    expect(response.status).toBe(401)
+    expect(mocks.poolQuery).not.toHaveBeenCalled()
   })
 
-  describe('Idempotência — semântica de changed: []', () => {
-    it('se todos os workers já estão no estado alvo, changed deve ser vazio', () => {
-      // Simula o comportamento: enabledValue = true, todos já true
-      const engineWorkers = ENGINE_BY_KEY['M0'].workers
-      const fakeState = engineWorkers.map((w) => ({ worker_name: w, enabled: true }))
-      const enabledValue = true
-      const changed = fakeState.filter((w: any) => w.enabled !== enabledValue).map((w: any) => w.worker_name)
-      expect(changed).toEqual([])
-    })
+  it('retorna 403 para viewer em mutação', async () => {
+    mocks.requireRole.mockRejectedValue(Object.assign(new Error('role denied'), {
+      status: 403,
+      code: 'forbidden',
+    }))
+
+    const response = await POST(request({ engineKey: 'M1', action: 'enable', cascade: false }))
+
+    expect(response.status).toBe(403)
   })
 
-  describe('Enginer keys válidas', () => {
-    const validKeys = ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6']
-
-    it('todos os motores devem ter key válida', () => {
-      for (const engine of AUTOMATION_ENGINES) {
-        expect(validKeys).toContain(engine.key)
-      }
-    })
-
-    it('ENGINE_BY_KEY deve ter entrada para cada key válida', () => {
-      for (const key of validKeys) {
-        expect(ENGINE_BY_KEY[key as keyof typeof ENGINE_BY_KEY]).toBeDefined()
-      }
-    })
-  })
-
-  describe('Workers schedulable — coerência com MANAGED_SCHEDULER_CONFIG', () => {
-    const SCHEDULABLE_WORKERS = new Set([
-      'news-radar', 'competitive-intel', 'data-quality', 'community-map',
-      'reddit-intelligence', 'email-flow-engine', 'adaptive-crawler', 'publisher', 'threads-publisher',
+  it('retorna 409 tipado quando falta pré-requisito', async () => {
+    mocks.poolQuery.mockResolvedValue({ rows: statesFor(['M1'], false) })
+    mocks.evaluatePrerequisites.mockResolvedValue([
+      ...allSatisfied.filter((item) => item.key !== 'news_source_active'),
+      { key: 'news_source_active', satisfied: false, label_pt: 'Fonte ativa', href: '/radar' },
     ])
 
-    it('deve haver exatamente 9 workers schedulable', () => {
-      expect(SCHEDULABLE_WORKERS.size).toBe(9)
+    const response = await POST(request({ engineKey: 'M1', action: 'enable', cascade: false }))
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body).toMatchObject({
+      error: 'prerequisites_not_met',
+      prerequisites: [{ key: 'news_source_active', engineKey: 'M1' }],
+    })
+    expect(mocks.poolConnect).not.toHaveBeenCalled()
+  })
+
+  it('retorna 409 somente quando uma dependência realmente precisa mudar', async () => {
+    mocks.poolQuery.mockResolvedValue({ rows: statesFor(['M1', 'M2'], false) })
+
+    const response = await POST(request({ engineKey: 'M2', action: 'enable', cascade: false }))
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body).toEqual({ error: 'cascade_required', dependencies: ['M1'] })
+  })
+
+  it('retorna 200 com changed vazio no replay', async () => {
+    const current = statesFor(['M0'], true)
+    mocks.poolQuery.mockResolvedValue({ rows: current })
+    mocks.clientQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: current })
+      .mockResolvedValueOnce({ rows: [] })
+
+    const response = await POST(request({ engineKey: 'M0', action: 'enable', cascade: false }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.changed).toEqual([])
+    expect(mocks.clientQuery).toHaveBeenNthCalledWith(1, 'BEGIN')
+    expect(mocks.clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+  })
+
+  it('mantém update, comandos e auditoria no mesmo client transacional', async () => {
+    const current = statesFor(['M1'], false)
+    mocks.poolQuery.mockResolvedValue({ rows: current })
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('SELECT worker_name')) return { rows: current }
+      if (sql.includes('INSERT INTO engine_commands')) return { rows: [{ id: 'engine-command-id' }] }
+      return { rows: [] }
     })
 
-    it('todos os workers schedulable devem estar no catálogo de algum motor', () => {
-      const allWorkers = new Set(AUTOMATION_ENGINES.flatMap((e: any) => e.workers))
-      for (const w of SCHEDULABLE_WORKERS) {
-        expect(allWorkers, `Worker schedulable ${w} nao encontrado em nenhum motor`).toContain(w)
-      }
+    const response = await POST(request({ engineKey: 'M1', action: 'enable', cascade: false }))
+
+    expect(response.status).toBe(200)
+    expect(mocks.clientQuery.mock.calls[0]?.[0]).toBe('BEGIN')
+    expect(mocks.clientQuery.mock.calls.at(-1)?.[0]).toBe('COMMIT')
+    expect(mocks.clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO audit_log'))).toBe(true)
+    expect(mocks.poolQuery.mock.calls.some(([sql]) => sql === 'BEGIN')).toBe(false)
+  })
+
+  it('não permite desligar o motor always-on', async () => {
+    const response = await POST(request({ engineKey: 'M0', action: 'disable', cascade: false }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: 'always_on_engine' })
+  })
+
+  it('mantém os sete motores no contrato', () => {
+    expect(AUTOMATION_ENGINES).toHaveLength(7)
+  })
+})
+
+describe('GET /api/admin/automations/engines', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.requireRole.mockResolvedValue({ email: 'viewer@example.test', role: 'viewer' })
+    mocks.evaluatePrerequisites.mockResolvedValue(allSatisfied)
+    mocks.createQueueRegistry.mockReturnValue({
+      connection: { quit: vi.fn().mockResolvedValue(undefined) },
+      queues: Object.fromEntries(AUTOMATION_ENGINES.flatMap((engine) => engine.workers).map((worker) => [worker, {
+        getJobCounts: vi.fn().mockResolvedValue({ waiting: 0, active: 0, failed: 0 }),
+        close: vi.fn().mockResolvedValue(undefined),
+      }])),
     })
+  })
+
+  it('mantém motor desligado como off mesmo quando a última execução histórica falhou', async () => {
+    const now = new Date().toISOString()
+    mocks.poolQuery.mockResolvedValue({ rows: AUTOMATION_ENGINES.flatMap((engine) => engine.workers.map((worker_name) => ({
+      worker_name,
+      enabled: false,
+      engine_key: engine.key,
+      schedulable: false,
+      label_pt: worker_name,
+      cadence: null,
+      last_error: 'historical failure',
+      heartbeat_state: 'paused',
+      last_beat_at: now,
+      last_run_state: 'failed',
+      last_run_reason_code: 'SQL_CONTRACT_ERROR',
+      last_run_finished_at: now,
+      last_success_at: null,
+      updated_at: now,
+    }))) })
+
+    const response = await GET()
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.engines.every((engine: { state: string; desiredState: string; lastRunState: string }) =>
+      engine.state === 'off' && engine.desiredState === 'off' && engine.lastRunState === 'failed')).toBe(true)
+    expect(String(mocks.poolQuery.mock.calls[0]?.[0])).toContain('SELECT state, last_beat_at')
   })
 })

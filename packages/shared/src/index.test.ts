@@ -1,5 +1,36 @@
 import { describe, expect, it } from 'vitest'
-import { accountRisk, adaptiveInterval, assertDmInbound, assertRole, computeScore, deriveStage, deterministicJobId, EMBEDDING_DIM, extractionCoverage, loadConfig, sourceRoi, withinDmWindow } from './index.js'
+import { accountRisk, adaptiveInterval, assertDmInbound, assertRole, computeScore, deriveStage, deterministicJobId, EMBEDDING_DIM, extractionCoverage, loadConfig, preflight, sourceRoi, withinDmWindow } from './index.js'
+
+const readyPreflight = {
+  migrationsCurrent: true,
+  embeddingDimension: EMBEDDING_DIM,
+  tokenValid: true,
+  lockAvailable: true,
+  budgetAvailable: true,
+  accountStatus: 'HEALTHY',
+  accountRole: 'collector' as const,
+}
+
+describe('preflight', () => {
+  it.each([
+    [{ migrationsCurrent: false }, 'MIGRATION_DRIFT'],
+    [{ embeddingDimension: EMBEDDING_DIM + 1 }, 'PREREQUISITE_MISSING'],
+    [{ tokenValid: false }, 'PROVIDER_NOT_CONFIGURED'],
+    [{ lockAvailable: false }, 'PREREQUISITE_MISSING'],
+    [{ budgetAvailable: false }, 'BUDGET_NOT_CONFIGURED'],
+    [{ accountStatus: 'STOPPED' }, 'ACCOUNT_AUTH_REQUIRED'],
+  ])('classifies a failed prerequisite', (override, reasonCode) => {
+    expect(() => preflight({ ...readyPreflight, ...override }, 'collector')).toThrow(
+      expect.objectContaining({ reasonCode }),
+    )
+  })
+
+  it('reports an account-role mismatch', () => {
+    expect(() => preflight(readyPreflight, 'actor')).toThrow(
+      expect.objectContaining({ reasonCode: 'ROLE_MISMATCH' }),
+    )
+  })
+})
 
 describe('shared domain contracts', () => {
   it('keeps embeddings fixed and rejects external providers', () => {

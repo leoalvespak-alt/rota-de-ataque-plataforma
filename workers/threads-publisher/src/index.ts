@@ -1,7 +1,9 @@
 import { assertHumanApproval } from '@plataforma/shared'
 import { createWorker, type WorkerJob, type WorkerResult, type WorkerSpec } from '@plataforma/shared/worker'
 
-export const spec = { queue: 'threads-publisher', requiredRole: 'actor', outbound: true } satisfies WorkerSpec
+// The repository resolves a current healthy actor before the side effect. The
+// scheduler must not carry a stale account role in its payload.
+export const spec = { queue: 'threads-publisher', outbound: true } satisfies WorkerSpec
 export interface ThreadsPublishPayload { variantId?: string; publicationId?: string; approvedBy?: string; synthetic?: boolean }
 export interface PublishableThreadsVariant {
   id: string

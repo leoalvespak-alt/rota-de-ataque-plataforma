@@ -652,6 +652,9 @@ importers:
       bullmq:
         specifier: 6.0.6
         version: 6.0.6(ioredis@6.0.0)(pg@8.23.0)
+      cron-parser:
+        specifier: 5.7.0
+        version: 5.7.0
       ioredis:
         specifier: 6.0.0
         version: 6.0.0

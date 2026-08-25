@@ -1,5 +1,6 @@
 import { getToken } from 'next-auth/jwt'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isPublicApiPath } from '@/lib/public-api-routes'
 
 const isLocalBootstrap = () => process.env.AUTH_BOOTSTRAP_VIEWER === 'true'
   && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
@@ -20,15 +21,15 @@ export function authRedirectPaths(pathname: string, search: string, basePath: st
 
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  // Health é o único endpoint operacional anônimo; webhooks têm validação
-  // própria no handler e não devem receber um redirect HTML do middleware.
-  if (pathname.startsWith('/api/auth') || pathname === '/api/health' || pathname.startsWith('/api/webhooks/') || pathname.startsWith('/_next/') || pathname === '/favicon.ico') return NextResponse.next()
+  const configuredBasePath = process.env.NEXT_PUBLIC_BASE_PATH?.trim().replace(/\/$/u, '') ?? ''
+  const relativeApiPath = configuredBasePath && pathname.startsWith(configuredBasePath) ? pathname.slice(configuredBasePath.length) || '/' : pathname
+  if (isPublicApiPath(relativeApiPath, request.method) || pathname.startsWith('/_next/') || pathname === '/favicon.ico') return NextResponse.next()
 
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   const bootstrapViewer = isLocalBootstrap()
   if (token || bootstrapViewer) return NextResponse.next()
 
-  if (pathname.startsWith('/api/')) {
+  if (relativeApiPath.startsWith('/api/')) {
     return NextResponse.json(
       { error: 'authentication_required', traceId: crypto.randomUUID() },
       { status: 401, headers: { 'cache-control': 'no-store' } },

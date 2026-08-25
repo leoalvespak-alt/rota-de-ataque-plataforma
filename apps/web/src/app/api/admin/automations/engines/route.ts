@@ -1,31 +1,20 @@
-/**
- * /api/admin/automations/engines — GET + POST
- *
- * GET:  retorna estado agregado dos 7 motores (papel mínimo: viewer).
- * POST: ativa/desativa motor com cascata (papel mínimo: operator).
- *
- * GARANTIA: rota nova, adicionada em paralelo.
- * A rota existente /api/admin/automations (GET/POST por worker) permanece intacta.
- */
-
 import { createDatabase } from '@plataforma/db'
 import { createQueueRegistry } from '@plataforma/queue'
 import {
   AUTOMATION_ENGINES,
   ENGINE_BY_KEY,
-  resolveEnableCascade,
+  parseCadenceLabel,
   resolveDisableCascade,
+  resolveEnableCascade,
   type EngineKey,
   type EngineState,
 } from '@plataforma/shared'
+import { Redis } from 'ioredis'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireRole } from '@/lib/permissions'
 import { apiErrorResponse, invalidRequestResponse } from '@/lib/api-errors'
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+import { evaluateAutomationPrerequisites } from '@/lib/automation-prerequisites'
+import { requireRole } from '@/lib/permissions'
 
 interface WorkerRow {
   worker_name: string
@@ -33,135 +22,153 @@ interface WorkerRow {
   engine_key: string | null
   schedulable: boolean
   label_pt: string | null
+  cadence: string | null
   last_error: string | null
   heartbeat_state: string | null
+  last_beat_at: string | null
+  last_run_state: string | null
+  last_run_reason_code: string | null
+  last_run_finished_at: string | null
+  last_success_at: string | null
+  updated_at: string
 }
 
-async function evaluatePrerequisites(
-  pool: any,
-  engineKey: EngineKey,
-): Promise<Array<{ key: string; satisfied: boolean; label_pt: string; href: string }>> {
-  const engine = ENGINE_BY_KEY[engineKey]
-  if (engine.prerequisites.length === 0) return []
-
-  const { rows } = await pool.query(`
-    SELECT
-      EXISTS(SELECT 1 FROM news_sources WHERE active = true LIMIT 1)   AS has_sources,
-      EXISTS(SELECT 1 FROM theses LIMIT 1)                              AS has_theses,
-      EXISTS(SELECT 1 FROM accounts WHERE role = 'actor' AND status = 'HEALTHY' LIMIT 1) AS has_actor,
-      EXISTS(SELECT 1 FROM contact_policies LIMIT 1)                   AS has_policy,
-      COALESCE((SELECT (value->>'enabled')::boolean FROM ai_settings WHERE key = 'global' LIMIT 1), true) AS has_ai,
-      COALESCE((SELECT (value->>'kill_switch')::boolean FROM operational_settings WHERE key = 'global' LIMIT 1), false) AS kill_switch,
-      EXISTS(SELECT 1 FROM content_variants WHERE status = 'approved' LIMIT 1) AS has_approved_variant
-  `)
-  const d = (rows[0] ?? {
-    has_sources: false, has_theses: false, has_actor: false,
-    has_policy: false, has_ai: true, kill_switch: false, has_approved_variant: false,
-  }) as {
-    has_sources: boolean; has_theses: boolean; has_actor: boolean;
-    has_policy: boolean; has_ai: boolean; kill_switch: boolean; has_approved_variant: boolean
-  }
-
-  const LABEL_MAP: Record<string, { label_pt: string; href: string }> = {
-    news_source_active:        { label_pt: 'Pelo menos 1 fonte de noticias ativa',      href: '/configuracoes?aba=contas' },
-    connected_account_healthy: { label_pt: 'Conta social conectada e saudavel',         href: '/configuracoes?aba=contas' },
-    embeddings_healthy:        { label_pt: 'Servico de embeddings ativo',               href: '/configuracoes?aba=saude' },
-    ai_provider_configured:    { label_pt: 'Provedor de IA configurado',                href: '/configuracoes?aba=ia' },
-    thesis_exists:             { label_pt: 'Pelo menos 1 tese editorial cadastrada',    href: '/conteudo?aba=teses' },
-    actor_account_healthy:     { label_pt: 'Conta com papel actor saudavel',            href: '/configuracoes?aba=contas' },
-    kill_switch_off:           { label_pt: 'Kill-switch global desligado',              href: '/automacoes?aba=motores' },
-    approved_variant_exists:   { label_pt: 'Pelo menos 1 variante aprovada',           href: '/conteudo?aba=funil' },
-    contact_policy_configured: { label_pt: 'Politicas de contato definidas',           href: '/relacionamento?aba=politicas' },
-    budget_ceiling_set:        { label_pt: 'Teto de orcamento definido',               href: '/desempenho?aba=orcamento' },
-  }
-
-  return engine.prerequisites.map((key: string) => {
-    let satisfied = true
-    switch (key) {
-      case 'news_source_active':        satisfied = d.has_sources; break
-      case 'connected_account_healthy': satisfied = d.has_actor; break
-      case 'embeddings_healthy':        satisfied = true; break
-      case 'ai_provider_configured':    satisfied = d.has_ai !== false; break
-      case 'thesis_exists':             satisfied = d.has_theses; break
-      case 'actor_account_healthy':     satisfied = d.has_actor; break
-      case 'kill_switch_off':           satisfied = !d.kill_switch; break
-      case 'approved_variant_exists':   satisfied = d.has_approved_variant; break
-      case 'contact_policy_configured': satisfied = d.has_policy; break
-      case 'budget_ceiling_set':        satisfied = true; break
-    }
-    return { key, satisfied, ...(LABEL_MAP[key] ?? { label_pt: key, href: '/configuracoes' }) }
-  })
+interface WorkerStateRow {
+  worker_name: string
+  enabled: boolean
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/admin/automations/engines
-// ---------------------------------------------------------------------------
+const EngineActionSchema = z.object({
+  engineKey: z.enum(['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6']),
+  action: z.enum(['enable', 'disable']),
+  cascade: z.boolean().default(false),
+}).strict()
+
+async function closeQueueRegistry(registry: ReturnType<typeof createQueueRegistry>) {
+  await Promise.allSettled(Object.values(registry.queues).map((queue) => queue.close()))
+  await registry.connection.quit().catch(() => undefined)
+}
+
+async function queueCountsWithTimeout(queue: { getJobCounts(...types: string[]): Promise<Record<string, number>> }) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      queue.getJobCounts('waiting', 'active', 'failed'),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('queue_timeout')), 3_000) }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+function engineFullyEnabled(engineKey: EngineKey, state: Map<string, boolean>) {
+  return ENGINE_BY_KEY[engineKey].workers.every((workerName) => state.get(workerName) === true)
+}
+
+function engineHasEnabledWorker(engineKey: EngineKey, state: Map<string, boolean>) {
+  return ENGINE_BY_KEY[engineKey].workers.some((workerName) => state.get(workerName) === true)
+}
 
 export async function GET() {
-  try { await requireRole('viewer') } catch (error) { return apiErrorResponse(error) }
+  try {
+    await requireRole('viewer')
+  } catch (error) {
+    return apiErrorResponse(error)
+  }
 
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   const registry = createQueueRegistry(process.env.REDIS_URL!)
-
   try {
-    const res1 = await pool.query(`
-      SELECT
-        ws.worker_name,
-        ws.enabled,
-        ws.engine_key,
-        ws.schedulable,
-        ws.label_pt,
-        ws.last_error,
-        wh.state AS heartbeat_state
-      FROM worker_settings ws
-      LEFT JOIN LATERAL (
-        SELECT state
-        FROM worker_heartbeats
-        WHERE worker = ws.worker_name
-        ORDER BY last_beat_at DESC
-        LIMIT 1
-      ) wh ON true
-    `)
-    const workers = res1.rows as WorkerRow[]
-
-    // Contagens BullMQ por fila
+    const [{ rows }, prerequisites] = await Promise.all([
+      pool.query<WorkerRow>(`
+        SELECT
+          ws.worker_name,
+          ws.enabled,
+          ws.engine_key,
+          ws.schedulable,
+          ws.label_pt,
+          ws.cadence,
+          ws.last_error,
+          ws.last_success_at,
+          ws.updated_at,
+          heartbeat.state AS heartbeat_state,
+          heartbeat.last_beat_at::text AS last_beat_at,
+          last_run.result_state AS last_run_state,
+          last_run.reason_code AS last_run_reason_code,
+          last_run.finished_at::text AS last_run_finished_at
+        FROM worker_settings ws
+        LEFT JOIN LATERAL (
+          SELECT state, last_beat_at
+          FROM worker_heartbeats
+          WHERE worker = ws.worker_name
+          ORDER BY last_beat_at DESC
+          LIMIT 1
+        ) heartbeat ON true
+        LEFT JOIN LATERAL (
+          SELECT result_state, reason_code, finished_at
+          FROM worker_runs
+          WHERE worker_name = ws.worker_name
+          ORDER BY started_at DESC
+          LIMIT 1
+        ) last_run ON true
+      `),
+      evaluateAutomationPrerequisites(pool, registry.connection),
+    ])
+    const workerByName = new Map(rows.map((worker) => [worker.worker_name, worker]))
+    const currentState = new Map(rows.map((worker) => [worker.worker_name, worker.enabled]))
+    const prerequisiteByKey = new Map(prerequisites.map((item) => [item.key, item]))
     const queueCounts: Record<string, { waiting: number; active: number; failed: number }> = {}
-    await Promise.all(
-      workers.map(async (w) => {
-        try {
-          const queue = registry.queues[w.worker_name as keyof typeof registry.queues]
-          if (!queue) { queueCounts[w.worker_name] = { waiting: 0, active: 0, failed: 0 }; return }
-          const counts = await queue.getJobCounts('waiting', 'active', 'failed')
-          queueCounts[w.worker_name] = { waiting: counts.waiting ?? 0, active: counts.active ?? 0, failed: counts.failed ?? 0 }
-        } catch {
-          queueCounts[w.worker_name] = { waiting: 0, active: 0, failed: 0 }
+    const unavailableQueues = new Set<string>()
+
+    await Promise.all(AUTOMATION_ENGINES.flatMap((engine) => engine.workers).map(async (workerName) => {
+      try {
+        const counts = await queueCountsWithTimeout(registry.queues[workerName])
+        queueCounts[workerName] = {
+          waiting: counts.waiting ?? 0,
+          active: counts.active ?? 0,
+          failed: counts.failed ?? 0,
         }
-      }),
-    )
+      } catch {
+        unavailableQueues.add(workerName)
+      }
+    }))
 
-    const engines = AUTOMATION_ENGINES.map((engine: any) => {
-      const engineWorkers = workers.filter((w) => w.engine_key === engine.key)
-      const enabledCount = engineWorkers.filter((w) => w.enabled).length
-      const totalCount = engine.workers.length
-
-      const queueAgg = engineWorkers.reduce(
-        (acc, w) => {
-          const c = queueCounts[w.worker_name] ?? { waiting: 0, active: 0, failed: 0 }
-          return { waiting: acc.waiting + c.waiting, active: acc.active + c.active, failed: acc.failed + c.failed }
-        },
-        { waiting: 0, active: 0, failed: 0 },
-      )
-
-      const divergences = engineWorkers
-        .filter((w) => (w.enabled && w.heartbeat_state !== 'running') || (!w.enabled && w.heartbeat_state === 'running'))
-        .map((w) => ({ worker: w.worker_name, label: w.label_pt ?? w.worker_name, kind: w.enabled ? 'configured_but_not_running' : 'running_but_disabled' }))
-
+    const engines = AUTOMATION_ENGINES.map((engine) => {
+      const engineWorkers = engine.workers.map((workerName) => workerByName.get(workerName)).filter(Boolean) as WorkerRow[]
+      const enabledCount = engineWorkers.filter((worker) => worker.enabled).length
+      const queue = engine.workers.reduce((total, workerName) => {
+        const counts = queueCounts[workerName] ?? { waiting: 0, active: 0, failed: 0 }
+        return {
+          waiting: total.waiting + counts.waiting,
+          active: total.active + counts.active,
+          failed: total.failed + counts.failed,
+        }
+      }, { waiting: 0, active: 0, failed: 0 })
+      const divergences = engine.workers.flatMap((workerName) => {
+        const worker = workerByName.get(workerName)
+        if (!worker) return [{ worker: workerName, label: workerName, kind: 'missing_worker_setting' }]
+        if (worker.engine_key !== engine.key) return [{ worker: workerName, label: worker.label_pt ?? workerName, kind: 'engine_mapping_mismatch' }]
+        if (worker.enabled && worker.heartbeat_state !== 'running') return [{ worker: workerName, label: worker.label_pt ?? workerName, kind: 'configured_but_not_running' }]
+        if (!worker.enabled && worker.heartbeat_state === 'running') return [{ worker: workerName, label: worker.label_pt ?? workerName, kind: 'running_but_disabled' }]
+        return []
+      })
+      const allEnabled = enabledCount === engine.workers.length
+      const allRunning = engineWorkers.length === engine.workers.length
+        && engineWorkers.every((worker) => worker.heartbeat_state === 'running')
+      const recentlyEnabled = allEnabled && engineWorkers.some((worker) => (
+        Date.now() - new Date(worker.updated_at).getTime() < 120_000
+      ))
+      const latestRun = engineWorkers
+        .filter((worker) => worker.last_run_finished_at)
+        .sort((left, right) => new Date(right.last_run_finished_at!).getTime() - new Date(left.last_run_finished_at!).getTime())[0]
       let state: EngineState = 'off'
-      if (engineWorkers.some((w) => w.last_error) || queueAgg.failed > 0) state = 'error'
-      else if (divergences.length > 0 || (enabledCount > 0 && enabledCount < totalCount)) state = 'attention'
-      else if (enabledCount === totalCount && engineWorkers.every((w) => w.heartbeat_state === 'running')) state = 'on'
-      else if (enabledCount === totalCount) state = 'starting'
+      if (enabledCount === 0) state = 'off'
+      else if (allEnabled && allRunning && latestRun?.last_run_state === 'failed') state = 'error'
+      else if (allEnabled && allRunning) state = 'on'
+      else if (recentlyEnabled) state = 'starting'
+      else if (divergences.length > 0 || (enabledCount > 0 && !allEnabled)) state = 'attention'
 
+      const cadenceWorker = engineWorkers.find((worker) => worker.schedulable && worker.cadence)
       return {
         key: engine.key,
         slug: engine.slug,
@@ -169,127 +176,174 @@ export async function GET() {
         description_pt: engine.description_pt,
         alwaysOn: engine.alwaysOn,
         dependsOn: engine.dependsOn,
+        enableCascade: resolveEnableCascade(engine.key).filter((key) => !engineFullyEnabled(key, currentState)),
+        disableCascade: resolveDisableCascade(engine.key).filter((key) => engineHasEnabledWorker(key, currentState)),
         state,
+        desiredState: allEnabled ? 'on' : enabledCount > 0 ? 'on_partial' : 'off',
+        runtimeState: engineWorkers.length === engine.workers.length && engineWorkers.every((worker) => worker.last_beat_at && Date.now() - new Date(worker.last_beat_at).getTime() <= 90_000)
+          ? allRunning ? 'running' : engineWorkers.every((worker) => worker.heartbeat_state === 'paused') ? 'paused' : 'starting'
+          : 'absent',
+        lastRunState: latestRun?.last_run_state ?? 'never',
+        lastSuccessAt: engineWorkers.map((worker) => worker.last_success_at).filter(Boolean).sort().at(-1) ?? null,
         enabledWorkers: enabledCount,
-        totalWorkers: totalCount,
-        queue: queueAgg,
+        totalWorkers: engine.workers.length,
+        cadence: cadenceWorker?.cadence ? parseCadenceLabel(cadenceWorker.cadence) : null,
+        queue,
+        queueAvailable: engine.workers.every((workerName) => !unavailableQueues.has(workerName)),
         divergences,
+        prerequisites: engine.prerequisites.map((key) => prerequisiteByKey.get(key)).filter(Boolean),
+        workers: engine.workers.map((workerName) => {
+          const worker = workerByName.get(workerName)
+          return {
+            worker_name: workerName,
+            label_pt: worker?.label_pt ?? workerName,
+            enabled: worker?.enabled ?? false,
+            schedulable: worker?.schedulable ?? false,
+            heartbeat_state: worker?.heartbeat_state ?? null,
+            last_beat_at: worker?.last_beat_at ?? null,
+            last_run_state: worker?.last_run_state ?? 'never',
+            last_run_reason_code: worker?.last_run_reason_code ?? null,
+          }
+        }),
       }
     })
 
-    return NextResponse.json({ engines })
+    return NextResponse.json({
+      engines,
+      providerAvailable: unavailableQueues.size === 0,
+    })
+  } catch (error) {
+    return apiErrorResponse(error)
   } finally {
-    await registry.connection.quit()
+    await closeQueueRegistry(registry)
   }
 }
 
-// ---------------------------------------------------------------------------
-// POST /api/admin/automations/engines
-// ---------------------------------------------------------------------------
-
-const EngineActionSchema = z.object({
-  engineKey: z.enum(['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6'] as [EngineKey, ...EngineKey[]]),
-  action: z.enum(['enable', 'disable']),
-  cascade: z.boolean().default(false),
-})
-
 export async function POST(request: Request) {
   let user: Awaited<ReturnType<typeof requireRole>>
-  try { user = await requireRole('operator') } catch (error) { return apiErrorResponse(error) }
+  try {
+    user = await requireRole('operator')
+  } catch (error) {
+    return apiErrorResponse(error)
+  }
 
   const parsed = EngineActionSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return invalidRequestResponse()
-
   const { engineKey, action, cascade } = parsed.data
+  const typedEngineKey = engineKey as EngineKey
+  const engine = ENGINE_BY_KEY[typedEngineKey]
+  if (action === 'disable' && engine.alwaysOn) {
+    return NextResponse.json({ error: 'always_on_engine' }, { status: 409 })
+  }
 
   const { pool } = createDatabase(process.env.DATABASE_URL!)
-  const registry = createQueueRegistry(process.env.REDIS_URL!)
+  const relatedKeys = action === 'enable'
+    ? [...resolveEnableCascade(typedEngineKey), typedEngineKey]
+    : [typedEngineKey, ...resolveDisableCascade(typedEngineKey)]
+  const relatedWorkers = relatedKeys.flatMap((key) => ENGINE_BY_KEY[key].workers)
 
   try {
-    // Verificar pré-requisitos para enable
-    if (action === 'enable') {
-      const prereqs = await evaluatePrerequisites(pool, engineKey)
-      const unsatisfied = prereqs.filter((p) => !p.satisfied)
-      if (unsatisfied.length > 0) {
-        return NextResponse.json({ error: 'prerequisites_not_met', prerequisites: unsatisfied }, { status: 409 })
-      }
+    const currentResult = await pool.query<WorkerStateRow>(
+      'SELECT worker_name, enabled FROM worker_settings WHERE worker_name = ANY($1)',
+      [relatedWorkers],
+    )
+    const currentState = new Map(currentResult.rows.map((worker) => [worker.worker_name, worker.enabled]))
+    const missingWorkers = relatedWorkers.filter((workerName) => !currentState.has(workerName))
+    if (missingWorkers.length > 0) {
+      return NextResponse.json({ error: 'worker_catalog_mismatch', missingWorkers }, { status: 409 })
     }
 
-    // Resolver cascata
     let engineKeys: EngineKey[]
     if (action === 'enable') {
-      const deps = resolveEnableCascade(engineKey)
-      if (deps.length > 0 && !cascade) {
-        return NextResponse.json({
-          error: 'cascade_required',
-          message: 'Este motor tem dependencias que precisam ser ligadas primeiro. Reenvie com cascade: true.',
-          dependencies: deps,
-        }, { status: 409 })
+      const dependencies = resolveEnableCascade(typedEngineKey)
+        .filter((key) => !engineFullyEnabled(key, currentState))
+      if (dependencies.length > 0 && !cascade) {
+        return NextResponse.json({ error: 'cascade_required', dependencies }, { status: 409 })
       }
-      engineKeys = [...deps, engineKey]
+      engineKeys = [...(cascade ? dependencies : []), typedEngineKey]
+
+      const redis = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: 1 })
+      try {
+        const prerequisiteResults = await evaluateAutomationPrerequisites(pool, redis)
+        const prerequisiteByKey = new Map(prerequisiteResults.map((item) => [item.key, item]))
+        const unsatisfied = engineKeys.flatMap((key) => ENGINE_BY_KEY[key].prerequisites
+          .map((prerequisiteKey) => prerequisiteByKey.get(prerequisiteKey))
+          .filter((item) => item && !item.satisfied)
+          .map((item) => ({ ...item!, engineKey: key })))
+        if (unsatisfied.length > 0) {
+          return NextResponse.json({ error: 'prerequisites_not_met', prerequisites: unsatisfied }, { status: 409 })
+        }
+      } finally {
+        await redis.quit().catch(() => undefined)
+      }
     } else {
-      const affected = resolveDisableCascade(engineKey)
+      const affected = resolveDisableCascade(typedEngineKey)
+        .filter((key) => engineHasEnabledWorker(key, currentState))
       if (affected.length > 0 && !cascade) {
-        return NextResponse.json({
-          error: 'cascade_required',
-          message: 'Desligar este motor afeta outros motores que dependem dele. Reenvie com cascade: true.',
-          affected,
-        }, { status: 409 })
+        return NextResponse.json({ error: 'cascade_required', affected }, { status: 409 })
       }
-      engineKeys = [engineKey, ...affected]
+      engineKeys = [typedEngineKey, ...(cascade ? affected : [])]
     }
 
-    const enabledValue = action === 'enable'
-    const allWorkerNames = engineKeys.flatMap((k) => ENGINE_BY_KEY[k].workers)
-
-    // Idempotência
-    const res2 = await pool.query(
-      `SELECT worker_name, enabled FROM worker_settings WHERE worker_name = ANY($1)`,
-      [allWorkerNames],
-    )
-    const currentState = res2.rows as Array<{ worker_name: string; enabled: boolean }>
-    const changed: string[] = currentState.filter((w) => w.enabled !== enabledValue).map((w) => w.worker_name)
-    if (changed.length === 0) {
-      return NextResponse.json({ ok: true, action, engineKey, changed: [] })
-    }
-
-    // Transação única
-    await pool.query('BEGIN')
+    const workerNames = engineKeys.flatMap((key) => ENGINE_BY_KEY[key].workers)
+    const client = await pool.connect()
     try {
-      await pool.query(
-        `UPDATE worker_settings SET enabled = $1, updated_at = now() WHERE worker_name = ANY($2)`,
+      await client.query('BEGIN')
+      const locked = await client.query<WorkerStateRow>(
+        'SELECT worker_name, enabled FROM worker_settings WHERE worker_name = ANY($1) FOR UPDATE',
+        [workerNames],
+      )
+      if (locked.rows.length !== workerNames.length) {
+        await client.query('ROLLBACK')
+        return NextResponse.json({ error: 'worker_catalog_mismatch' }, { status: 409 })
+      }
+      const enabledValue = action === 'enable'
+      const changed = locked.rows
+        .filter((worker) => worker.enabled !== enabledValue)
+        .map((worker) => worker.worker_name)
+      if (changed.length === 0) {
+        await client.query('ROLLBACK')
+        return NextResponse.json({ ok: true, action, engineKey: typedEngineKey, changed: [] })
+      }
+
+      await client.query(
+        'UPDATE worker_settings SET enabled = $1, updated_at = now() WHERE worker_name = ANY($2)',
         [enabledValue, changed],
       )
-
-      const res3 = await pool.query(
-        `INSERT INTO engine_commands(engine_key, action, workers_affected, cascade, requested_by, status)
-         VALUES($1, $2, $3, $4, $5, 'completed') RETURNING id`,
-        [engineKey, action, changed, cascade, user.email ?? null],
-      )
-      const ecRows = res3.rows as Array<{ id: string }>
-      const engineCommandId = ecRows[0]?.id
-
+      const command = await client.query<{ id: string }>(`
+        INSERT INTO engine_commands(
+          engine_key, action, workers_affected, cascade, requested_by, status
+        ) VALUES($1, $2, $3, $4, $5, 'pending')
+        RETURNING id
+      `, [typedEngineKey, action, changed, cascade, user.email ?? null])
+      const engineCommandId = command.rows[0]?.id
       for (const workerName of changed) {
-        await pool.query(
-          `INSERT INTO worker_commands(worker_name, command_type, payload, requested_by)
-           VALUES($1, $2, $3::jsonb, $4)`,
-          [workerName, action, JSON.stringify({ engineKey, engineCommandId, cascade }), user.email ?? null],
-        )
+        await client.query(`
+          INSERT INTO worker_commands(
+            worker_name, command_type, payload, requested_by, status
+          ) VALUES($1, $2, $3::jsonb, $4, 'accepted')
+        `, [workerName, action, JSON.stringify({ engineKey: typedEngineKey, engineCommandId, cascade }), user.email ?? null])
       }
-
-      await pool.query(
-        `INSERT INTO audit_log(actor_id, action, target, after) VALUES($1, $2, $3, $4::jsonb)`,
-        [user.email ?? 'operator', `engine.${action}`, engineKey, JSON.stringify({ engineCommandId, cascade, changed })],
+      await client.query(
+        'INSERT INTO audit_log(actor_id, action, target, after) VALUES($1, $2, $3, $4::jsonb)',
+        [user.email ?? 'operator', `engine.${action}`, typedEngineKey, JSON.stringify({ engineCommandId, cascade, changed })],
       )
-
-      await pool.query('COMMIT')
-    } catch (err) {
-      await pool.query('ROLLBACK')
-      throw err
+      await client.query('COMMIT')
+      return NextResponse.json({
+        ok: true,
+        action,
+        engineKey: typedEngineKey,
+        cascade,
+        changed,
+        enginesAffected: engineKeys,
+      })
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined)
+      throw error
+    } finally {
+      client.release()
     }
-
-    return NextResponse.json({ ok: true, action, engineKey, cascade, changed, enginesAffected: engineKeys })
-  } finally {
-    await registry.connection.quit()
+  } catch (error) {
+    return apiErrorResponse(error)
   }
 }

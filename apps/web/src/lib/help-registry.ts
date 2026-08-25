@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { AUTOMATION_ENGINES } from '@plataforma/shared/client'
+import { NAVIGATION, navigationHref } from './navigation'
 
 export const HelpContentSchema = z.object({
   title: z.string(),
@@ -344,5 +346,56 @@ export const helpRegistry: Record<string, HelpContent> = {
     dataSources: [
       { name: 'Fila de Revisão', frequency: 'Tempo real' }
     ]
+  }
+}
+
+const canonicalAliases: Record<string, string> = {
+  '/inteligencia?aba=radar': '/radar', '/inteligencia?aba=mercado': '/market-radar', '/inteligencia?aba=concorrentes': '/competitive-intel', '/inteligencia?aba=comunidades': '/community',
+  '/decisoes?aba=revisao': '/review-inbox', '/decisoes?aba=radar': '/review-inbox', '/decisoes?aba=insights': '/review-inbox', '/decisoes?aba=sugestoes': '/review-inbox', '/decisoes?aba=engajamento': '/engagement-queue',
+  '/relacionamento?aba=leads': '/leads', '/relacionamento?aba=timeline': '/timeline', '/relacionamento?aba=identidades': '/identities',
+  '/conteudo?aba=oportunidades': '/content-opportunity', '/conteudo?aba=conteudos': '/content-items', '/conteudo?aba=teses': '/theses', '/conteudo?aba=ponte': '/creative-bridge',
+  '/conteudo?aba=calendario': '/publishing', '/conteudo?aba=aprovacao': '/publishing', '/conteudo?aba=comprovantes': '/publishing',
+  '/relacionamento?aba=conversas': '/conversations', '/relacionamento?aba=email': '/email-flows', '/relacionamento?aba=politicas': '/contact-policies', '/relacionamento?aba=grupos': '/communities',
+  '/desempenho?aba=roi': '/source-roi', '/automacoes?aba=contas': '/accounts', '/automacoes?aba=ia': '/ai-settings', '/automacoes?aba=scoring': '/configs', '/automacoes?aba=notificacoes': '/notifications', '/automacoes?aba=saude': '/system-health',
+}
+
+for (const [canonical, legacy] of Object.entries(canonicalAliases)) {
+  const content = helpRegistry[legacy]
+  if (content) helpRegistry[canonical] = content
+}
+
+helpRegistry['/conteudo?aba=funil'] = {
+  title: 'Funil editorial', what: 'Visão consolidada da pauta, da sugestão até a publicação.',
+  whenToUse: 'Use para encontrar gargalos, itens parados e promover pautas com os contratos já existentes.',
+  steps: [{ title: 'Selecionar estágio', description: 'Clique em uma coluna para filtrar os itens.' }, { title: 'Revisar travas', description: 'Itens protegidos ou parados há sete dias ficam destacados.' }, { title: 'Promover', description: 'Use Promover nos estágios que têm ação segura disponível.' }],
+  dataSources: [{ name: 'Banco editorial', frequency: 'Tempo real' }],
+}
+
+helpRegistry['/automacoes?aba=motores'] = {
+  title: 'Motores de automação', what: 'Controle os 41 workers em sete capacidades operacionais compreensíveis.',
+  whenToUse: 'Use para ativar ou pausar uma capacidade inteira com pré-requisitos, dependências e auditoria.',
+  steps: [{ title: 'Verificar pré-requisitos', description: 'Resolva os bloqueios indicados antes de ligar.' }, { title: 'Revisar cascata', description: 'O diálogo lista todos os motores e workers afetados.' }, { title: 'Confirmar estado efetivo', description: 'Acompanhe heartbeat e filas depois do comando.' }],
+  dataSources: [{ name: 'worker_settings e heartbeats', frequency: 'Tempo real' }, { name: 'BullMQ', frequency: 'Tempo real' }],
+}
+
+for (const destination of NAVIGATION) {
+  for (const tab of destination.tabs) {
+    const key = navigationHref(destination, tab)
+    helpRegistry[key] ??= {
+      title: `${destination.title} · ${tab.label_pt}`,
+      what: `A aba ${tab.label_pt} concentra as funções deste domínio sem remover o fluxo anterior.`,
+      whenToUse: `Use esta aba para executar e acompanhar as atividades de ${tab.label_pt.toLowerCase()}.`,
+      steps: [{ title: 'Consultar estado', description: 'Revise os indicadores e itens exibidos.' }, { title: 'Executar ação', description: 'Use apenas as ações disponíveis para o seu papel.' }, { title: 'Confirmar resultado', description: 'Verifique o retorno visual e a trilha operacional.' }],
+      dataSources: [{ name: 'Banco operacional', frequency: 'Tempo real' }],
+    }
+  }
+}
+
+for (const engine of AUTOMATION_ENGINES) {
+  helpRegistry[`/automacoes?aba=motores&motor=${engine.key}`] = {
+    title: `${engine.key} · ${engine.name_pt}`, what: engine.description_pt,
+    whenToUse: `Use para controlar em conjunto: ${engine.workers.join(', ')}.`,
+    steps: [{ title: 'Entradas', description: engine.prerequisites.length ? `Consome dados e serviços validados por: ${engine.prerequisites.join(', ')}.` : 'Opera sobre a infraestrutura básica da plataforma.' }, { title: 'Processamento', description: `Liga ou desliga ${engine.workers.length} worker(s) com comando auditável.` }, { title: 'Saída', description: 'Os resultados aparecem nas filas, tabelas e telas do domínio correspondente.' }],
+    dataSources: [{ name: 'Catálogo de motores', frequency: 'Versionado' }, { name: 'Estado operacional', frequency: 'Tempo real' }],
   }
 }

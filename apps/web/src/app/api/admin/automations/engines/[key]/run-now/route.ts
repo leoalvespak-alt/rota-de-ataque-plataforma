@@ -1,100 +1,106 @@
-/**
- * POST /api/admin/automations/engines/[key]/run-now
- *
- * Enfileira run_now para todos os workers schedulable do motor especificado.
- * Papel mínimo: operator.
- *
- * GARANTIA: rota nova. Reutiliza o mapa de payloads do route.ts existente.
- */
-
 import { createDatabase } from '@plataforma/db'
-import { createQueueRegistry } from '@plataforma/queue'
-import { ENGINE_BY_KEY, type EngineKey } from '@plataforma/shared'
+import { createQueueRegistry, MANAGED_SCHEDULER_CONFIG } from '@plataforma/queue'
+import { ENGINE_BY_KEY, type EngineKey, type QueueName } from '@plataforma/shared'
+import { Redis } from 'ioredis'
 import { NextResponse } from 'next/server'
-import { requireRole } from '@/lib/permissions'
 import { apiErrorResponse } from '@/lib/api-errors'
-import { getCampaignContext } from '@/lib/campaign-context'
+import { requireRole } from '@/lib/permissions'
 
-const VALID_ENGINE_KEYS = new Set(['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6'])
-
-// Mapa de payloads reutilizado do route.ts existente (passo 3.4)
-function getPayloadForWorker(workerName: string, campaignId?: string): Record<string, unknown> {
-  const payloads: Record<string, Record<string, unknown> | undefined> = {
-    'news-radar':       { mode: 'incremental' },
-    'data-quality':     { refreshViews: true },
-    'competitive-intel':{ windowDays: 30 },
-    'reddit-intelligence': {},
-    'publisher':        {},
-    'threads-publisher':{},
-    'email-flow-engine':{ limit: 100 },
-    'adaptive-crawler': {},
-    'community-map':    {},
-    'content-opportunity': campaignId ? { campaignId, limit: 25 } : {},
-  }
-  return payloads[workerName] ?? {}
-}
+const VALID_ENGINE_KEYS = new Set<EngineKey>(['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6'])
 
 export async function POST(
-  request: Request,
-  { params }: { params: { key: string } },
+  _request: Request,
+  { params }: { params: Promise<{ key: string }> },
 ) {
   let user: Awaited<ReturnType<typeof requireRole>>
-  try { user = await requireRole('operator') } catch (error) { return apiErrorResponse(error) }
+  try {
+    user = await requireRole('operator')
+  } catch (error) {
+    return apiErrorResponse(error)
+  }
 
-  const { key } = params
-  if (!VALID_ENGINE_KEYS.has(key)) {
+  const { key } = await params
+  if (!VALID_ENGINE_KEYS.has(key as EngineKey)) {
     return NextResponse.json({ error: 'engine_not_found' }, { status: 404 })
   }
   const engineKey = key as EngineKey
   const engine = ENGINE_BY_KEY[engineKey]
-
-  // Apenas workers schedulable
-  const schedulableWorkers = engine.workers.filter((w: string) => {
-    // Verificar na lista de workers schedulables conhecida
-    const SCHEDULABLE = new Set([
-      'news-radar', 'competitive-intel', 'data-quality', 'community-map',
-      'reddit-intelligence', 'email-flow-engine', 'adaptive-crawler', 'publisher', 'threads-publisher',
-    ])
-    return SCHEDULABLE.has(w)
-  })
-
-  if (schedulableWorkers.length === 0) {
-    return NextResponse.json({
-      error: 'no_schedulable_workers',
-      message: `Motor ${engineKey} nao possui workers com agendamento proprio gerenciavel.`,
-    }, { status: 422 })
-  }
-
+  const configuredWorkers = engine.workers.filter((workerName) => MANAGED_SCHEDULER_CONFIG[workerName])
   const { pool } = createDatabase(process.env.DATABASE_URL!)
-  const registry = createQueueRegistry(process.env.REDIS_URL!)
 
   try {
-    const { selected } = await getCampaignContext(pool)
-    const campaignId = selected?.id
-
-    const enqueued: string[] = []
-    const failed: string[] = []
-
-    for (const workerName of schedulableWorkers) {
-      try {
-        const queue = registry.queues[workerName as keyof typeof registry.queues]
-        if (!queue) { failed.push(workerName); continue }
-
-        const payload = getPayloadForWorker(workerName, campaignId)
-        const job = await queue.add(`${workerName}-manual`, { ...payload, manual: true, triggeredBy: user.email })
-
-        await pool.query(
-          `INSERT INTO audit_log(actor_id, action, target, after) VALUES($1, $2, $3, $4::jsonb)`,
-          [user.email ?? 'operator', 'engine.run_now', engineKey, JSON.stringify({ workerName, jobId: job.id })],
-        )
-        enqueued.push(workerName)
-      } catch {
-        failed.push(workerName)
-      }
+    const schedulable = await pool.query<{ worker_name: QueueName }>(
+      'SELECT worker_name FROM worker_settings WHERE schedulable = true AND worker_name = ANY($1)',
+      [configuredWorkers],
+    )
+    const schedulableWorkers = schedulable.rows.map((row) => row.worker_name)
+    if (schedulableWorkers.length === 0) {
+      return NextResponse.json({ error: 'no_schedulable_workers' }, { status: 422 })
     }
 
-    return NextResponse.json({ ok: true, engineKey, enqueued, failed })
-  } finally {
-    await registry.connection.quit()
+    const redis = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: 1, connectTimeout: 3_000 })
+    try {
+      const runtime = await pool.query<{ worker_name: string; state: string | null; last_beat_at: string | null }>(`SELECT settings.worker_name, heartbeat.state, heartbeat.last_beat_at::text
+        FROM worker_settings settings
+        LEFT JOIN LATERAL (SELECT state,last_beat_at FROM worker_heartbeats WHERE worker=settings.worker_name ORDER BY last_beat_at DESC LIMIT 1) heartbeat ON true
+        WHERE settings.worker_name = ANY($1)`, [schedulableWorkers])
+      const unavailable = runtime.rows.filter((row) => !row.last_beat_at || Date.now() - new Date(row.last_beat_at).getTime() > 90_000 || row.state !== 'running')
+      if (unavailable.length > 0) {
+        return NextResponse.json({
+          error: 'runtime_unavailable',
+          reasonCode: 'RUNTIME_UNAVAILABLE',
+          unavailableWorkers: unavailable.map((row) => row.worker_name),
+          nextAction: { label: 'Ligar motor', href: '/automacoes' },
+        }, { status: 409 })
+      }
+    } finally {
+      await redis.quit().catch(() => undefined)
+    }
+
+    const registry = createQueueRegistry(process.env.REDIS_URL!)
+    try {
+      const enqueued: string[] = []
+      const failed: string[] = []
+      for (const workerName of schedulableWorkers) {
+        const config = MANAGED_SCHEDULER_CONFIG[workerName]
+        if (!config) {
+          failed.push(workerName)
+          continue
+        }
+        const command = await pool.query<{ id: string }>(`
+          INSERT INTO worker_commands(worker_name, command_type, payload, requested_by)
+          VALUES($1, 'run_now', $2::jsonb, $3)
+          RETURNING id
+        `, [workerName, JSON.stringify(config.data), user.email ?? null])
+        const commandId = command.rows[0]?.id
+        try {
+          const job = await registry.queues[workerName].add(
+            `${workerName}-manual`,
+            { ...config.data, manual: true, triggeredBy: user.email, commandId },
+          )
+          await pool.query(
+            "UPDATE worker_commands SET status = 'enqueued', job_id = $2 WHERE id = $1",
+            [commandId, String(job.id)],
+          )
+          await pool.query(
+            "INSERT INTO audit_log(actor_id, action, target, after) VALUES($1, 'engine.run_now', $2, $3::jsonb)",
+            [user.email ?? 'operator', engineKey, JSON.stringify({ workerName, jobId: job.id, commandId })],
+          )
+          enqueued.push(workerName)
+        } catch {
+          await pool.query(
+            "UPDATE worker_commands SET status = 'failed', completed_at = now(), error_code = 'enqueue_failed' WHERE id = $1",
+            [commandId],
+          )
+          failed.push(workerName)
+        }
+      }
+      return NextResponse.json({ ok: failed.length === 0, engineKey, enqueued, failed })
+    } finally {
+      await Promise.allSettled(Object.values(registry.queues).map((queue) => queue.close()))
+      await registry.connection.quit().catch(() => undefined)
+    }
+  } catch (error) {
+    return apiErrorResponse(error)
   }
 }

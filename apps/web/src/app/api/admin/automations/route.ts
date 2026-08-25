@@ -1,5 +1,5 @@
 import { createDatabase } from '@plataforma/db'
-import { createQueueRegistry, MANAGED_SCHEDULER_CONFIG, parseCadence } from '@plataforma/queue'
+import { createQueueRegistry, MANAGED_SCHEDULER_CONFIG, nextCadenceExecution, parseCadence } from '@plataforma/queue'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole } from '@/lib/permissions'
@@ -8,7 +8,7 @@ import { apiErrorResponse, invalidRequestResponse } from '@/lib/api-errors'
 
 const ActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.enum(['enable', 'disable', 'run_now', 'pause', 'resume', 'clear_dlq']), workerName: z.string() }),
-  z.object({ action: z.literal('set_schedule'), workerName: z.string(), cadence: z.string().trim().min(1).max(100) }),
+  z.object({ action: z.enum(['preview_schedule', 'set_schedule']), workerName: z.string(), cadence: z.string().trim().min(1).max(100) }),
 ])
 
 export async function GET() {
@@ -74,20 +74,39 @@ export async function POST(request: Request) {
   const registry = createQueueRegistry(process.env.REDIS_URL!)
 
   try {
-    // set_schedule is an operational config action, not a worker command; handle it separately
-    if (action === 'set_schedule') {
-      await pool.query('UPDATE worker_settings SET cadence = $2, updated_at = now() WHERE worker_name = $1', [workerName, cadence])
-      const queue = registry.queues[workerName as keyof typeof registry.queues]
-      if (queue && cadence) {
-        const opts = parseCadence(cadence)
-        const config = MANAGED_SCHEDULER_CONFIG[workerName as keyof typeof MANAGED_SCHEDULER_CONFIG]
-        // Use the primary scheduler ID so installPlatformSchedulers won't create a duplicate
-        const schedulerId = config?.primaryId ?? `${workerName}-managed-v1`
-        const data = config?.data ?? {}
-        await queue.upsertJobScheduler(schedulerId, opts, { name: workerName, data })
+    // Schedule actions are operational configuration, not worker commands.
+    if (action === 'preview_schedule' || action === 'set_schedule') {
+      const worker = await pool.query<{ schedulable: boolean }>(
+        'SELECT schedulable FROM worker_settings WHERE worker_name = $1',
+        [workerName],
+      )
+      if (worker.rowCount === 0) return NextResponse.json({ error: 'Worker não encontrado.' }, { status: 404 })
+      if (!worker.rows[0]?.schedulable) {
+        return NextResponse.json({ error: 'Este worker é acionado por evento e não possui cadência configurável.' }, { status: 409 })
       }
+
+      const config = MANAGED_SCHEDULER_CONFIG[workerName as keyof typeof MANAGED_SCHEDULER_CONFIG]
+      const queue = registry.queues[workerName as keyof typeof registry.queues]
+      if (!config || !queue) {
+        return NextResponse.json({ error: 'Worker sem scheduler gerenciado.' }, { status: 409 })
+      }
+
+      let nextExecution: Date
+      try {
+        nextExecution = nextCadenceExecution(cadence!)
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Cadência inválida.' }, { status: 400 })
+      }
+      if (action === 'preview_schedule') {
+        return NextResponse.json({ ok: true, workerName, cadence, nextExecution: nextExecution.toISOString() })
+      }
+
+      const opts = parseCadence(cadence!)
+      // The canonical primary ID is mandatory: using another ID would create a duplicate scheduler.
+      await queue.upsertJobScheduler(config.primaryId, opts, { name: workerName, data: config.data })
+      await pool.query('UPDATE worker_settings SET cadence = $2, updated_at = now() WHERE worker_name = $1', [workerName, cadence])
       await pool.query("INSERT INTO audit_log(actor_id, action, target, after) VALUES($1, 'worker.set_schedule', $2, $3::jsonb)", [user.email ?? 'operator', workerName, JSON.stringify({ cadence })])
-      return NextResponse.json({ ok: true, action, workerName, cadence })
+      return NextResponse.json({ ok: true, action, workerName, cadence, nextExecution: nextExecution.toISOString() })
     }
 
     const command = await pool.query<{ id: string }>(

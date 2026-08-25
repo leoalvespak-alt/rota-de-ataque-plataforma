@@ -22,7 +22,7 @@ describe('notification shell contract', () => {
 describe('manual publication editor contract', () => {
   it('uses a base-path-aware endpoint and includes standalone campaign publications', () => {
     const client = source('app/publishing/PublishingClient.tsx')
-    const page = source('app/publishing/page.tsx')
+    const page = source('app/publishing/view.tsx')
     const route = source('app/api/admin/publications/route.ts')
 
     expect(client).toMatch(/appPath\(['"]\/api\/admin\/publications['"]\)/u)

@@ -4,6 +4,30 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 
 ## [Unreleased]
 
+### Implemented (2026-08-24)
+
+- Auditoria de fechamento (25/08): allowlist pública passou a respeitar método HTTP; `run-now` exige consumer `running`; scheduler remove recorrências de workers desligados; health exige a migration exata; runtime consulta papel/saúde da conta no banco; canário sintético conclui `worker_runs`; e o catálogo cobre todos os reason codes emitidos.
+- Gate SQL executado em PostgreSQL descartável com as 35 migrations e 777 literais; corrigido o contrato de `whatsapp_messages.created_at`. Compose renderizado pelo Docker real com scheduler e 41 workers, sem tocar a base de produção.
+
+- Entry point client-safe separado em `@plataforma/shared/client`; o Turbo agora aguarda o build do próprio pacote antes de lint, typecheck e testes, evitando corrida com `.next/types` e testes contra `dist` obsoleto.
+
+- Reconciliado o branch local com `origin/main` sem reescrever a migration publicada `0034`; criada a `0035_reconcile_automation_runtime` com remapeamentos, proveniência editorial, estados/contagens de execução, reason codes e incidentes.
+- Compose de deploy ampliado com scheduler e os 41 workers, além de checker estrutural do runtime; `check-runtime-deps` e o inventário de rotas passam localmente.
+- Separados liveness, readiness e saúde operacional; `AppShell`, middleware e allowlist pública agora usam os contratos reais de health/webhooks sob o base path.
+- Aprovação de sugestão deixou de criar publicação diretamente e passou a criar/ligar oportunidade; agendamento exige item e variante aprovados e o funil expõe proveniência e transições órfãs.
+- Navegação principal consolidada em sete áreas, preservando recursos legados por redirects e abas avançadas.
+- Validação pré-deploy: suíte monorepo verde, migrations reversíveis, SQL real e Compose renderizado. E2E autenticado, canário sem efeito externo e inspeção pós-deploy são executados na release publicada.
+
+### Changed
+
+- **Prospector — simplificação operacional completa** (22/08/2026):
+  - migration aditiva `0034_automation_engines`, snapshot dos 41 workers e catálogo compartilhado de sete motores, sem escrita em `enabled`;
+  - APIs transacionais de motores, pré-requisitos reais, cascata auditável, replay idempotente e execução imediata somente para workers schedulable;
+  - Automações em Motores, Workers, Filas e Agendamentos, com presets, cron personalizado validado, preview e recusa HTTP 409 para workers acionados por evento;
+  - sete destinos canônicos, Modo Simples/Avançado, Command Palette por aba e 27 redirects HTTP 308 que preservam os 28 pontos de entrada anteriores junto da raiz;
+  - Centro de Comando Hoje, funil editorial, desempenho de conteúdo e ajuda contextual por rota, aba e motor;
+  - testes de inventário, migration, scheduler, handlers, navegação, redirects e acessibilidade.
+
 ### Fixed
 
 - **Prospector — correções P0 e plano de controle de workers** (19/08/2026):

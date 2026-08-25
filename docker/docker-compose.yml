@@ -7,6 +7,7 @@ x-worker: &worker
     dockerfile: docker/worker.Dockerfile
   environment:
     DATABASE_POOL_MAX: "2"
+    EXPECTED_DB_MIGRATION: "0035_reconcile_automation_runtime"
   restart: unless-stopped
   entrypoint: ["/app/docker/worker-entrypoint.sh"]
   depends_on:
@@ -62,6 +63,7 @@ services:
       dockerfile: apps/web/Dockerfile
     environment:
       DATABASE_POOL_MAX: "10"
+      EXPECTED_DB_MIGRATION: "0035_reconcile_automation_runtime"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

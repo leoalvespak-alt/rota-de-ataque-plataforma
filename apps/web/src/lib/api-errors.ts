@@ -12,15 +12,30 @@ const publicCodes = new Set([
   'invalid_state',
   'conflict',
   'internal_error',
+  'NO_INPUT', 'PREREQUISITE_MISSING', 'ACCOUNT_AUTH_REQUIRED', 'PROVIDER_NOT_CONFIGURED',
+  'BUDGET_NOT_CONFIGURED', 'MIGRATION_DRIFT', 'RUNTIME_UNAVAILABLE', 'QUEUE_UNAVAILABLE',
+  'SQL_CONTRACT_ERROR', 'EXTERNAL_PROVIDER_ERROR', 'POLICY_BLOCKED', 'HUMAN_APPROVAL_REQUIRED',
+  'UNKNOWN',
 ])
 
 function statusFor(error: PublicError) {
-  return error.status === 401 || error.status === 403 || error.status === 404 || error.status === 409 || error.status === 422 || error.status === 429 || error.status === 503 ? error.status : 500
+  if (error.status === 401 || error.status === 403 || error.status === 404 || error.status === 409 || error.status === 422 || error.status === 429 || error.status === 503) return error.status
+  if (['PREREQUISITE_MISSING', 'RUNTIME_UNAVAILABLE', 'QUEUE_UNAVAILABLE', 'POLICY_BLOCKED', 'HUMAN_APPROVAL_REQUIRED'].includes(error.reasonCode ?? error.code ?? '')) return 409
+  return 500
 }
 
 function codeFor(error: PublicError, fallback: string) {
-  const candidate = error.code ?? (error.status === 401 ? 'authentication_required' : error.status === 403 ? 'forbidden' : fallback)
+  const candidate = error.code ?? error.reasonCode ?? (error.status === 401 ? 'authentication_required' : error.status === 403 ? 'forbidden' : fallback)
   return publicCodes.has(candidate) ? candidate : fallback
+}
+
+const actionByCode: Record<string, { label: string; href: string }> = {
+  RUNTIME_UNAVAILABLE: { label: 'Verificar operação', href: '/automacoes?aba=saude' },
+  QUEUE_UNAVAILABLE: { label: 'Abrir saúde do sistema', href: '/automacoes?aba=saude' },
+  PREREQUISITE_MISSING: { label: 'Abrir checklist de prontidão', href: '/automacoes?aba=motores' },
+  ACCOUNT_AUTH_REQUIRED: { label: 'Vincular conta', href: '/automacoes?aba=contas' },
+  PROVIDER_NOT_CONFIGURED: { label: 'Configurar provedor', href: '/automacoes?aba=ia' },
+  HUMAN_APPROVAL_REQUIRED: { label: 'Abrir decisões', href: '/decisoes' },
 }
 
 export function apiErrorResponse(error: unknown, fallback = 'internal_error') {
@@ -28,9 +43,11 @@ export function apiErrorResponse(error: unknown, fallback = 'internal_error') {
   const traceId = crypto.randomUUID()
   const safeLogMessage = value.message.replace(/(authorization|cookie|token|password|secret|email)\s*[:=]\s*[^\s,;]+/giu, '$1=[redacted]').slice(0, 500)
   const status = statusFor(value)
+  const code = codeFor(value, fallback)
+  const nextAction = actionByCode[code]
   // Auth and validation denials are expected client states, not server incidents.
   if (status >= 500) console.error({ traceId, error: safeLogMessage, status, reasonCode: value.reasonCode }, 'API request failed')
-  return NextResponse.json({ error: codeFor(value, fallback), traceId }, { status })
+  return NextResponse.json({ error: code, code, message: status >= 500 ? 'A operação não pôde ser concluída.' : value.message.slice(0, 500), nextAction, retryable: status >= 500 || code === 'RUNTIME_UNAVAILABLE' || code === 'QUEUE_UNAVAILABLE', traceId }, { status })
 }
 
 export function invalidRequestResponse(code = 'invalid_request') {

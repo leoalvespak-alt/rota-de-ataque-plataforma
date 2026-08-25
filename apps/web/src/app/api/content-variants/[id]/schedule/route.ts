@@ -13,10 +13,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    const variant = (await client.query<{ id: string; channel: string; payload: Record<string, unknown>; approved_by: string | null; opportunity_id: string | null }>(
-      `SELECT variant.id,variant.channel,variant.payload,variant.approved_by,item.opportunity_id FROM content_variants variant JOIN content_items item ON item.id=variant.content_item_id WHERE variant.id=$1 AND variant.status='approved' FOR UPDATE OF variant`, [id],
+    const variant = (await client.query<{ id: string; channel: string; payload: Record<string, unknown>; approved_by: string | null; opportunity_id: string | null; item_status: string }>(
+      `SELECT variant.id,variant.channel,variant.payload,variant.approved_by,item.opportunity_id,item.status item_status FROM content_variants variant JOIN content_items item ON item.id=variant.content_item_id WHERE variant.id=$1 AND variant.status='approved' FOR UPDATE OF variant`, [id],
     )).rows[0]
-    if (!variant?.approved_by || !['instagram', 'threads'].includes(variant.channel) || !variant.opportunity_id) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'approved_variant_required' }, { status: 409 }) }
+    if (!variant?.approved_by || variant.item_status !== 'approved' || !['instagram', 'threads'].includes(variant.channel) || !variant.opportunity_id) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'approved_item_and_variant_required', reasonCode: 'PREREQUISITE_MISSING' }, { status: 409 }) }
     if (variant.channel === 'instagram' && !parsed.data.mediaAssetRef) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'instagram_asset_required' }, { status: 409 }) }
     const account = (await client.query<{ id: string }>(`SELECT id FROM accounts WHERE role='actor' AND status='HEALTHY' ORDER BY id LIMIT 1`)).rows[0]
     if (!account) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'healthy_actor_required' }, { status: 409 }) }

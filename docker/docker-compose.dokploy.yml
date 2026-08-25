@@ -1,3 +1,17 @@
+x-worker: &worker
+  image: ${WORKER_IMAGE:-ghcr.io/leoalvespak-alt/prospector-platform-worker:latest}
+  pull_policy: always
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DATABASE_POOL_MAX: "2"
+    EXPECTED_DB_MIGRATION: "0035_reconcile_automation_runtime"
+  entrypoint: ["/app/docker/worker-entrypoint.sh"]
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    embeddings: { condition: service_healthy }
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -40,6 +54,11 @@ services:
         limits:
           cpus: "1.25"
           memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
 
   web:
     image: ghcr.io/leoalvespak-alt/prospector-platform-web:latest
@@ -48,11 +67,13 @@ services:
     env_file: .env
     environment:
       DATABASE_POOL_MAX: "10"
+      EXPECTED_DB_MIGRATION: "0035_reconcile_automation_runtime"
     ports:
       - "127.0.0.1:3010:3000"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      embeddings: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/prospector/api/health || exit 1"]
       interval: 30s
@@ -68,6 +89,140 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
     command: ["pnpm", "--filter", "@plataforma/db", "migrate"]
+
+  scheduler:
+    image: ${WORKER_IMAGE:-ghcr.io/leoalvespak-alt/prospector-platform-worker:latest}
+    pull_policy: always
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    command: ["pnpm", "--filter", "@plataforma/queue", "scheduler"]
+
+  worker-discovery:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-discovery", "start"]
+  worker-extraction:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-extraction", "start"]
+  worker-meta-sync:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-meta-sync", "start"]
+  worker-meta-webhook-consumer:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-meta-webhook-consumer", "start"]
+  worker-classification:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-classification", "start"]
+  worker-scoring:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-scoring", "start"]
+  worker-enrichment:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-enrichment", "start"]
+  worker-engagement:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-engagement", "start"]
+  worker-dm-copilot:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-dm-copilot", "start"]
+  worker-conversation-agent:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-conversation-agent", "start"]
+  worker-private-reply:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-private-reply", "start"]
+  worker-mention-monitor:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-mention-monitor", "start"]
+  worker-reciprocity-detector:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-reciprocity-detector", "start"]
+  worker-nba-engine:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-nba-engine", "start"]
+  worker-competitive-intel:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-competitive-intel", "start"]
+  worker-content-opportunity:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-content-opportunity", "start"]
+  worker-community-map:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-community-map", "start"]
+  worker-conversion-tracking:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-conversion-tracking", "start"]
+  worker-data-quality:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-data-quality", "start"]
+  worker-alerts:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-alerts", "start"]
+  worker-audience-overlap:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-audience-overlap", "start"]
+  worker-follower-mining:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-follower-mining", "start"]
+  worker-search-mining:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-search-mining", "start"]
+  worker-collab-discovery:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-collab-discovery", "start"]
+  worker-live-monitor:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-live-monitor", "start"]
+  worker-retention-tracker:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-retention-tracker", "start"]
+  worker-source-roi:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-source-roi", "start"]
+  worker-adaptive-crawler:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-adaptive-crawler", "start"]
+  worker-publisher:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-publisher", "start"]
+  worker-content-item-orchestrator:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-content-item-orchestrator", "start"]
+  worker-news-radar:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-news-radar", "start"]
+  worker-reddit-intelligence:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-reddit-intelligence", "start"]
+  worker-threads-adapter:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-threads-adapter", "start"]
+  worker-threads-publisher:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-threads-publisher", "start"]
+  worker-email-flow-engine:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-email-flow-engine", "start"]
+  worker-email-events-consumer:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-email-events-consumer", "start"]
+  worker-whatsapp-inbound:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-whatsapp-inbound", "start"]
+  worker-whatsapp-outbound:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-whatsapp-outbound", "start"]
+  worker-identity-resolver:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-identity-resolver", "start"]
+  worker-next-best-channel:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-next-best-channel", "start"]
+  worker-contact-policy-engine:
+    <<: *worker
+    command: ["pnpm", "--filter", "@plataforma/worker-contact-policy-engine", "start"]
 
 volumes:
   postgres_data:

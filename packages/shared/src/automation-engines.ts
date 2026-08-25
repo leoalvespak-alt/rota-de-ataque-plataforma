@@ -9,7 +9,7 @@
  * Nenhum worker é criado ou removido.
  */
 
-import type { QueueName } from './index.js'
+import type { QueueName } from './queue-names.js'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -62,7 +62,7 @@ export interface CadencePreset {
 // ---------------------------------------------------------------------------
 // AUTOMATION_ENGINES — catálogo dos 7 motores
 // Contagem de workers por motor (total = 41):
-//   M0: 2 | M1: 12 | M2: 8 | M3: 2 | M4: 3 | M5: 11 | M6: 3
+//   M0: 2 | M1: 12 | M2: 8 | M3: 2 | M4: 2 | M5: 11 | M6: 4
 // ---------------------------------------------------------------------------
 
 export const AUTOMATION_ENGINES: AutomationEngine[] = [
@@ -114,8 +114,8 @@ export const AUTOMATION_ENGINES: AutomationEngine[] = [
       'enrichment',
       'community-map',
       'audience-overlap',
-      'reciprocity-detector',
       'nba-engine',
+      'threads-adapter',
     ],
   },
   {
@@ -137,7 +137,7 @@ export const AUTOMATION_ENGINES: AutomationEngine[] = [
     alwaysOn: false,
     dependsOn: ['M3'],
     prerequisites: ['actor_account_healthy', 'kill_switch_off', 'approved_variant_exists'],
-    workers: ['publisher', 'threads-publisher', 'threads-adapter'],
+    workers: ['publisher', 'threads-publisher'],
   },
   {
     key: 'M5',
@@ -169,7 +169,7 @@ export const AUTOMATION_ENGINES: AutomationEngine[] = [
     alwaysOn: false,
     dependsOn: ['M4', 'M5'],
     prerequisites: [],
-    workers: ['source-roi', 'conversion-tracking', 'retention-tracker'],
+    workers: ['source-roi', 'conversion-tracking', 'retention-tracker', 'reciprocity-detector'],
   },
 ]
 
@@ -183,16 +183,16 @@ export const ENGINE_BY_KEY: Record<EngineKey, AutomationEngine> = Object.fromEnt
 // ---------------------------------------------------------------------------
 
 export const PREREQUISITE_DEFINITIONS: PrerequisiteDefinition[] = [
-  { key: 'news_source_active',      label_pt: 'Pelo menos 1 fonte de notícias ativa',         href: '/configuracoes?aba=contas' },
-  { key: 'connected_account_healthy', label_pt: 'Conta social conectada e saudável',           href: '/configuracoes?aba=contas' },
-  { key: 'budget_ceiling_set',       label_pt: 'Teto de orçamento definido',                    href: '/desempenho?aba=orcamento' },
-  { key: 'embeddings_healthy',       label_pt: 'Serviço de embeddings ativo',                   href: '/configuracoes?aba=saude' },
-  { key: 'ai_provider_configured',   label_pt: 'Provedor de IA configurado',                    href: '/configuracoes?aba=ia' },
-  { key: 'thesis_exists',            label_pt: 'Pelo menos 1 tese editorial cadastrada',        href: '/conteudo?aba=teses' },
-  { key: 'actor_account_healthy',    label_pt: 'Conta com papel actor saudável',                href: '/configuracoes?aba=contas' },
-  { key: 'kill_switch_off',          label_pt: 'Kill-switch global desligado',                  href: '/automacoes?aba=motores' },
-  { key: 'approved_variant_exists',  label_pt: 'Pelo menos 1 variante aprovada aguardando',    href: '/conteudo?aba=funil' },
-  { key: 'contact_policy_configured', label_pt: 'Políticas de contato definidas',              href: '/relacionamento?aba=politicas' },
+  { key: 'news_source_active',       label_pt: 'Pelo menos 1 fonte de notícias ativa',        href: '/inteligencia?aba=radar' },
+  { key: 'connected_account_healthy', label_pt: 'Conta social conectada e saudável',          href: '/configuracoes?aba=contas' },
+  { key: 'budget_ceiling_set',       label_pt: 'Teto de orçamento definido',                  href: '/desempenho?aba=orcamento' },
+  { key: 'embeddings_healthy',       label_pt: 'Serviço de embeddings ativo',                 href: '/configuracoes?aba=saude' },
+  { key: 'ai_provider_configured',   label_pt: 'Provedor de IA configurado',                  href: '/configuracoes?aba=ia' },
+  { key: 'thesis_exists',            label_pt: 'Pelo menos 1 tese editorial cadastrada',      href: '/conteudo?aba=teses' },
+  { key: 'actor_account_healthy',    label_pt: 'Conta com papel actor saudável',              href: '/configuracoes?aba=contas' },
+  { key: 'kill_switch_off',          label_pt: 'Kill-switch global desligado',                href: '/configuracoes?aba=saude' },
+  { key: 'approved_variant_exists',  label_pt: 'Pelo menos 1 variante aprovada aguardando',   href: '/conteudo?aba=conteudos' },
+  { key: 'contact_policy_configured', label_pt: 'Políticas de contato definidas',             href: '/relacionamento?aba=politicas' },
 ]
 
 /** Lookup rápido por key */
@@ -237,8 +237,7 @@ export function parseCadenceLabel(cadence: string): string {
     return `A cada ${days}d`
   }
 
-  // Padrão cron — exibir como está (modo avançado)
-  return cadence
+  return `Personalizado (cron): ${cadence}`
 }
 
 // ---------------------------------------------------------------------------

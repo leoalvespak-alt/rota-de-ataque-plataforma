@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import { AUTOMATION_ENGINES, ENGINE_BY_KEY, hasDepCycle, resolveDisableCascade, resolveEnableCascade, parseCadenceLabel, CADENCE_PRESETS } from './automation-engines.js'
 import workerInventory from './__fixtures__/worker-inventory.json' with { type: 'json' }
-import type { QueueName } from './index.js'
+import { QUEUE_NAMES, type QueueName } from './index.js'
 
 const ALL_QUEUE_NAMES: QueueName[] = workerInventory.workers as QueueName[]
 
@@ -22,6 +22,18 @@ describe('AUTOMATION_ENGINES — cobertura dos 41 workers', () => {
 
   it('deve ter exatamente 41 workers no total (sem sobra, sem falta)', () => {
     expect(allWorkers).toHaveLength(41)
+  })
+
+  it('deve respeitar a distribuição aprovada entre os 7 motores', () => {
+    expect(Object.fromEntries(AUTOMATION_ENGINES.map((engine) => [engine.key, engine.workers.length]))).toEqual({
+      M0: 2,
+      M1: 12,
+      M2: 8,
+      M3: 2,
+      M4: 2,
+      M5: 11,
+      M6: 4,
+    })
   })
 
   it('nenhum worker deve estar duplicado entre motores', () => {
@@ -48,6 +60,10 @@ describe('AUTOMATION_ENGINES — cobertura dos 41 workers', () => {
 
   it('inventário deve ter exatamente 41 entradas', () => {
     expect(ALL_QUEUE_NAMES).toHaveLength(41)
+  })
+
+  it('inventário congelado deve continuar idêntico a QUEUE_NAMES', () => {
+    expect([...ALL_QUEUE_NAMES].sort()).toEqual([...QUEUE_NAMES].sort())
   })
 })
 
@@ -136,8 +152,8 @@ describe('parseCadenceLabel', () => {
     expect(parseCadenceLabel('every:7200000')).toBe('A cada 2h')
   })
 
-  it('deve retornar o próprio valor para cron desconhecido (modo avançado)', () => {
-    expect(parseCadenceLabel('30 8 * * 2')).toBe('30 8 * * 2')
+  it('deve identificar cron desconhecido como personalizado', () => {
+    expect(parseCadenceLabel('30 8 * * 2')).toBe('Personalizado (cron): 30 8 * * 2')
   })
 
   it('todos os presets devem ser parseáveis de volta ao label_pt', () => {

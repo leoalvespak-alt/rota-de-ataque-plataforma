@@ -27,8 +27,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     await client.query('BEGIN')
     const suggestion = (await client.query<{
-      id: string; title: string; description: string | null; pillar: string | null; curation_status: 'proposed' | 'approved' | 'rejected' | 'expired'
-    }>(`SELECT id,title,description,pillar,curation_status FROM content_suggestions WHERE id=$1 FOR UPDATE`, [id.data])).rows[0]
+      id: string; title: string; description: string | null; pillar: string | null; campaign_id: string | null; thesis_id: string | null; suggested_format: string | null; suggested_channel: string | null; evidence: unknown; curation_status: 'proposed' | 'approved' | 'rejected' | 'expired'
+    }>(`SELECT id,title,description,pillar,campaign_id,thesis_id,suggested_format,suggested_channel,evidence,curation_status FROM content_suggestions WHERE id=$1 FOR UPDATE`, [id.data])).rows[0]
     if (!suggestion) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'not_found', traceId: crypto.randomUUID() }, { status: 404 }) }
     if (suggestion.curation_status !== 'proposed') { await client.query('ROLLBACK'); return conflictResponse('already_decided') }
 
@@ -41,15 +41,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const title = parsed.data.action === 'edit-approve' ? parsed.data.title ?? suggestion.title : suggestion.title
     const description = parsed.data.action === 'edit-approve' ? parsed.data.description ?? suggestion.description : suggestion.description
-    const publication = (await client.query<Record<string, unknown>>(
-      `INSERT INTO scheduled_publications(caption,scheduled_for,status,pillar,origin,curation_status)
-       VALUES($1,$2,'scheduled',$3,'automation','approved') RETURNING *`,
-      [description ?? title, parsed.data.scheduledFor ?? new Date(Date.now() + 60 * 60_000).toISOString(), suggestion.pillar],
+    const opportunity = (await client.query<Record<string, unknown>>(
+      `INSERT INTO content_opportunities(campaign_id,thesis,angle,hook,evidence,status,source_suggestion_id)
+       VALUES($1,$2,$3,$4,$5::jsonb,'new',$6)
+       ON CONFLICT (source_suggestion_id) WHERE source_suggestion_id IS NOT NULL
+       DO UPDATE SET thesis=EXCLUDED.thesis,angle=EXCLUDED.angle,hook=EXCLUDED.hook,evidence=EXCLUDED.evidence
+       RETURNING *`,
+      [suggestion.campaign_id, title, description, title, JSON.stringify({ evidence: suggestion.evidence, suggestionId: id.data, format: suggestion.suggested_format, channel: suggestion.suggested_channel }), id.data],
     )).rows[0]
-    const approved = (await client.query(`UPDATE content_suggestions SET title=$2,description=$3,curation_status='approved',approved_by=$4,approved_at=now(),promoted_publication_id=$5,updated_at=now() WHERE id=$1 RETURNING *`, [id.data, title, description, user.email ?? 'unknown', publication?.id])).rows[0]
+    const approved = (await client.query(`UPDATE content_suggestions SET title=$2,description=$3,curation_status='approved',approved_by=$4,approved_at=now(),opportunity_id=$5,updated_at=now() WHERE id=$1 RETURNING *`, [id.data, title, description, user.email ?? 'unknown', opportunity?.id])).rows[0]
     await client.query(`INSERT INTO audit_log(actor_id,action,target,before,after) VALUES($1,$2,$3,$4,$5)`, [user.email ?? 'unknown', `content_suggestion.${parsed.data.action}`, id.data, suggestion, approved])
     await client.query('COMMIT')
-    return NextResponse.json({ suggestionId: id.data, status: 'approved', publication })
+    return NextResponse.json({ suggestionId: id.data, status: 'approved', opportunity })
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined)
     return apiErrorResponse(error)

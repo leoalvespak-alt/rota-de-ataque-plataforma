@@ -4,6 +4,7 @@ import { Dialog, EmptyState, InputField, KpiCard, KpiRow, PageHeader, PriorityCh
 import { toast } from '@plataforma/ui-bridge'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { appPath } from '@/lib/base-path'
+import { useSearchParams } from 'next/navigation'
 
 interface ReviewItem {
   id: string
@@ -54,7 +55,9 @@ type Tab = typeof TABS[number]
 type DialogKind = 'slot' | 'dismiss-radar' | 'edit-suggestion' | 'reject-suggestion'
 
 export function ReviewInboxClient({ initialItems, decidedToday, radarFindings = [], competitorInsights = [], contentSuggestions = [] }: { initialItems: ReviewItem[]; decidedToday: number; radarFindings?: RadarFinding[]; competitorInsights?: CompetitorInsight[]; contentSuggestions?: ContentSuggestion[] }) {
-  const [activeTab, setActiveTab] = useState<Tab>('inbox')
+  const requestedTab = useSearchParams().get('aba')
+  const initialTab: Tab = requestedTab === 'radar' || requestedTab === 'insights' ? requestedTab : requestedTab === 'sugestoes' ? 'suggestions' : 'inbox'
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [items, setItems] = useState(() => [...initialItems].sort((a, b) => ({ P0: 0, P1: 1, P2: 2, P3: 3 }[a.risk_level ?? 'P3'] ?? 4) - ({ P0: 0, P1: 1, P2: 2, P3: 3 }[b.risk_level ?? 'P3'] ?? 4)))
   const [index, setIndex] = useState(0)
   const [busy, setBusy] = useState(false)

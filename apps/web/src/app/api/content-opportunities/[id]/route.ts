@@ -19,6 +19,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await client.query('BEGIN')
     const before = (await client.query(`SELECT * FROM content_opportunities WHERE id=$1 FOR UPDATE`, [id])).rows[0]
     if (!before) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'not_found' }, { status: 404 }) }
+    if (parsed.data.decision === 'approve' && !['new', 'proposed'].includes(String(before.status))) {
+      await client.query('ROLLBACK')
+      return NextResponse.json({ error: 'already_decided', reasonCode: 'ALREADY_DONE' }, { status: 409 })
+    }
     const status = parsed.data.decision === 'approve' ? 'approved' : parsed.data.decision === 'reject' ? 'rejected' : before.status
     const item = (await client.query(
       `UPDATE content_opportunities SET thesis=COALESCE($2,thesis),angle=COALESCE($3,angle),hook=COALESCE($4,hook),status=$5 WHERE id=$1 RETURNING *`,

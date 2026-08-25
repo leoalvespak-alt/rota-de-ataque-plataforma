@@ -53,8 +53,8 @@ const repository: AdaptiveRepository = {
         if (next.interval === Number(row.current_interval_seconds)) continue
         await client.query(
           `UPDATE crawl_schedule
-           SET current_interval_seconds = $2,
-               next_run_at = GREATEST(COALESCE(last_run_at, now()) + ($2 || ' seconds')::interval, now()),
+           SET current_interval_seconds = $2::int,
+               next_run_at = GREATEST(COALESCE(last_run_at, now()) + make_interval(secs => $2::int), now()),
                quality_score = $3,
                last_updated_at = now()
            WHERE id = $1`,

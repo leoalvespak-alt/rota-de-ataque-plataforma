@@ -9,6 +9,7 @@ export * from "./timeline.js";
 export * from "./creative-job-schema.js";
 export * from "./budget-gate.js";
 export * from "./automation-engines.js";
+export * from "./queue-names.js";
 
 export const ActionTypeSchema = z.enum([
   "follow",
@@ -47,6 +48,18 @@ export const StageSchema = z.enum([
 export type Stage = z.infer<typeof StageSchema>;
 export const ReasonCodeSchema = z.enum([
   "SUCCESS",
+  "NO_INPUT",
+  "PREREQUISITE_MISSING",
+  "ACCOUNT_AUTH_REQUIRED",
+  "PROVIDER_NOT_CONFIGURED",
+  "BUDGET_NOT_CONFIGURED",
+  "MIGRATION_DRIFT",
+  "RUNTIME_UNAVAILABLE",
+  "QUEUE_UNAVAILABLE",
+  "SQL_CONTRACT_ERROR",
+  "EXTERNAL_PROVIDER_ERROR",
+  "POLICY_BLOCKED",
+  "HUMAN_APPROVAL_REQUIRED",
   "ALREADY_DONE",
   "PROFILE_UNAVAILABLE",
   "ACTION_REJECTED",
@@ -301,17 +314,24 @@ export interface WorkerPreflight {
   accountRole?: AccountRole;
 }
 export function preflight(input: WorkerPreflight, required?: AccountRole) {
-  const valid =
-    input.migrationsCurrent &&
-    input.embeddingDimension === EMBEDDING_DIM &&
-    input.tokenValid &&
-    input.lockAvailable &&
-    input.budgetAvailable &&
-    input.accountStatus !== "STOPPED" &&
-    (!required || input.accountRole === required);
-  if (!valid)
-    throw Object.assign(new Error("Worker preflight failed"), {
-      reasonCode: "PREFLIGHT_FAILED" satisfies ReasonCode,
+  const failure = !input.migrationsCurrent
+    ? { message: "Database migration is not current", reasonCode: "MIGRATION_DRIFT" as const }
+    : input.embeddingDimension !== EMBEDDING_DIM
+      ? { message: "Embedding dimension does not match the runtime contract", reasonCode: "PREREQUISITE_MISSING" as const }
+      : !input.tokenValid
+        ? { message: "Provider token is not valid", reasonCode: "PROVIDER_NOT_CONFIGURED" as const }
+        : !input.lockAvailable
+          ? { message: "The account lock is not available", reasonCode: "PREREQUISITE_MISSING" as const }
+          : !input.budgetAvailable
+            ? { message: "Execution budget is not configured", reasonCode: "BUDGET_NOT_CONFIGURED" as const }
+            : input.accountStatus === "STOPPED"
+              ? { message: "A healthy account is required", reasonCode: "ACCOUNT_AUTH_REQUIRED" as const }
+              : required && input.accountRole !== required
+                ? { message: `Worker requires an account with role ${required}`, reasonCode: "ROLE_MISMATCH" as const }
+                : null;
+  if (failure)
+    throw Object.assign(new Error(failure.message), {
+      reasonCode: failure.reasonCode satisfies ReasonCode,
     });
 }
 
@@ -321,50 +341,6 @@ export function deterministicJobId(
 ) {
   return `${queue}:${parts.map((part) => encodeURIComponent(String(part))).join(":")}`;
 }
-export const QUEUE_NAMES = [
-  "discovery",
-  "extraction",
-  "meta-sync",
-  "meta-webhook-consumer",
-  "classification",
-  "scoring",
-  "enrichment",
-  "engagement",
-  "dm-copilot",
-  "conversation-agent",
-  "private-reply",
-  "mention-monitor",
-  "reciprocity-detector",
-  "nba-engine",
-  "competitive-intel",
-  "content-opportunity",
-  "community-map",
-  "conversion-tracking",
-  "data-quality",
-  "alerts",
-  "audience-overlap",
-  "follower-mining",
-  "search-mining",
-  "collab-discovery",
-  "live-monitor",
-  "retention-tracker",
-  "source-roi",
-  "adaptive-crawler",
-  "publisher",
-  "content-item-orchestrator",
-  "reddit-intelligence",
-  "threads-adapter",
-  "threads-publisher",
-  "email-flow-engine",
-  "email-events-consumer",
-  "whatsapp-inbound",
-  "whatsapp-outbound",
-  "identity-resolver",
-  "next-best-channel",
-  "contact-policy-engine",
-  "news-radar",
-] as const;
-export type QueueName = (typeof QUEUE_NAMES)[number];
 export * from "./observability.js";
 
 export function accountRisk(input: {

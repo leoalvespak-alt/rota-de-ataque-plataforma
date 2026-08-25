@@ -17,6 +17,7 @@ import { TooltipProvider, ToastProvider } from '@plataforma/ui-bridge'
 import { SessionProvider } from '@/components/SessionProvider'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { UiModeProvider } from '@/components/UiModeProvider'
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let context: Awaited<ReturnType<typeof getCampaignContext>> = { campaigns: [], selected: null }
@@ -39,14 +40,16 @@ const flags = getFlags()
         <a className="skip-nav" href="#main-content">Pular para o conteúdo principal</a>
         <FeatureFlagProvider flags={flags}>
           <TooltipProvider>
-            <CommandPalette>
-              <SessionProvider session={session ?? { name: 'Sessão indisponível', role: 'viewer' as const }}>
-                <AppShell campaigns={context.campaigns} selectedCampaignId={context.selected?.id ?? null}>
-                  <Suspense fallback={<div style={{padding: 24}}>Carregando interface...</div>}>{children}</Suspense>
-                </AppShell>
-              </SessionProvider>
-              <ToastProvider />
-            </CommandPalette>
+            <UiModeProvider>
+              <CommandPalette>
+                <SessionProvider session={session ?? { name: 'Sessão indisponível', role: 'viewer' as const }}>
+                  <AppShell campaigns={context.campaigns} selectedCampaignId={context.selected?.id ?? null}>
+                    <Suspense fallback={<div style={{padding: 24}}>Carregando interface...</div>}>{children}</Suspense>
+                  </AppShell>
+                </SessionProvider>
+                <ToastProvider />
+              </CommandPalette>
+            </UiModeProvider>
           </TooltipProvider>
         </FeatureFlagProvider>
       </body>

@@ -1,8 +1,8 @@
 'use client'
 
 import { ChannelBadge, Dialog, EmptyState, InputField, KpiCard, KpiRow, PageHeader, SelectField, StatusBadge, TextareaField, type MultichannelName } from '@plataforma/ui-bridge'
-import { useState, useTransition, useCallback, useEffect } from 'react'
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from '@plataforma/ui-bridge'
 import { appPath } from '@/lib/base-path'
 
@@ -48,19 +48,16 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   failed: ['scheduled', 'draft'],
 }
 
-export function PublishingClient({ publications: initialPubs, scheduled, published, failed, pillars, formats }: {
+export function PublishingClient({ publications: initialPubs, scheduled, published, failed, pillars, formats, section = 'calendario' }: {
   publications: Publication[]
   scheduled: number
   published: number
   failed: number
   pillars?: { name: string; slug: string }[]
   formats?: { format_name: string; slug: string }[]
+  section?: 'calendario' | 'aprovacao' | 'comprovantes'
 }) {
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const mode = searchParams.get('mode') || 'kanban'
-  const [isPending, startTransition] = useTransition()
   const [publications, setPublications] = useState(initialPubs)
   const [editing, setEditing] = useState<Publication | null>(null)
   const [showBatch, setShowBatch] = useState(false)
@@ -100,12 +97,6 @@ export function PublishingClient({ publications: initialPubs, scheduled, publish
     else date.setDate(start.getDate() + index)
     return date
   })
-
-  function changeMode(nextMode: string) {
-    const params = new URLSearchParams(searchParams.toString())
-    if (nextMode !== 'kanban') params.set('mode', nextMode); else params.delete('mode')
-    startTransition(() => { router.replace(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false }) })
-  }
 
   const savePublication = useCallback(async (pub: Partial<Publication> & { id?: string }): Promise<Publication | null> => {
     try {
@@ -164,7 +155,14 @@ export function PublishingClient({ publications: initialPubs, scheduled, publish
     setDragItem(null)
   }, [savePublication])
 
-  const emptyAction = publications.length === 0 ? (
+  const displayedPublications = section === 'aprovacao'
+    ? publications.filter((item) => ['idea', 'draft', 'ready', 'approved'].includes(item.status))
+    : section === 'comprovantes'
+      ? publications.filter((item) => ['published', 'failed', 'awaiting_manual_publish'].includes(item.status))
+      : publications
+  const effectiveMode = section === 'calendario' ? 'calendar' : 'kanban'
+
+  const emptyAction = displayedPublications.length === 0 ? (
     <EmptyState message="Nenhuma publicação ainda." action={
       <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center' }}>
         <button className="bridge-button" data-variant="primary" onClick={() => setEditing({ id: '', title: '', caption: null, channel: 'instagram', subtype: null, status: 'idea', scheduled_for: null, origin: 'manual', locked_at: null, thesis_id: null, pillar: null, format: null, hashtags: null, cta: null, content_structure: null, external_id: null })}>
@@ -191,10 +189,7 @@ export function PublishingClient({ publications: initialPubs, scheduled, publish
           <button className="bridge-button" data-variant="secondary" onClick={() => setShowBatch(true)}>
             Lote
           </button>
-          <div style={{ display: 'flex', background: 'var(--surface-raised)', borderRadius: 'var(--radius-md)', padding: '2px' }}>
-            <button onClick={() => changeMode('kanban')} style={{ padding: '4px 12px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: mode === 'kanban' ? 'var(--accent-primary)' : 'transparent', color: mode === 'kanban' ? 'white' : 'var(--text-secondary)' }}>Kanban</button>
-            <button onClick={() => changeMode('calendar')} style={{ padding: '4px 12px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: mode === 'calendar' ? 'var(--accent-primary)' : 'transparent', color: mode === 'calendar' ? 'white' : 'var(--text-secondary)' }}>Calendário</button>
-          </div>
+          <span className="bridge-inline-notice">{section === 'calendario' ? 'Calendário' : section === 'aprovacao' ? 'Fila de aprovação' : 'Comprovantes'}</span>
         </div>
       </div>
       <div className="bridge-inline-notice" role="status">{killSwitchActive === null ? 'Verificando kill-switch…' : killSwitchError ? `Não foi possível verificar o kill-switch: ${killSwitchError}` : killSwitchActive ? `Publicação habilitada · origem: ${killSwitchOrigin}` : `Kill-switch ativo: nenhuma saída será publicada · origem: ${killSwitchOrigin}`} <button className="bridge-button" data-variant={killSwitchActive ? 'danger' : 'primary'} onClick={() => { setKillError(''); setKillDialogOpen(true) }}>{killSwitchActive ? 'Ativar kill-switch' : 'Reativar publicação'}</button></div>
@@ -207,7 +202,7 @@ export function PublishingClient({ publications: initialPubs, scheduled, publish
       </KpiRow>
 
       <div style={{ flex: 1, overflowY: 'auto', marginTop: 'var(--space-4)' }}>
-        {publications.length === 0 ? emptyAction : mode === 'calendar' ? (
+        {displayedPublications.length === 0 ? emptyAction : effectiveMode === 'calendar' ? (
           <section className="card" aria-label="Calendário">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -223,7 +218,7 @@ export function PublishingClient({ publications: initialPubs, scheduled, publish
             <div className="calendar-grid">
               <p role="note" style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)', fontSize: 'var(--text-sm, 0.875rem)' }}>Teclado: setas navegam pelos dias; Home/End vão ao início/fim; Enter edita. Também é possível usar “Reagendar” em cada publicação, sem arrastar.</p>
               {days.map(day => {
-                const dayPubs = publications.filter(item => item.scheduled_for && new Date(item.scheduled_for).toDateString() === day.toDateString())
+                const dayPubs = displayedPublications.filter(item => item.scheduled_for && new Date(item.scheduled_for).toDateString() === day.toDateString())
                 return (
                   <article
                     className="calendar-day"
@@ -268,9 +263,9 @@ export function PublishingClient({ publications: initialPubs, scheduled, publish
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <strong style={{ fontSize: '13px' }}>{STATUS_LABELS[status] ?? status}</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--text-disabled)' }}>{publications.filter(p => p.status === status).length}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-disabled)' }}>{displayedPublications.filter(p => p.status === status).length}</span>
                 </div>
-                {publications.filter(p => p.status === status).map(item => (
+                {displayedPublications.filter(p => p.status === status).map(item => (
                   <article
                     key={item.id}
                     draggable

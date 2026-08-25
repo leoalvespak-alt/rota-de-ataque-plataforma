@@ -1,4 +1,5 @@
 import { Queue, QueueEvents, type JobsOptions, type RepeatOptions } from 'bullmq'
+import { CronExpressionParser } from 'cron-parser'
 import { Redis } from 'ioredis'
 import { QUEUE_NAMES, deterministicJobId, toErrorEvent, type QueueName } from '@plataforma/shared'
 export const variantJobId = (contentItemId: string, channel: string) => deterministicJobId('content-variant', [contentItemId, channel])
@@ -26,32 +27,56 @@ export const MANAGED_SCHEDULER_CONFIG: Partial<Record<QueueName, {
 }
 
 export function parseCadence(cadence: string): RepeatOptions {
-  return cadence.startsWith('every:') ? { every: Number(cadence.slice(6)) } : { pattern: cadence }
+  const normalized = cadence.trim()
+  if (normalized.startsWith('every:')) {
+    const every = Number(normalized.slice(6))
+    if (!Number.isSafeInteger(every) || every < 1_000) throw new Error('Intervalo inválido: use pelo menos 1 segundo.')
+    return { every }
+  }
+  CronExpressionParser.parse(normalized)
+  return { pattern: normalized }
+}
+
+export function nextCadenceExecution(cadence: string, from = new Date()): Date {
+  const options = parseCadence(cadence)
+  if (options.every) return new Date(from.getTime() + options.every)
+  return CronExpressionParser.parse(options.pattern!, { currentDate: from }).next().toDate()
 }
 
 export async function installPlatformSchedulers(
   registry: ReturnType<typeof createQueueRegistry>,
   cadenceOverrides?: Record<string, string>,
+  enabledWorkers?: ReadonlySet<string>,
 ) {
+  const reconcileScheduler = (
+    workerName: QueueName,
+    schedulerId: string,
+    opts: RepeatOptions,
+    name: string,
+    data: Record<string, unknown>,
+  ) => enabledWorkers && !enabledWorkers.has(workerName)
+    ? registry.queues[workerName].removeJobScheduler(schedulerId)
+    : registry.queues[workerName].upsertJobScheduler(schedulerId, opts, { name, data })
+
   const managedTasks = Object.entries(MANAGED_SCHEDULER_CONFIG).map(([workerName, config]) => {
     if (!config) return Promise.resolve()
     const queue = registry.queues[workerName as QueueName]
     if (!queue) return Promise.resolve()
     const override = cadenceOverrides?.[workerName]
     const opts = override ? parseCadence(override) : config.defaultOpts
-    return queue.upsertJobScheduler(config.primaryId, opts, { name: workerName, data: config.data })
+    return reconcileScheduler(workerName as QueueName, config.primaryId, opts, workerName, config.data)
   })
 
   await Promise.all([
     // Fixed operational schedulers — not configurable via UI
-    registry.queues.alerts.upsertJobScheduler('dead-man-v1', { every: 30_000 }, { name: 'dead-man', data: { kind: 'dead-man' } }),
-    registry.queues.alerts.upsertJobScheduler('canary-daily-v1', { pattern: '0 3 * * *' }, { name: 'canary', data: { kind: 'canary' } }),
-    registry.queues['source-roi'].upsertJobScheduler('source-roi-7d-daily-v1', { pattern: '15 2 * * *' }, { name: 'source-roi-7d', data: { windowDays: 7, apply: false } }),
-    registry.queues['source-roi'].upsertJobScheduler('source-roi-30d-daily-v1', { pattern: '30 2 * * *' }, { name: 'source-roi-30d', data: { windowDays: 30, apply: false } }),
+    reconcileScheduler('alerts', 'dead-man-v1', { every: 30_000 }, 'dead-man', { kind: 'dead-man' }),
+    reconcileScheduler('alerts', 'canary-daily-v1', { pattern: '0 3 * * *' }, 'canary', { kind: 'canary' }),
+    reconcileScheduler('source-roi', 'source-roi-7d-daily-v1', { pattern: '15 2 * * *' }, 'source-roi-7d', { windowDays: 7, apply: false }),
+    reconcileScheduler('source-roi', 'source-roi-30d-daily-v1', { pattern: '30 2 * * *' }, 'source-roi-30d', { windowDays: 30, apply: false }),
     // news-radar full scan stays fixed; incremental cadence is managed above
-    registry.queues['news-radar'].upsertJobScheduler('news-radar-full-12h-v1', { pattern: '0 */12 * * *' }, { name: 'news-radar-full', data: { mode: 'full' } }),
+    reconcileScheduler('news-radar', 'news-radar-full-12h-v1', { pattern: '0 */12 * * *' }, 'news-radar-full', { mode: 'full' }),
     // competitive-intel weekly scan stays fixed; daily cadence is managed above
-    registry.queues['competitive-intel'].upsertJobScheduler('competitive-intel-weekly-v1', { pattern: '0 6 * * 1' }, { name: 'competitive-intel-weekly', data: { windowDays: 7 } }),
+    reconcileScheduler('competitive-intel', 'competitive-intel-weekly-v1', { pattern: '0 6 * * 1' }, 'competitive-intel-weekly', { windowDays: 7 }),
     ...managedTasks,
   ])
 }

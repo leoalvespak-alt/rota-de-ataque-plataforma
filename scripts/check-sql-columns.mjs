@@ -3,7 +3,7 @@
  *
  * Reads every migration in packages/db/migrations/*.up.sql (in order),
  * applies them to a temporary schema in the target database, then walks
- * apps/web/src and workers/*/src looking for SQL string literals.
+ * apps/web/src and workers/<worker>/src looking for SQL string literals.
  * Each literal is compiled with PREPARE; any 42703 (undefined_column) or
  * 42P01 (undefined_table) causes the script to exit non-zero.
  *
@@ -16,7 +16,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import { globSync } from 'node:fs'
 
 // ---------------------------------------------------------------------------
 // Bootstrap — load pg without requiring a compiled workspace
@@ -24,9 +23,9 @@ import { globSync } from 'node:fs'
 const require = createRequire(import.meta.url)
 let pg
 try {
-  pg = require('pg')
+  pg = createRequire(path.join(path.resolve(import.meta.dirname, '..'), 'packages', 'db', 'package.json'))('pg')
 } catch {
-  pg = (await import('pg')).default
+  pg = require('pg')
 }
 const { Pool } = pg
 
@@ -71,6 +70,8 @@ function extractSqlLiterals(sourceRoot) {
     /(?:pool|client|db)\.query\s*\(\s*`([^`]+)`/gs,
     // double-quoted string (common in SQL builders)
     /(?:pool|client|db)\.query\s*\(\s*"((?:[^"\\]|\\.)*)"/gs,
+    // single-quoted string (common in compact route handlers)
+    /(?:pool|client|db)\.query\s*\(\s*'((?:[^'\\]|\\.)*)'/gs,
   ]
   for (const file of files) {
     const source = readFileSync(file, 'utf8')
@@ -108,7 +109,7 @@ try {
       await client.query(sql)
       process.stdout.write('.')
     } catch (err) {
-      console.warn(`\n  SKIP ${name}: ${err.message.split('\n')[0]}`)
+      throw new Error(`Migration ${name} failed in disposable SQL gate: ${err.message.split('\n')[0]}`, { cause: err })
     }
   }
   console.log('\nMigrations applied.')

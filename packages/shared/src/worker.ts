@@ -2,7 +2,15 @@ import { assertDmInbound, assertExternalAllowed, assertRole, createTraceId, EMBE
 
 export interface WorkerSpec { queue: QueueName; requiredRole?: AccountRole; outbound?: boolean; inboundDmOnly?: boolean; requiresMetaToken?: boolean }
 export interface WorkerJob<T extends object = Record<string, unknown>> { id: string; payload: T & { synthetic?: boolean; triggerKind?: string }; preflight: WorkerPreflight; attemptsMade?: number }
-export interface WorkerResult { ok: true; traceId: string; event: { kind: string; payload: unknown } }
+export interface WorkerResult {
+  ok: true
+  traceId: string
+  event: { kind: string; payload: unknown }
+  reasonCode?: string
+  inputCount?: number
+  outputCount?: number
+  rejectedCount?: number
+}
 
 export const validWorkerPreflight: WorkerPreflight = {
   migrationsCurrent: true,

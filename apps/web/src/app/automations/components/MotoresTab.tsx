@@ -1,257 +1,229 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { StatusBadge, Button, KpiRow, KpiCard, PageHeader } from '@plataforma/ui-bridge'
+import { useCallback, useEffect, useState } from 'react'
+import { Button, Dialog, EmptyState, ErrorState, IntegrationState, KpiCard, KpiRow, StatusBadge } from '@plataforma/ui-bridge'
+import { Play, Power } from 'lucide-react'
 import { appPath } from '@/lib/base-path'
-import { AlertCircle, Play, Power, ShieldAlert, ArrowRight, CheckCircle2, XCircle } from 'lucide-react'
+import { resolvePageState } from '@/lib/page-state'
 
-// Tipos baseados na API recém-criada
-interface EngineState {
+interface PrerequisiteState {
+  key: string
+  satisfied: boolean
+  label_pt: string
+  href: string
+}
+
+interface EngineWorker {
+  worker_name: string
+  label_pt: string
+  enabled: boolean
+  schedulable: boolean
+  heartbeat_state: string | null
+}
+
+export interface EngineState {
   key: string
   slug: string
   name_pt: string
   description_pt: string
   alwaysOn: boolean
   dependsOn: string[]
+  enableCascade: string[]
+  disableCascade: string[]
   state: 'off' | 'starting' | 'on' | 'attention' | 'error'
+  desiredState?: 'off' | 'on' | 'on_partial'
+  runtimeState?: 'absent' | 'starting' | 'running' | 'paused'
+  lastRunState?: 'never' | 'succeeded' | 'skipped' | 'blocked' | 'failed'
+  lastRunReasonCode?: string | null
+  lastSuccessAt?: string | null
   enabledWorkers: number
   totalWorkers: number
+  cadence: string | null
   queue: { waiting: number; active: number; failed: number }
+  queueAvailable: boolean
   divergences: Array<{ worker: string; label: string; kind: string }>
-  prerequisites: Array<{ key: string; satisfied: boolean; label_pt?: string; href?: string }>
+  prerequisites: PrerequisiteState[]
+  workers: EngineWorker[]
 }
 
-export function MotoresTab() {
-  const [engines, setEngines] = useState<EngineState[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [cascadePrompt, setCascadePrompt] = useState<{
-    engineKey: string
-    action: 'enable' | 'disable'
-    dependencies?: string[]
-    affected?: string[]
-    message: string
-  } | null>(null)
+interface PendingAction {
+  engine: EngineState
+  action: 'enable' | 'disable'
+  engineKeys: string[]
+  workers: EngineWorker[]
+}
+
+export function MotoresTab({ initialEngines }: { initialEngines?: EngineState[] } = {}) {
+  const [engines, setEngines] = useState<EngineState[]>(initialEngines ?? [])
+  const [loading, setLoading] = useState(!initialEngines)
+  const [forbidden, setForbidden] = useState(false)
+  const [providerAvailable, setProviderAvailable] = useState(true)
+  const [error, setError] = useState<{ message: string; traceId: string } | null>(null)
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)
+  const [pending, setPending] = useState<PendingAction | null>(null)
 
   const fetchEngines = useCallback(async () => {
     try {
-      const res = await fetch(appPath('/api/admin/automations/engines'))
-      if (!res.ok) throw new Error('Falha ao carregar motores')
-      const data = await res.json()
-      setEngines(data.engines)
+      const response = await fetch(appPath('/api/admin/automations/engines'), { cache: 'no-store' })
+      const body = await response.json().catch(() => ({})) as {
+        engines?: EngineState[]
+        providerAvailable?: boolean
+        error?: string
+        traceId?: string
+      }
+      if (response.status === 401 || response.status === 403) {
+        setForbidden(true)
+        return
+      }
+      if (!response.ok) throw Object.assign(new Error(body.error ?? 'Falha ao carregar motores'), { traceId: body.traceId })
+      setEngines(body.engines ?? [])
+      setProviderAvailable(body.providerAvailable !== false)
+      setForbidden(false)
       setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+    } catch (caught) {
+      setError({
+        message: caught instanceof Error ? caught.message : 'Falha ao carregar motores',
+        traceId: (caught as { traceId?: string }).traceId ?? 'trace_indisponivel',
+      })
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchEngines()
-    const interval = setInterval(fetchEngines, 15000)
+    if (initialEngines) return
+    void fetchEngines()
+    const interval = setInterval(fetchEngines, 15_000)
     return () => clearInterval(interval)
-  }, [fetchEngines])
+  }, [fetchEngines, initialEngines])
 
-  const toggleEngine = async (engineKey: string, action: 'enable' | 'disable', cascade = false) => {
-    setActionLoading(`${engineKey}:${action}`)
-    setCascadePrompt(null)
+  function prepareToggle(engine: EngineState) {
+    const action = engine.desiredState === 'off' || (engine.desiredState === undefined && engine.enabledWorkers === 0) ? 'enable' : 'disable'
+    const cascadeKeys = action === 'enable' ? engine.enableCascade : engine.disableCascade
+    const engineKeys = [...cascadeKeys, engine.key]
+    const workers = engines
+      .filter((item) => engineKeys.includes(item.key))
+      .flatMap((item) => item.workers)
+      .filter((worker, index, rows) => rows.findIndex((item) => item.worker_name === worker.worker_name) === index)
+    setPending({ engine, action, engineKeys, workers })
+  }
+
+  async function confirmToggle() {
+    if (!pending) return
+    setBusy(`${pending.engine.key}:${pending.action}`)
+    setMessage('')
     try {
-      const res = await fetch(appPath('/api/admin/automations/engines'), {
+      const response = await fetch(appPath('/api/admin/automations/engines'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ engineKey, action, cascade })
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          engineKey: pending.engine.key,
+          action: pending.action,
+          cascade: pending.engineKeys.length > 1,
+        }),
       })
-      const data = await res.json()
-      
-      if (!res.ok) {
-        if (data.error === 'cascade_required') {
-          setCascadePrompt({
-            engineKey,
-            action,
-            dependencies: data.dependencies,
-            affected: data.affected,
-            message: data.message
-          })
-          return
-        }
-        if (data.error === 'prerequisites_not_met') {
-          throw new Error('Pré-requisitos não satisfeitos')
-        }
-        throw new Error(data.error ?? 'Falha ao alterar estado')
-      }
-      
+      const body = await response.json().catch(() => ({})) as { error?: string; changed?: string[] }
+      if (!response.ok) throw new Error(body.error ?? 'Falha ao alterar o motor')
+      setMessage(body.changed?.length
+        ? `${body.changed.length} automações foram atualizadas.`
+        : 'O motor já estava no estado solicitado.')
+      setPending(null)
       await fetchEngines()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Falha na operação')
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Falha inesperada.')
     } finally {
-      setActionLoading(null)
+      setBusy(null)
     }
   }
 
-  const runNow = async (engineKey: string) => {
-    if (!confirm(`Deseja forçar a execução agora do motor ${engineKey}?`)) return
-    setActionLoading(`${engineKey}:run_now`)
+  async function runNow(engineKey: string) {
+    setBusy(`${engineKey}:run_now`)
+    setMessage('')
     try {
-      const res = await fetch(appPath(`/api/admin/automations/engines/${engineKey}/run-now`), { method: 'POST' })
-      if (!res.ok) throw new Error('Falha ao enfileirar execução')
-      alert('Execução enfileirada com sucesso.')
-      fetchEngines()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro')
+      const response = await fetch(appPath(`/api/admin/automations/engines/${engineKey}/run-now`), { method: 'POST' })
+      const body = await response.json().catch(() => ({})) as { error?: string; enqueued?: string[]; failed?: string[] }
+      if (!response.ok) throw new Error(body.error ?? 'Falha ao enfileirar execução')
+      setMessage(`${body.enqueued?.length ?? 0} automações enfileiradas${body.failed?.length ? `; ${body.failed.length} falharam` : ''}.`)
+      await fetchEngines()
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Falha inesperada.')
     } finally {
-      setActionLoading(null)
+      setBusy(null)
     }
   }
 
-  if (loading && engines.length === 0) return <div style={{ padding: 40 }}>Carregando motores...</div>
-  if (error) return <div style={{ padding: 40, color: 'var(--status-error)' }}>{error}</div>
+  const pageState = resolvePageState({
+    loading,
+    hasCampaign: true,
+    itemCount: engines.length,
+    permitted: !forbidden,
+    providerAvailable,
+    failed: Boolean(error),
+  })
+  if (pageState === 'loading') return <section aria-busy="true" style={{ padding: 40 }}>Carregando motores…</section>
+  if (pageState === 'forbidden') return <EmptyState message="Seu papel não permite visualizar as automações." />
+  if (pageState === 'error') return <ErrorState traceId={error?.traceId ?? 'trace_indisponivel'} runbook={appPath('/docs/runbooks/automations')} onRetry={() => void fetchEngines()} />
+  if (pageState === 'empty') return <EmptyState message="Nenhum motor de automação foi encontrado." />
 
-  const activeCount = engines.filter(e => e.state === 'on' || e.state === 'attention').length
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingTop: 16 }}>
-      
-      {/* KPI Row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <KpiRow>
-          <KpiCard label="Motores" value={engines.length} />
-          <KpiCard label="Ativos" value={activeCount} />
-          <KpiCard label="Com falhas" value={engines.filter(e => e.state === 'error').length} trend={engines.filter(e => e.state === 'error').length > 0 ? 'down' : 'neutral'} />
-          <KpiCard label="Fila Total" value={engines.reduce((acc, e) => acc + (e.queue?.waiting ?? 0), 0)} />
-        </KpiRow>
-        <Button variant="quiet" onClick={() => fetchEngines()} disabled={actionLoading !== null}>
-          Atualizar
-        </Button>
-      </div>
-
-      {/* Cascade Prompt */}
-      {cascadePrompt && (
-        <div style={{ padding: 16, background: 'var(--surface-raised)', border: '1px solid var(--status-warning)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <h4 style={{ margin: 0, color: 'var(--status-warning)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <AlertCircle size={18} />
-            Confirmação de Cascata Necessária
-          </h4>
-          <p style={{ margin: 0, fontSize: 14 }}>{cascadePrompt.message}</p>
-          {cascadePrompt.dependencies && (
-            <div style={{ fontSize: 13 }}>Motores que serão ligados: {cascadePrompt.dependencies.join(', ')}</div>
-          )}
-          {cascadePrompt.affected && (
-            <div style={{ fontSize: 13 }}>Motores que serão desligados: {cascadePrompt.affected.join(', ')}</div>
-          )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <Button variant="primary" onClick={() => toggleEngine(cascadePrompt.engineKey, cascadePrompt.action, true)}>
-              Sim, confirmar cascata
-            </Button>
-            <Button variant="quiet" onClick={() => setCascadePrompt(null)}>Cancelar</Button>
+  return <div style={{ display: 'grid', gap: 24, paddingTop: 16 }}>
+    {pageState === 'provider_error' && <IntegrationState name="BullMQ / Redis" status="degraded" detail="As filas estão indisponíveis. Os estados persistidos continuam visíveis, mas ações devem aguardar a recuperação do provider." />}
+    {message && <p role="status" className="bridge-inline-notice">{message}</p>}
+    <KpiRow>
+      <KpiCard label="Motores" value={engines.length} />
+      <KpiCard label="Ativos" value={engines.filter((engine) => engine.state === 'on').length} />
+      <KpiCard label="Em atenção" value={engines.filter((engine) => engine.state === 'attention' || engine.state === 'starting').length} />
+      <KpiCard label="Com falhas" value={engines.filter((engine) => engine.state === 'error').length} trend="down" />
+    </KpiRow>
+    <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' }}>
+      {engines.map((engine) => {
+        const turningOn = engine.desiredState === 'off' || (engine.desiredState === undefined && engine.enabledWorkers === 0)
+        const missingPrerequisites = engine.prerequisites.filter((item) => !item.satisfied)
+        const blocked = turningOn && missingPrerequisites.length > 0
+        return <article key={engine.key} className="card" style={{ padding: 20, display: 'grid', gap: 16 }}>
+          <header style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+            <div><small>{engine.key}</small><h2 style={{ margin: '2px 0 4px' }}>{engine.name_pt}</h2><p style={{ margin: 0 }}>{engine.description_pt}</p></div>
+            <StatusBadge status={engine.state === 'on' ? 'Rodando' : engine.state === 'error' ? 'Erro' : engine.state === 'attention' ? 'Atenção' : engine.state === 'starting' ? 'Iniciando' : 'Desligado'} />
+          </header>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span>{engine.enabledWorkers} de {engine.totalWorkers} automações ligadas</span>
+            <span>Runtime: {engine.runtimeState === 'running' ? 'rodando' : engine.runtimeState === 'paused' ? 'pausado' : engine.runtimeState === 'starting' ? 'iniciando' : 'ausente'}</span>
+            <span>Última execução: {engine.lastRunState ?? 'nunca'}{engine.lastRunReasonCode ? ` · ${engine.lastRunReasonCode}` : ''}</span>
+            <span>Fila: {engine.queue.waiting} aguardando · {engine.queue.active} ativas · {engine.queue.failed} falhas</span>
+            <span>Cadência: {engine.cadence ?? 'sem cadência própria'}</span>
           </div>
-        </div>
-      )}
-
-      {/* Engines Grid */}
-      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}>
-        {engines.map(engine => {
-          const isOff = engine.state === 'off'
-          const unsatisfiedPrereqs = engine.prerequisites?.filter(p => !p.satisfied) || []
-          const isBlocked = unsatisfiedPrereqs.length > 0
-          const statusColors: Record<string, string> = {
-            on: 'var(--status-success)',
-            off: 'var(--text-tertiary)',
-            error: 'var(--status-error)',
-            attention: 'var(--status-warning)',
-            starting: 'var(--status-info)'
-          }
-
-          return (
-            <div key={engine.key} style={{ 
-              border: `1px solid ${isOff ? 'var(--border)' : statusColors[engine.state]}40`, 
-              borderRadius: 12, 
-              padding: 20, 
-              background: 'var(--surface-card)',
-              display: 'flex', flexDirection: 'column', gap: 16
-            }}>
-              
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)' }}>{engine.key}</span>
-                    <h3 style={{ margin: 0, fontSize: 16 }}>{engine.name_pt}</h3>
-                  </div>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{engine.description_pt}</p>
-                </div>
-                <StatusBadge status={
-                  engine.state === 'on' ? 'Rodando' : 
-                  engine.state === 'error' ? 'Erro' : 
-                  engine.state === 'attention' ? 'Atenção' : 
-                  engine.state === 'starting' ? 'Iniciando' : 'Desligado'
-                } />
-              </div>
-
-              {/* Badges / Meta */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12 }}>
-                <span style={{ padding: '2px 8px', background: 'var(--surface-raised)', borderRadius: 4 }}>
-                  {engine.enabledWorkers} / {engine.totalWorkers} workers
-                </span>
-                {engine.dependsOn.length > 0 && (
-                  <span style={{ padding: '2px 8px', background: 'var(--surface-raised)', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <ArrowRight size={12} /> Depende de: {engine.dependsOn.join(', ')}
-                  </span>
-                )}
-                <span style={{ padding: '2px 8px', background: 'var(--surface-raised)', borderRadius: 4, display: 'flex', gap: 6, color: engine.queue.failed > 0 ? 'var(--status-error)' : 'inherit' }}>
-                  Fila: {engine.queue.waiting}W • {engine.queue.active}A • {engine.queue.failed}E
-                </span>
-              </div>
-
-              {/* Divergências */}
-              {engine.divergences?.length > 0 && (
-                <div style={{ background: 'var(--status-warning)20', color: 'var(--status-warning)', padding: '8px 12px', borderRadius: 6, fontSize: 12 }}>
-                  <strong>Atenção:</strong> {engine.divergences.length} worker(s) com divergência de estado.
-                </div>
-              )}
-
-              {/* Pré-requisitos pendentes */}
-              {isBlocked && isOff && (
-                <div style={{ background: 'var(--status-error)10', color: 'var(--status-error)', padding: '8px 12px', borderRadius: 6, fontSize: 12 }}>
-                  <strong>Bloqueado por pré-requisitos:</strong>
-                  <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
-                    {unsatisfiedPrereqs.map(p => <li key={p.key}>{p.label_pt ?? p.key}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              <div style={{ flex: 1 }} />
-
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                {!engine.alwaysOn && (
-                  <Button 
-                    variant={isOff ? 'primary' : 'danger'} 
-                    disabled={actionLoading !== null || (isOff && isBlocked)}
-                    onClick={() => toggleEngine(engine.key, isOff ? 'enable' : 'disable')}
-                    title={isOff && isBlocked ? 'Pré-requisitos pendentes' : ''}
-                  >
-                    <Power size={14} style={{ marginRight: 6 }} />
-                    {isOff ? 'Ligar Motor' : 'Desligar Motor'}
-                  </Button>
-                )}
-                
-                <Button 
-                  variant="secondary" 
-                  disabled={actionLoading !== null}
-                  onClick={() => runNow(engine.key)}
-                >
-                  <Play size={14} style={{ marginRight: 6 }} />
-                  Run Now
-                </Button>
-              </div>
-
-            </div>
-          )
-        })}
-      </div>
+          {engine.lastRunState === 'failed' && <p className="bridge-inline-notice" role="alert">A última execução falhou{engine.lastSuccessAt ? `; último sucesso em ${new Date(engine.lastSuccessAt).toLocaleString('pt-BR')}` : ''}. O runtime atual não é derivado desse erro histórico.</p>}
+          {engine.divergences.length > 0 && <p className="bridge-inline-notice" role="status">{engine.divergences.length} divergência(s) operacional(is).</p>}
+          {blocked && <section className="bridge-inline-notice">
+            <strong>Pré-requisitos pendentes</strong>
+            <ul>{missingPrerequisites.map((item) => <li key={item.key}><a href={appPath(item.href)}>{item.label_pt}</a></li>)}</ul>
+          </section>}
+          <details>
+            <summary>Ver automações</summary>
+            <ul>{engine.workers.map((worker) => <li key={worker.worker_name}>
+              <strong>{worker.label_pt}</strong> · <code>{worker.worker_name}</code> · {worker.enabled ? 'ligada' : 'desligada'} · {worker.heartbeat_state ?? 'sem heartbeat'}
+            </li>)}</ul>
+          </details>
+          <footer className="bridge-action-group">
+            {(!engine.alwaysOn || turningOn) && <Button variant={turningOn ? 'primary' : 'danger'} disabled={busy !== null || blocked} onClick={() => prepareToggle(engine)}>
+              <Power size={14} aria-hidden /> {turningOn ? 'Ligar' : 'Desligar'}
+            </Button>}
+            {engine.workers.some((worker) => worker.schedulable) && <Button variant="secondary" disabled={busy !== null || !engine.queueAvailable} onClick={() => void runNow(engine.key)}>
+              <Play size={14} aria-hidden /> Executar agora
+            </Button>}
+          </footer>
+        </article>
+      })}
     </div>
-  )
+    <Dialog open={pending !== null} onOpenChange={(open) => { if (!open && !busy) setPending(null) }} title={pending?.action === 'enable' ? 'Confirmar ativação' : 'Confirmar desativação'} busy={busy !== null}>
+      {pending && <div style={{ display: 'grid', gap: 12 }}>
+        <p>A ação afetará nominalmente estas {pending.workers.length} automações:</p>
+        <ul style={{ maxHeight: 320, overflowY: 'auto' }}>{pending.workers.map((worker) => <li key={worker.worker_name}><strong>{worker.label_pt}</strong> · <code>{worker.worker_name}</code></li>)}</ul>
+        <div className="bridge-action-group">
+          <Button variant="quiet" disabled={busy !== null} onClick={() => setPending(null)}>Cancelar</Button>
+          <Button variant={pending.action === 'enable' ? 'primary' : 'danger'} disabled={busy !== null} onClick={() => void confirmToggle()}>Confirmar</Button>
+        </div>
+      </div>}
+    </Dialog>
+  </div>
 }

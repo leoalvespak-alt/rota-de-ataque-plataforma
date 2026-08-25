@@ -292,7 +292,7 @@ const TabsContext = createContext<TabsCtx>({ active: '', setActive: () => {}, li
 export function Tabs({ defaultValue, children }: { defaultValue: string; children: ReactNode }) {
   const [active, setActive] = useState(defaultValue)
   const listId = useId()
-  return <TabsContext.Provider value={{ active, setActive, listId }}>{children}</TabsContext.Provider>
+  return <TabsContext.Provider value={{ active, setActive, listId }}>{React.Children.toArray(children)}</TabsContext.Provider>
 }
 
 export function TabsList({ children }: { children: ReactNode }) {

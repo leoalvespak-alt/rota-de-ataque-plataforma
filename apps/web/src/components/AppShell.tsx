@@ -7,59 +7,58 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { LiveBadge, Tooltip } from '@plataforma/ui-bridge'
 import { appPath, basePath } from '@/lib/base-path'
 import type { CampaignOption } from '@/lib/campaign-context'
+import { GlobalKillSwitchBanner } from './GlobalKillSwitchBanner'
+import { NAVIGATION, isTemporalDestination, navigationHref } from '@/lib/navigation'
+import { useUiMode } from './UiModeProvider'
 
 import { 
-  LayoutDashboard, Users, Inbox, Clock, Fingerprint, 
-  Radar, Radio, Swords, Network, 
-  Lightbulb, Sparkles, FileText, Palette, Calendar, 
-  MessageSquare, Mail, Phone, 
-  Shield, ListTodo, 
-  Link as LinkIcon, Bot, Settings, TrendingUp, Bell, Activity,
+  LayoutDashboard, BrainCircuit, ListChecks, Users, FileText, Calendar,
+  MessageSquare, TrendingUp, Bot, Settings, Bell,
   Menu, PanelLeftClose, PanelLeftOpen, X
 } from 'lucide-react'
 
-const groups = [
-  { label: 'Visão', links: [['/', 'Overview', LayoutDashboard]] },
-  { label: 'Prospecção', links: [['/leads', 'Leads', Users], ['/review-inbox', 'Review Inbox', Inbox], ['/timeline', 'Timeline', Clock], ['/identities', 'Identidades', Fingerprint]] },
-  { label: 'Inteligência', links: [['/radar', 'Radar', Radar], ['/market-radar', 'Radar de mercado', Radio], ['/competitive-intel', 'Inteligência competitiva', Swords], ['/community', 'Comunidades', Network]] },
-  { label: 'Conteúdo', links: [['/theses', 'Teses', Lightbulb], ['/content-opportunity', 'Oportunidades', Sparkles], ['/content-items', 'Conteúdos', FileText], ['/creative-bridge', 'Creative Bridge', Palette], ['/publishing', 'Publicação', Calendar]] },
-  { label: 'Canais', links: [['/email-flows', 'Fluxos de e-mail', Mail], ['/communities', 'Grupos WhatsApp', Phone], ['/conversations', 'Conversas', MessageSquare]] },
-  { label: 'Governança', links: [['/contact-policies', 'Políticas de contato', Shield], ['/engagement-queue', 'Fila de engagement', ListTodo]] },
-  { label: 'Sistema', links: [['/automations', 'Automações', Bot], ['/accounts', 'Contas e integrações', LinkIcon], ['/ai-settings', 'Modelos de IA', Bot], ['/configs', 'Configurações', Settings], ['/source-roi', 'ROI por origem', TrendingUp], ['/notifications', 'Notificações e erros', Bell], ['/system-health', 'Saúde do sistema', Activity]] },
-] as const
-
-// Routes where the period selector is shown
-const TEMPORAL_ROUTES = ['/', '/radar', '/community', '/competitive-intel', '/timeline']
+const icons = {
+  home: LayoutDashboard,
+  intelligence: BrainCircuit,
+  decisions: ListChecks,
+  prospecting: Users,
+  content: FileText,
+  publishing: Calendar,
+  relationship: MessageSquare,
+  performance: TrendingUp,
+  automations: Bot,
+  settings: Settings,
+} as const
 
 function relativePath(pathname: string) {
   if (basePath && pathname.startsWith(basePath)) return pathname.slice(basePath.length) || '/'
   return pathname || '/'
 }
 
-function NavContent({ current, collapsed }: { current: string; collapsed: boolean }) {
+function NavContent({ current, collapsed, advanced }: { current: string; collapsed: boolean; advanced: boolean }) {
   return (
     <nav className="nav" aria-label="Navegação principal">
-      {groups.map((group) => (
-        <section className="nav-group" key={group.label}>
-          <h2>{group.label}</h2>
-          {group.links.map(([href, label, Icon]) => { 
-            const active = href === '/' ? current === '/' : current === href || current.startsWith(`${href}/`);
+      <section className="nav-group">
+        <h2>Operação</h2>
+        {NAVIGATION.filter((destination) => advanced || destination.tier === 'simple').map((destination) => {
+            const href = navigationHref(destination, destination.tabs[0])
+            const Icon = icons[destination.icon]
+            const active = destination.href === '/' ? current === '/' : current === destination.href || current.startsWith(`${destination.href}/`)
             const linkContent = (
               <Link href={href} aria-current={active ? 'page' : undefined}>
                 <Icon size={20} />
-                <span className="label">{label}</span>
+                <span className="label">{destination.title}</span>
               </Link> 
             )
             return collapsed ? (
-              <Tooltip key={href} content={label} side="right">
+              <Tooltip key={href} content={destination.title} side="right">
                 {linkContent}
               </Tooltip>
             ) : (
               <div key={href}>{linkContent}</div>
             )
           })}
-        </section>
-      ))}
+      </section>
     </nav>
   )
 }
@@ -69,6 +68,7 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
   const router = useRouter()
   const searchParams = useSearchParams()
   const current = relativePath(pathname)
+  const { mode, setMode } = useUiMode()
   const session = useSession()
   const [switching, setSwitching] = useState(false)
   const [health, setHealth] = useState({ connected: false, text: 'verificando' })
@@ -77,10 +77,11 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifCount, setNotifCount] = useState(0)
   const [recentNotifs, setRecentNotifs] = useState<{id: string; message: string; created_at: string}[]>([])
+  const [modeNotice, setModeNotice] = useState(false)
   const selected = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? campaigns[0]
 
   // Period selector (only for temporal routes)
-  const showPeriod = TEMPORAL_ROUTES.includes(current)
+  const showPeriod = isTemporalDestination(current, searchParams.get('aba'))
   const period = searchParams.get('period') ?? '30d'
 
   useEffect(() => {
@@ -94,40 +95,13 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(appPath('/api/admin/health'), { cache: 'no-store', signal: controller.signal }).then(async (response) => {
-      const body = await response.json() as { at?: string }
-      setHealth({ connected: response.ok, text: body.at ? new Date(body.at).toLocaleTimeString('pt-BR') : response.ok ? 'agora' : 'indisponível' })
+    fetch(appPath('/api/health/operational'), { cache: 'no-store', signal: controller.signal }).then(async (response) => {
+      const body = await response.json() as { at?: string; status?: string }
+      const label = body.status === 'operational' ? 'Online' : body.status === 'degraded' ? 'Degradado' : body.status === 'unavailable' ? 'Indisponível' : 'Operação parada'
+      setHealth({ connected: response.ok, text: body.at ? `${label} · ${new Date(body.at).toLocaleTimeString('pt-BR')}` : label })
     }).catch(() => { if (!controller.signal.aborted) setHealth({ connected: false, text: 'indisponível' }) })
     return () => controller.abort()
   }, [pathname])
-
-  const [killSwitch, setKillSwitch] = useState<{ active: boolean; origin: string } | null>(null)
-  const [togglingKillSwitch, setTogglingKillSwitch] = useState(false)
-  
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch(appPath('/api/admin/publishing/kill-switch'), { signal: controller.signal })
-      .then(async response => response.ok ? response.json() as Promise<{ active: boolean; origin?: string }> : null)
-      .then(body => setKillSwitch(body ? { active: body.active, origin: body.origin ?? 'operational_settings' } : null))
-      .catch(() => setKillSwitch(null))
-    return () => controller.abort()
-  }, [pathname])
-
-  async function toggleKillSwitch() {
-    if (!killSwitch || togglingKillSwitch) return
-    const next = !killSwitch.active
-    setTogglingKillSwitch(true)
-    try {
-      const res = await fetch(appPath('/api/admin/publishing/kill-switch'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active: next })
-      })
-      if (res.ok) setKillSwitch({ active: next, origin: 'manual' })
-    } finally {
-      setTogglingKillSwitch(false)
-    }
-  }
 
   // Fetch notification count on an interval instead of every navigation
   useEffect(() => {
@@ -178,10 +152,24 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
         <span aria-hidden>◆</span>
         <span className="label">Rota de Ataque</span>
       </div>
-      <NavContent current={current} collapsed={collapsed} />
+      <NavContent current={current} collapsed={collapsed} advanced={mode === 'advanced'} />
       <div className="sidebar-footer">
         <button className="sidebar-toggle" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expandir menu" : "Recolher menu"}>
           {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+        </button>
+        <button
+          className="sidebar-toggle"
+          aria-pressed={mode === 'advanced'}
+          onClick={() => {
+            const next = mode === 'simple' ? 'advanced' : 'simple'
+            setMode(next)
+            if (next === 'advanced' && localStorage.getItem('prospector_ui_mode_notice_seen') !== 'true') {
+              localStorage.setItem('prospector_ui_mode_notice_seen', 'true')
+              setModeNotice(true)
+            }
+          }}
+        >
+          <Settings size={18} /><span className="label">Modo {mode === 'simple' ? 'simples' : 'avançado'}</span>
         </button>
       </div>
       <div className="account-card">
@@ -219,7 +207,7 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
         <button onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={20} /></button>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <NavContent current={current} collapsed={false} />
+        <NavContent current={current} collapsed={false} advanced={mode === 'advanced'} />
       </div>
     </aside>
 
@@ -312,41 +300,20 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
                   )}
                 </div>
                 <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)' }}>
-                  <Link href="/notifications" style={{ fontSize: '13px', color: 'var(--accent-primary)' }} onClick={() => setNotifOpen(false)}>Ver todas →</Link>
+                  <Link href="/automacoes?aba=notificacoes" style={{ fontSize: '13px', color: 'var(--accent-primary)' }} onClick={() => setNotifOpen(false)}>Ver todas →</Link>
                 </div>
               </div>
             )}
           </div>}
 
-          {/* Kill Switch Global */}
-          {session.role === 'admin' && killSwitch && (
-            <button
-              onClick={toggleKillSwitch}
-              disabled={togglingKillSwitch}
-              title={killSwitch.active ? `Bloqueio ativo por: ${killSwitch.origin}` : 'Clique para bloquear publicações'}
-              style={{
-                background: killSwitch.active ? 'var(--status-error)' : 'transparent',
-                color: killSwitch.active ? '#fff' : 'var(--text-secondary)',
-                border: killSwitch.active ? 'none' : '1px solid var(--border)',
-                borderRadius: '8px',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                height: '32px',
-              }}
-            >
-              <Shield size={16} />
-              {killSwitch.active && <span>Bloqueio Ativo</span>}
-            </button>
-          )}
-
           <LiveBadge connected={health.connected} lastUpdate={health.text}/>
         </div>
       </header>
+      {modeNotice && <div className="bridge-inline-notice" role="status" style={{ margin: '8px 24px' }}>
+        Nenhuma funcionalidade foi removida — as opções avançadas estão agora visíveis.
+        <button type="button" onClick={() => setModeNotice(false)} aria-label="Fechar aviso" style={{ marginLeft: 12 }}><X size={14} /></button>
+      </div>}
+      <GlobalKillSwitchBanner />
       <main id="main-content">{children}</main>
     </div>
   </div>
