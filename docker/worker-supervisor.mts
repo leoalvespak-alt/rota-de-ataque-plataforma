@@ -32,11 +32,10 @@ async function main() {
   console.log(JSON.stringify({ level: 'info', component: 'worker-supervisor', engine, state: 'starting', workers, desiredEnabled: [...enabled], paused: disabled }))
   const fallbacks: Array<{ worker: string; reasonCode: 'PROVIDER_NOT_CONFIGURED' | 'PREREQUISITE_MISSING'; error: string }> = []
   if (process.env.SUPERVISOR_VALIDATE_ONLY !== 'true') {
+    // Inicializamos também consumidores desligados. O runtime lê o estado
+    // persistido, pausa o consumidor e mantém heartbeat/reconciliação vivos;
+    // pular o import faria o processo terminar quando todos estivessem off.
     for (const worker of workers) {
-      if (!enabled.has(worker)) {
-        console.log(JSON.stringify({ level: 'info', component: 'worker-supervisor', engine, worker, state: 'paused', reasonCode: 'DESIRED_STATE_OFF' }))
-        continue
-      }
       try {
         await import(new URL(`../workers/${worker}/src/main.ts`, import.meta.url).href)
       } catch (cause) {
@@ -55,4 +54,3 @@ void main().catch((error) => {
   console.error(JSON.stringify({ level: 'error', component: 'worker-supervisor', engine, state: 'startup_failed', error: redacted(error) }))
   process.exitCode = 1
 })
-
