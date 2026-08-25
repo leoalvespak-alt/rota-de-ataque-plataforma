@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased] — plano de 25/08/2026
+
+### Added
+
+- Navegação canônica em sete módulos, tema persistente claro/escuro, sidebar recolhível/responsiva, command palette sem modo global e blueprint compartilhado de módulos.
+- Migration `0036_content_variant_timestamps`, correção do funil editorial com `traceId` e estados de erro explícitos, além de incidentes atuais baseados em desired state/runtime.
+- Migrations `0037_market_watches_external_reddit` e `0038_reddit_observation_context`, coleta Reddit externa via Apify/Bright Data, scheduler de watches, canário de até 10 observações, hash de autores e contexto de subreddit.
+
+### Gates
+
+- Typecheck e testes locais de web, discovery, organic-intelligence, shared, db e queue passaram.
+- A remoção do runtime oficial Reddit não foi executada: aguarda provider configurado, canário externo verde, evidência de custo/proveniência e revisão operacional.
+
 Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, no formato Keep a Changelog.
 
 ## [Unreleased]

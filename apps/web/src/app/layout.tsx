@@ -17,7 +17,7 @@ import { TooltipProvider, ToastProvider } from '@plataforma/ui-bridge'
 import { SessionProvider } from '@/components/SessionProvider'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { UiModeProvider } from '@/components/UiModeProvider'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let context: Awaited<ReturnType<typeof getCampaignContext>> = { campaigns: [], selected: null }
@@ -35,12 +35,19 @@ const flags = getFlags()
       ? { name: 'Visualização local', role: 'viewer' as const }
       : null
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { try { const key = 'prospector_theme'; const stored = localStorage.getItem(key); const theme = stored === 'light' || stored === 'dark' ? stored : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; } catch (_) {} })()`,
+          }}
+        />
+      </head>
       <body>
         <a className="skip-nav" href="#main-content">Pular para o conteúdo principal</a>
         <FeatureFlagProvider flags={flags}>
           <TooltipProvider>
-            <UiModeProvider>
+            <ThemeProvider>
               <CommandPalette>
                 <SessionProvider session={session ?? { name: 'Sessão indisponível', role: 'viewer' as const }}>
                   <AppShell campaigns={context.campaigns} selectedCampaignId={context.selected?.id ?? null}>
@@ -49,7 +56,7 @@ const flags = getFlags()
                 </SessionProvider>
                 <ToastProvider />
               </CommandPalette>
-            </UiModeProvider>
+            </ThemeProvider>
           </TooltipProvider>
         </FeatureFlagProvider>
       </body>

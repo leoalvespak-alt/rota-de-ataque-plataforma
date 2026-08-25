@@ -1,2 +1,2 @@
 import { permanentLegacyRedirect } from '@/lib/legacy-redirect'
-export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) { await permanentLegacyRedirect('/desempenho', 'orcamento', searchParams) }
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) { await permanentLegacyRedirect('/performance', 'orcamento', searchParams) }

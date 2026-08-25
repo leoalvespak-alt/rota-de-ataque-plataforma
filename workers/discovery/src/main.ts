@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { createDatabase } from '@plataforma/db'
 import { ExaClient } from '@plataforma/exa-api'
 import { ApifyClient } from '@plataforma/apify-api'
@@ -20,7 +21,7 @@ const provider: DiscoveryProvider = {
       return { provider: 'exa', operation: 'search', estimatedUsd: Math.max(.01, (payload.limit ?? 10) * .002) }
     }
     if (payload.mode === 'social_collect') {
-      const actorId = process.env[`APIFY_${payload.platform.toUpperCase()}_ACTOR_ID`] ?? ''
+    const actorId = process.env[`APIFY_${payload.platform.toUpperCase()}_ACTOR_ID`] ?? ''
       if (process.env.APIFY_ENABLED !== 'true' || !apify.isConfigured() || !actorId) throw Object.assign(new Error('Apify actor is disabled or not configured'), { reasonCode: 'PROVIDER_NOT_CONFIGURED' })
       return { provider: 'apify', operation: `${payload.platform}.collect`, estimatedUsd: Math.max(.02, payload.urls.length * .005) }
     }
@@ -31,7 +32,7 @@ const provider: DiscoveryProvider = {
     const started = Date.now()
     if (payload.mode === 'web_search') {
       const response = await exa.search({ query: payload.query, limit: payload.limit, signal })
-      const observations: ProviderObservation[] = response.results.map((item) => ({ provider: 'exa', platform: 'web', externalId: item.id, canonicalUrl: item.url, authorExternalId: item.author ?? undefined, title: item.title, text: item.text ?? undefined, metrics: { score: item.score ?? null }, observedAt: new Date().toISOString(), publishedAt: item.publishedDate ?? null, rawSchemaVersion: 'exa-search-v1' }))
+      const observations: ProviderObservation[] = response.results.map((item) => ({ provider: 'exa', platform: 'web', externalId: item.id, canonicalUrl: item.url, authorExternalId: item.author ?? undefined, title: item.title, text: item.text ?? undefined, context: {}, metrics: { score: item.score ?? null }, observedAt: new Date().toISOString(), publishedAt: item.publishedDate ?? null, rawSchemaVersion: 'exa-search-v1' }))
       const estimatedUsd = Math.max(.01, observations.length * .002)
       return { observations, estimatedUsd, actualUsd: null, externalReference: response.requestId, attempts: 1, durationMs: Date.now() - started }
     }
@@ -48,7 +49,7 @@ const provider: DiscoveryProvider = {
     const trigger = await brightData.collect({ urls: payload.urls, reason: payload.fallbackReason, signal })
     if (!trigger.snapshot_id) throw new Error('BRIGHT_DATA_SNAPSHOT_MISSING')
     await poll(() => brightData.status(trigger.snapshot_id!, signal), (value) => ['ready', 'failed'].includes(String(value.status).toLowerCase()), signal)
-    const rows = await brightData.data(trigger.snapshot_id, signal)
+    const rows = (await brightData.data(trigger.snapshot_id, signal)).slice(0, payload.limit ?? 10)
     const observations = rows.flatMap((row, index) => normalizeRecord(row, { provider: 'bright_data', platform: payload.platform, schemaVersion: 'bright-data-v1', index }))
     return { observations, estimatedUsd: Math.max(.01, rows.length * .001), actualUsd: null, externalReference: trigger.snapshot_id, attempts: 1, durationMs: Date.now() - started }
   },
@@ -56,6 +57,7 @@ const provider: DiscoveryProvider = {
 
 const repository: DiscoveryRepository = {
   async start(payload, traceId, plan) {
+    const watchId = 'watchId' in payload ? payload.watchId : undefined
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
@@ -67,18 +69,20 @@ const repository: DiscoveryRepository = {
         VALUES($1,'discovery','running',$2,$3::jsonb,$4::jsonb,now()) RETURNING id`, [payload.campaignId, traceId, JSON.stringify([plan]), JSON.stringify(payload)])).rows[0]!
       const reservation = (await client.query<{ id: string }>(`INSERT INTO organic_budget_reservations(provider,budget_id,research_run_id,estimated_usd) VALUES($1,$2,$3,$4) RETURNING id`, [plan.provider, budget.id, run.id, plan.estimatedUsd])).rows[0]!
       await client.query('UPDATE organic_budgets SET reserved_usd=reserved_usd+$2 WHERE id=$1', [budget.id, plan.estimatedUsd])
+      if (watchId) await client.query(`UPDATE market_watches SET last_state='running',last_provider=$2,reason_code=NULL,updated_at=now() WHERE id=$1`, [watchId, plan.provider])
       await client.query('COMMIT')
       return { runId: run.id, reservationId: reservation.id }
     } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
   },
-  async complete(runId, reservationId, plan, result, traceId) {
+  async complete(runId, reservationId, plan, payload, result, traceId) {
+    const watchId = 'watchId' in payload ? payload.watchId : undefined
     const client = await pool.connect(); let inserted = 0, candidates = 0
     try {
       await client.query('BEGIN')
       for (const observation of result.observations) {
         const entityKey = logicalEntityKey(observation)
-        const saved = await client.query<{ id: string }>(`INSERT INTO provider_observations(research_run_id,provider,platform,external_id,canonical_url,logical_entity_key,author_external_id,title,text_content,metrics,raw_schema_version,observed_at,published_at)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT DO NOTHING RETURNING id`, [runId, observation.provider, observation.platform, observation.externalId, observation.canonicalUrl, logicalEntityKey(observation), observation.authorExternalId ?? null, observation.title ?? null, observation.text ?? null, JSON.stringify(observation.metrics), observation.rawSchemaVersion, observation.observedAt, observation.publishedAt ?? null])
+        const saved = await client.query<{ id: string }>(`INSERT INTO provider_observations(research_run_id,provider,platform,external_id,canonical_url,logical_entity_key,author_external_id,title,text_content,source_context,metrics,raw_schema_version,observed_at,published_at)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT DO NOTHING RETURNING id`, [runId, observation.provider, observation.platform, observation.externalId, observation.canonicalUrl, logicalEntityKey(observation), observation.authorExternalId ?? null, observation.title ?? null, observation.text ?? null, JSON.stringify(observation.context ?? {}), JSON.stringify(observation.metrics), observation.rawSchemaVersion, observation.observedAt, observation.publishedAt ?? null])
         if (!saved.rowCount) continue
         inserted += 1
         const entity = (await client.query<{ id: string }>(`INSERT INTO cross_platform_entities(kind,canonical_key,display_name,confidence,status) VALUES('content',$1,$2,.5,'candidate') ON CONFLICT(canonical_key) DO UPDATE SET updated_at=now() RETURNING id`, [entityKey, observation.title ?? observation.canonicalUrl])).rows[0]!
@@ -103,25 +107,36 @@ const repository: DiscoveryRepository = {
       await client.query(`UPDATE organic_budgets budget SET reserved_usd=GREATEST(0,reserved_usd-reservation.estimated_usd),spent_usd=spent_usd+$2 FROM organic_budget_reservations reservation WHERE reservation.id=$1 AND reservation.budget_id=budget.id`, [reservationId, charged])
       await client.query(`UPDATE organic_budget_reservations SET actual_usd=$2,status='reconciled',reconciled_at=now() WHERE id=$1`, [reservationId, result.actualUsd])
       await client.query(`UPDATE research_runs SET status='completed',finished_at=now() WHERE id=$1`, [runId])
+      if (watchId) await client.query(`UPDATE market_watches SET last_state='succeeded',reason_code=NULL,last_provider=$2,last_cost_usd=$3,last_run_at=now(),next_run_at=now()+make_interval(secs => cadence_seconds),updated_at=now() WHERE id=$1`, [watchId, plan.provider, charged])
       await client.query('COMMIT'); return { inserted, candidates }
     } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
   },
-  async fail(runId, reservationId, error) {
+  async fail(runId, reservationId, error, payload) {
+    const watchId = payload && 'watchId' in payload ? payload.watchId : undefined
     await pool.query(`WITH reservation AS (UPDATE organic_budget_reservations SET status='refunded',reconciled_at=now() WHERE id=$1 AND status='reserved' RETURNING budget_id,estimated_usd) UPDATE organic_budgets budget SET reserved_usd=GREATEST(0,budget.reserved_usd-reservation.estimated_usd) FROM reservation WHERE budget.id=reservation.budget_id`, [reservationId])
     await pool.query(`UPDATE research_runs SET status='failed',error_code=$2,finished_at=now() WHERE id=$1`, [runId, error instanceof Error ? error.message.slice(0, 120) : 'UNKNOWN'])
+    if (watchId) await pool.query(`UPDATE market_watches SET last_state='failed',reason_code=$2,last_run_at=now(),updated_at=now() WHERE id=$1`, [watchId, (error as { reasonCode?: string })?.reasonCode ?? 'EXTERNAL_PROVIDER_ERROR'])
   },
 }
 
-function normalizeRecord(row: Record<string, unknown>, context: { provider: 'apify' | 'bright_data'; platform: 'instagram' | 'tiktok' | 'youtube' | 'web' | 'x' | 'google'; schemaVersion: string; index: number }): ProviderObservation[] {
+function normalizeRecord(row: Record<string, unknown>, context: { provider: 'apify' | 'bright_data'; platform: 'instagram' | 'tiktok' | 'youtube' | 'web' | 'x' | 'google' | 'reddit'; schemaVersion: string; index: number }): ProviderObservation[] {
   const url = firstString(row.url, row.canonicalUrl, row.postUrl, row.videoUrl)
   if (!url) return []
-  const value = { provider: context.provider, platform: context.platform, externalId: firstString(row.id, row.shortCode, row.videoId) ?? `${context.index}:${url}`, canonicalUrl: url, authorExternalId: firstString(row.authorId, row.ownerUsername, row.channelId, row.handle), title: firstString(row.title), text: firstString(row.text, row.caption, row.description), metrics: numericMetrics(row), observedAt: new Date().toISOString(), publishedAt: isoDate(row.publishedAt ?? row.timestamp ?? row.uploadDate), rawSchemaVersion: context.schemaVersion }
+  const rawAuthor = firstString(row.authorId, row.ownerUsername, row.channelId, row.handle, row.author)
+  const subreddit = firstString(row.subreddit, row.subredditName, row.community)
+  const authorExternalId = context.platform === 'reddit' && rawAuthor ? pseudonymizeAuthor(rawAuthor) : rawAuthor
+  const value = { provider: context.provider, platform: context.platform, externalId: firstString(row.id, row.postId, row.shortCode, row.videoId) ?? `${context.index}:${url}`, canonicalUrl: url, authorExternalId, title: firstString(row.title), text: firstString(row.text, row.selftext, row.body, row.caption, row.description), context: context.platform === 'reddit' ? { subreddit: subreddit ?? null, content_kind: firstString(row.postType, row.kind) ?? 'post' } : {}, metrics: numericMetrics(row), observedAt: new Date().toISOString(), publishedAt: isoDate(row.publishedAt ?? row.createdAt ?? row.timestamp ?? row.uploadDate), rawSchemaVersion: context.schemaVersion }
   const parsed = observationSchema.safeParse(value)
   return parsed.success ? [parsed.data] : []
 }
 const firstString = (...values: unknown[]) => values.find((value): value is string => typeof value === 'string' && value.trim().length > 0)
 const isoDate = (value: unknown) => { if (typeof value !== 'string' && typeof value !== 'number') return null; const date = new Date(value); return Number.isNaN(date.getTime()) ? null : date.toISOString() }
 const numericMetrics = (row: Record<string, unknown>) => Object.fromEntries(['views', 'likes', 'comments', 'shares', 'saves', 'followers', 'score'].flatMap((key) => typeof row[key] === 'number' && Number.isFinite(row[key]) ? [[key, row[key] as number]] : []))
+const authorHashSalt = process.env.DISCOVERY_AUTHOR_HASH_SALT?.trim()
+const pseudonymizeAuthor = (value: string) => {
+  if (!authorHashSalt) throw Object.assign(new Error('DISCOVERY_AUTHOR_HASH_SALT is required for author pseudonymization'), { reasonCode: 'PROVIDER_NOT_CONFIGURED' })
+  return createHash('sha256').update(`${authorHashSalt}\u001f${value.trim().toLowerCase()}`).digest('hex')
+}
 async function poll<T>(load: () => Promise<T>, terminal: (value: T) => boolean, signal?: AbortSignal): Promise<T> { for (let attempt = 0; attempt < 60; attempt += 1) { signal?.throwIfAborted(); const value = await load(); if (terminal(value)) return value; await new Promise((resolve) => setTimeout(resolve, 2_000)) } throw new Error('PROVIDER_POLL_TIMEOUT') }
 
 runWorker(spec.queue, createDiscoveryProcessor(repository, provider))

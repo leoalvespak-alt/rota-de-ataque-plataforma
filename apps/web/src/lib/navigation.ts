@@ -1,10 +1,8 @@
-export type NavigationTier = 'simple' | 'advanced'
-
 export type NavigationTab = {
   id: string
   label_pt: string
+  href: string
   legacyPath?: string
-  tier: NavigationTier
   temporal?: boolean
 }
 
@@ -13,77 +11,78 @@ export type NavigationDestination = {
   title: string
   href: string
   icon: 'home' | 'intelligence' | 'decisions' | 'content' | 'relationship' | 'performance' | 'automations'
-  tier: NavigationTier
   tabs: readonly NavigationTab[]
 }
 
-/** Os sete destinos principais. Recursos técnicos permanecem nas abas avançadas. */
+/** Mapa canônico da experiência única do Prospector. Recursos técnicos são
+ * progressivos por rota/permissão, nunca por um modo global. */
 export const NAVIGATION = [
-  { id: 'today', title: 'Hoje', href: '/', icon: 'home', tier: 'simple', tabs: [{ id: 'hoje', label_pt: 'Hoje', tier: 'simple', temporal: true }] },
-  { id: 'discoveries', title: 'Descobertas', href: '/inteligencia', icon: 'intelligence', tier: 'simple', tabs: [
-    { id: 'radar', label_pt: 'Radar', legacyPath: '/radar', tier: 'simple', temporal: true },
-    { id: 'mercado', label_pt: 'Mercado', legacyPath: '/market-radar', tier: 'simple', temporal: true },
-    { id: 'concorrentes', label_pt: 'Concorrentes', legacyPath: '/competitive-intel', tier: 'simple', temporal: true },
-    { id: 'comunidades', label_pt: 'Comunidades', legacyPath: '/community', tier: 'simple', temporal: true },
+  { id: 'pulse', title: 'Pulso', href: '/', icon: 'home', tabs: [{ id: 'pulso', label_pt: 'Pulso', href: '/' }] },
+  { id: 'intelligence', title: 'Inteligência', href: '/inteligencia', icon: 'intelligence', tabs: [
+    { id: 'radar', label_pt: 'Radar', href: '/inteligencia/radar', legacyPath: '/radar', temporal: true },
+    { id: 'mercado', label_pt: 'Mercado', href: '/inteligencia/mercado', legacyPath: '/market-radar', temporal: true },
+    { id: 'concorrentes', label_pt: 'Concorrentes', href: '/inteligencia/concorrentes', legacyPath: '/competitive-intel', temporal: true },
+    { id: 'comunidades', label_pt: 'Comunidades', href: '/inteligencia/comunidades', legacyPath: '/community', temporal: true },
   ] },
-  { id: 'decisions', title: 'Decisões', href: '/decisoes', icon: 'decisions', tier: 'simple', tabs: [
-    { id: 'revisao', label_pt: 'Revisão', legacyPath: '/review-inbox', tier: 'simple' },
-    { id: 'radar', label_pt: 'Achados do radar', tier: 'simple' },
-    { id: 'insights', label_pt: 'Insights', tier: 'simple' },
-    { id: 'sugestoes', label_pt: 'Sugestões', tier: 'simple' },
-    { id: 'engajamento', label_pt: 'Engajamento', legacyPath: '/engagement-queue', tier: 'simple' },
+  { id: 'decisions', title: 'Decisões', href: '/decisoes', icon: 'decisions', tabs: [
+    { id: 'revisao', label_pt: 'Revisão', href: '/decisoes/revisao', legacyPath: '/review-inbox' },
+    { id: 'radar', label_pt: 'Radar', href: '/decisoes?view=radar' },
+    { id: 'insights', label_pt: 'Insights', href: '/decisoes?view=insights' },
+    { id: 'sugestoes', label_pt: 'Sugestões', href: '/decisoes?view=sugestoes' },
+    { id: 'engajamento', label_pt: 'Engajamento', href: '/decisoes/engajamento', legacyPath: '/engagement-queue' },
   ] },
-  { id: 'content', title: 'Conteúdo', href: '/conteudo', icon: 'content', tier: 'simple', tabs: [
-    { id: 'funil', label_pt: 'Funil', tier: 'simple' },
-    { id: 'oportunidades', label_pt: 'Oportunidades', legacyPath: '/content-opportunity', tier: 'simple' },
-    { id: 'conteudos', label_pt: 'Conteúdos', legacyPath: '/content-items', tier: 'simple' },
-    { id: 'teses', label_pt: 'Teses', legacyPath: '/theses', tier: 'simple' },
-    { id: 'ponte', label_pt: 'Ponte criativa', legacyPath: '/creative-bridge', tier: 'advanced' },
-    { id: 'calendario', label_pt: 'Calendário', legacyPath: '/publishing', tier: 'simple', temporal: true },
-    { id: 'aprovacao', label_pt: 'Aprovação', tier: 'simple' },
-    { id: 'comprovantes', label_pt: 'Comprovantes', tier: 'simple' },
+  { id: 'planning', title: 'Planejamento', href: '/planejamento', icon: 'content', tabs: [
+    { id: 'funil', label_pt: 'Funil', href: '/planejamento/funil', temporal: true },
+    { id: 'oportunidades', label_pt: 'Oportunidades', href: '/planejamento/oportunidades', legacyPath: '/content-opportunity' },
+    { id: 'conteudos', label_pt: 'Conteúdos', href: '/planejamento/conteudos', legacyPath: '/content-items' },
+    { id: 'teses', label_pt: 'Teses', href: '/planejamento/teses', legacyPath: '/theses' },
+    { id: 'ponte', label_pt: 'Ponte criativa', href: '/planejamento/ativos', legacyPath: '/creative-bridge' },
+    { id: 'calendario', label_pt: 'Calendário', href: '/planejamento/calendario', legacyPath: '/publishing', temporal: true },
+    { id: 'aprovacao', label_pt: 'Aprovações', href: '/planejamento/aprovacoes' },
+    { id: 'comprovantes', label_pt: 'Comprovantes', href: '/planejamento/comprovantes' },
   ] },
-  { id: 'relationship', title: 'Relacionamento', href: '/relacionamento', icon: 'relationship', tier: 'simple', tabs: [
-    { id: 'leads', label_pt: 'Pessoas', legacyPath: '/leads', tier: 'simple' },
-    { id: 'timeline', label_pt: 'Timeline', legacyPath: '/timeline', tier: 'simple', temporal: true },
-    { id: 'identidades', label_pt: 'Identidades', legacyPath: '/identities', tier: 'advanced' },
-    { id: 'conversas', label_pt: 'Conversas', legacyPath: '/conversations', tier: 'simple' },
-    { id: 'email', label_pt: 'E-mail', legacyPath: '/email-flows', tier: 'simple' },
-    { id: 'politicas', label_pt: 'Políticas', legacyPath: '/contact-policies', tier: 'simple' },
-    { id: 'grupos', label_pt: 'Grupos', legacyPath: '/communities', tier: 'simple' },
+  { id: 'audience', title: 'Público', href: '/publico', icon: 'relationship', tabs: [
+    { id: 'leads', label_pt: 'Pessoas', href: '/publico/pessoas', legacyPath: '/leads' },
+    { id: 'segmentos', label_pt: 'Segmentos', href: '/publico/segmentos' },
+    { id: 'conversas', label_pt: 'Conversas', href: '/publico/conversas', legacyPath: '/conversations' },
+    { id: 'timeline', label_pt: 'Timeline', href: '/publico/timeline', legacyPath: '/timeline', temporal: true },
+    { id: 'identidades', label_pt: 'Identidades', href: '/publico/identidades', legacyPath: '/identities' },
+    { id: 'canais', label_pt: 'Canais', href: '/publico/canais', legacyPath: '/communities' },
+    { id: 'politicas', label_pt: 'Políticas', href: '/publico/politicas', legacyPath: '/contact-policies' },
+    { id: 'email', label_pt: 'E-mail', href: '/publico/email', legacyPath: '/email-flows' },
   ] },
-  { id: 'results', title: 'Resultados', href: '/desempenho', icon: 'performance', tier: 'simple', tabs: [
-    { id: 'roi', label_pt: 'ROI', legacyPath: '/source-roi', tier: 'simple', temporal: true },
-    { id: 'orcamento', label_pt: 'Orçamento', legacyPath: '/organic-budgets', tier: 'simple', temporal: true },
-    { id: 'conteudo', label_pt: 'Conteúdo', tier: 'simple', temporal: true },
+  { id: 'performance', title: 'Performance', href: '/performance', icon: 'performance', tabs: [
+    { id: 'roi', label_pt: 'Atribuição', href: '/performance/roi', legacyPath: '/source-roi', temporal: true },
+    { id: 'orcamento', label_pt: 'Orçamento', href: '/performance/orcamento', legacyPath: '/organic-budgets', temporal: true },
+    { id: 'conteudo', label_pt: 'Conteúdo', href: '/performance/conteudo', temporal: true },
   ] },
-  { id: 'operation', title: 'Operação', href: '/automacoes', icon: 'automations', tier: 'simple', tabs: [
-    { id: 'motores', label_pt: 'Motores', legacyPath: '/automations', tier: 'simple' },
-    { id: 'contas', label_pt: 'Contas', legacyPath: '/accounts', tier: 'simple' },
-    { id: 'saude', label_pt: 'Saúde', legacyPath: '/system-health', tier: 'simple' },
-    { id: 'notificacoes', label_pt: 'Incidentes', legacyPath: '/notifications', tier: 'simple' },
-    { id: 'workers', label_pt: 'Workers', tier: 'advanced' },
-    { id: 'filas', label_pt: 'Filas', tier: 'advanced' },
-    { id: 'agendamentos', label_pt: 'Agendamentos', tier: 'advanced' },
-    { id: 'ia', label_pt: 'IA', legacyPath: '/ai-settings', tier: 'advanced' },
-    { id: 'scoring', label_pt: 'Scoring', legacyPath: '/configs', tier: 'advanced' },
-    { id: 'runbooks', label_pt: 'Runbooks', legacyPath: '/docs/runbooks', tier: 'advanced' },
+  { id: 'system', title: 'Sistema', href: '/sistema', icon: 'automations', tabs: [
+    { id: 'motores', label_pt: 'Motores', href: '/sistema/motores', legacyPath: '/automations' },
+    { id: 'contas', label_pt: 'Integrações', href: '/sistema/integracoes', legacyPath: '/accounts' },
+    { id: 'saude', label_pt: 'Saúde', href: '/sistema/saude', legacyPath: '/system-health' },
+    { id: 'notificacoes', label_pt: 'Incidentes', href: '/sistema/incidentes', legacyPath: '/notifications' },
+    { id: 'ia', label_pt: 'IA', href: '/sistema/avancado/ia', legacyPath: '/ai-settings' },
+    { id: 'scoring', label_pt: 'Scoring', href: '/sistema/avancado/scoring', legacyPath: '/configs' },
+    { id: 'runbooks', label_pt: 'Runbooks', href: '/sistema/avancado/runbooks', legacyPath: '/docs/runbooks' },
+    { id: 'filas', label_pt: 'Filas', href: '/sistema/avancado/filas' },
+    { id: 'agendamentos', label_pt: 'Agendamentos', href: '/sistema/avancado/agendamentos' },
+    { id: 'workers', label_pt: 'Workers', href: '/sistema/avancado/workers' },
   ] },
 ] as const satisfies readonly NavigationDestination[]
 
-export function navigationHref(destination: Pick<NavigationDestination, 'href'>, tab?: Pick<NavigationTab, 'id'>) {
-  return tab && destination.href !== '/' ? `${destination.href}?aba=${tab.id}` : destination.href
+export function navigationHref(destination: Pick<NavigationDestination, 'href'>, tab?: Pick<NavigationTab, 'href'>) {
+  return tab?.href ?? destination.href
 }
 
 export const LEGACY_REDIRECTS = Object.fromEntries(
   NAVIGATION.flatMap((destination) => destination.tabs
     .filter((tab) => 'legacyPath' in tab && tab.legacyPath)
-    .map((tab) => [('legacyPath' in tab ? tab.legacyPath : ''), navigationHref(destination, tab)])),
+    .map((tab) => [('legacyPath' in tab ? tab.legacyPath : undefined)!, `${destination.href}?aba=${tab.id}`])),
 ) as Record<string, string>
 
 export function isTemporalDestination(pathname: string, tabId: string | null) {
-  const destination = NAVIGATION.find((item) => item.href === pathname)
+  const destination = NAVIGATION.find((item) => pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`)))
   if (!destination) return false
-  const tab = destination.tabs.find((item) => item.id === (tabId ?? destination.tabs[0]?.id))
+  const tab = destination.tabs.find((item) => item.id === tabId) ?? destination.tabs.find((item) => pathname === item.href)
   return Boolean(tab && 'temporal' in tab && tab.temporal)
 }

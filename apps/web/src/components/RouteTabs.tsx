@@ -1,21 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { NAVIGATION, navigationHref } from '@/lib/navigation'
-import { useUiMode } from './UiModeProvider'
 
 export function RouteTabs({ destinationId, activeTab, children }: { destinationId: string; activeTab: string; children: ReactNode }) {
   const destination = NAVIGATION.find((item) => item.id === destinationId)
-  const { mode, revealAdvanced } = useUiMode()
   const refs = useRef<Array<HTMLAnchorElement | null>>([])
-  const activeDefinition = destination?.tabs.find((tab) => tab.id === activeTab)
-  useEffect(() => {
-    if (activeDefinition?.tier === 'advanced') revealAdvanced()
-  }, [activeDefinition?.tier, revealAdvanced])
   if (!destination) throw new Error(`Destino de navegação desconhecido: ${destinationId}`)
 
-  const visibleTabs = destination.tabs.filter((tab) => mode === 'advanced' || tab.tier === 'simple' || tab.id === activeTab)
+  const visibleTabs = destination.tabs
   return <div className="bridge-page-content">
     <header className="bridge-page-header">
       <div><p className="eyebrow">Rota de Ataque</p><h1>{destination.title}</h1></div>

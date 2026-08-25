@@ -68,6 +68,8 @@ export const API_ROUTE_MANIFEST = [
   { path: '/api/kill-switch', auth: 'session', methods: ['GET', 'POST'] as const },
   { path: '/api/leads', auth: 'session', methods: ['GET'] as const },
   { path: '/api/leads/actions', auth: 'session', methods: ['POST'] as const },
+  { path: '/api/market-watches', auth: 'session', methods: ['GET', 'POST'] as const },
+  { path: '/api/market-watches/canary', auth: 'session', methods: ['POST'] as const },
   { path: '/api/meta/oauth/callback', auth: 'public', methods: ['GET'] as const },
   { path: '/api/meta/oauth/start', auth: 'session', methods: ['GET'] as const },
   { path: '/api/meta/webhook', auth: 'public', methods: ['GET', 'POST'] as const },

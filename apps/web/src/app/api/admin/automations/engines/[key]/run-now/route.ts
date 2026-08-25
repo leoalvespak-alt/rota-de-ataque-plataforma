@@ -50,7 +50,7 @@ export async function POST(
           error: 'runtime_unavailable',
           reasonCode: 'RUNTIME_UNAVAILABLE',
           unavailableWorkers: unavailable.map((row) => row.worker_name),
-          nextAction: { label: 'Ligar motor', href: '/automacoes' },
+          nextAction: { label: 'Ligar motor', href: '/sistema/motores' },
         }, { status: 409 })
       }
     } finally {

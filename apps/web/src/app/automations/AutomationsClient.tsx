@@ -57,7 +57,7 @@ export function AutomationsClient({ workers: initialWorkers }: { workers: Worker
       if (!worker.schedulable) return <span>Acionado por {worker.triggered_by ?? 'evento do sistema'}</span>
       return <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
         <span>{worker.cadence ? parseCadenceLabel(worker.cadence) : 'Padrão do sistema'}</span>
-        <Link href="/automacoes?aba=agendamentos">Editar</Link>
+        <Link href="/sistema/avancado/agendamentos">Editar</Link>
       </div>
     } }),
     column.display({ id: 'actions', header: 'Ações', cell: (info) => { const worker = info.row.original; const toggle = worker.enabled ? 'disable' : 'enable'; return <div className="bridge-action-group"><Button size="sm" variant={worker.enabled ? 'danger' : 'primary'} disabled={loading === `${worker.worker_name}:${toggle}`} onClick={() => action(worker.worker_name, toggle)}>{worker.enabled ? 'Desligar' : 'Ligar'}</Button><Button size="sm" variant="secondary" disabled={loading === `${worker.worker_name}:run_now`} onClick={() => action(worker.worker_name, 'run_now')}>Executar</Button>{worker.bullmq && worker.bullmq.failed > 0 && <Button size="sm" variant="quiet" disabled={loading === `${worker.worker_name}:clear_dlq`} onClick={() => action(worker.worker_name, 'clear_dlq')}>Limpar DLQ</Button>}</div> } }),

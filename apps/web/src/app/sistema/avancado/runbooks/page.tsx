@@ -1,0 +1,4 @@
+import Link from 'next/link'
+import { ModulePage } from '@/components/ModulePage'
+export default function SystemRunbooksPage() { return <ModulePage eyebrow="Sistema avançado" title="Runbooks" subtitle="Guias operacionais para interpretar reason codes e corrigir bloqueios." metrics={[]} navigation={[{ label: 'Sistema', href: '/sistema' }, { label: 'Runbooks', href: '/sistema/avancado/runbooks' }]} main={<section className="module-list"><Link href="/docs/runbooks/automations"><strong>Automações</strong><span>Heartbeat, backlog, preflight e incidentes.</span></Link><Link href="/docs/runbooks/system-health"><strong>Saúde do sistema</strong><span>Banco, filas, scheduler e migrations.</span></Link></section>} rail={<section><p className="module-eyebrow">Diagnóstico</p><h2>Erro explicável</h2><p>Reason code, impacto, momento, ação e traceId aparecem junto do incidente.</p></section>} /> }
+

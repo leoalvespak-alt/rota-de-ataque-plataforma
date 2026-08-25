@@ -34,10 +34,33 @@ export async function getIntegrationCapabilities(database?:Queryable):Promise<In
   if(!metaLinked&&meta.missing.length<3){meta.status='partial';meta.detail='Aplicativo configurado; falta vincular uma conta pelo OAuth.'}
   const threads=capability('threads','Threads',['META_APP_ID','META_APP_SECRET'],Boolean(actor?.threads_user_id||process.env.THREADS_ACCESS_TOKEN))
   if(threads.status!=='ready'&&!threads.missing.length)threads.detail='Falta vincular o usuário Threads.'
+  const hashSaltReady = Boolean(process.env.DISCOVERY_AUTHOR_HASH_SALT?.trim())
+  const apifyRedditReady = process.env.APIFY_ENABLED === 'true' && hashSaltReady && Boolean(process.env.APIFY_API_TOKEN?.trim() && process.env.APIFY_REDDIT_ACTOR_ID?.trim())
+  const brightRedditReady = process.env.BRIGHT_DATA_ENABLED === 'true' && hashSaltReady && Boolean(process.env.BRIGHT_DATA_API_KEY?.trim() && process.env.BRIGHT_DATA_DATASET_ID?.trim())
+  const redditMissing = [
+    !process.env.APIFY_API_TOKEN?.trim() ? 'APIFY_API_TOKEN' : '',
+    !process.env.APIFY_REDDIT_ACTOR_ID?.trim() ? 'APIFY_REDDIT_ACTOR_ID' : '',
+    !process.env.BRIGHT_DATA_API_KEY?.trim() ? 'BRIGHT_DATA_API_KEY' : '',
+    !process.env.BRIGHT_DATA_DATASET_ID?.trim() ? 'BRIGHT_DATA_DATASET_ID' : '',
+    !hashSaltReady ? 'DISCOVERY_AUTHOR_HASH_SALT' : '',
+  ].filter(Boolean)
+  const redditEnabled = process.env.APIFY_ENABLED === 'true' || process.env.BRIGHT_DATA_ENABLED === 'true'
+  const redditStatus: IntegrationCapability['status'] = apifyRedditReady || brightRedditReady
+    ? 'ready'
+    : redditEnabled
+      ? 'partial'
+      : 'disabled'
+  const redditExternal: IntegrationCapability = {
+    id: 'reddit-external',
+    name: 'Reddit via provedores externos',
+    status: redditStatus,
+    missing: redditMissing,
+    detail: apifyRedditReady ? 'Apify está pronto como provider primário; Bright Data permanece fallback controlado.' : brightRedditReady ? 'Bright Data está pronto como fallback externo.' : redditEnabled ? 'Integração habilitada, mas faltam credenciais do provider e o salt de anonimização. O cliente oficial não é necessário.' : 'Integração externa desativada. Habilite Apify ou Bright Data somente após preencher todas as variáveis.',
+  }
   const capabilities=[
     meta,
     threads,
-    capability('reddit','Reddit',['REDDIT_CLIENT_ID','REDDIT_CLIENT_SECRET','REDDIT_USER_AGENT']),
+    redditExternal,
     capability('whatsapp','WhatsApp Cloud',['WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_BUSINESS_ACCOUNT_ID','WHATSAPP_ACCESS_TOKEN','WHATSAPP_WEBHOOK_VERIFY_TOKEN','WHATSAPP_APP_SECRET']),
     capability('email','E-mail / Resend',['RESEND_API_KEY','EMAIL_FROM','RESEND_WEBHOOK_SECRET']),
     {id:'llm',name:'Modelos de IA',status:(aiReady||Boolean(process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY)?'ready':'not_configured') as IntegrationCapability['status'],missing:[],detail:aiReady?'Modelo padrão e provedor ativos no cofre do Prospector.':process.env.LLM_MODEL&&process.env.LLM_ENDPOINT&&process.env.LLM_API_KEY?'Modelo configurado pelas variáveis de ambiente.':'Cadastre uma chave e ative o modelo padrão em Modelos de IA.'},

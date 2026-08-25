@@ -188,11 +188,11 @@ export const PREREQUISITE_DEFINITIONS: PrerequisiteDefinition[] = [
   { key: 'budget_ceiling_set',       label_pt: 'Teto de orçamento definido',                  href: '/desempenho?aba=orcamento' },
   { key: 'embeddings_healthy',       label_pt: 'Serviço de embeddings ativo',                 href: '/configuracoes?aba=saude' },
   { key: 'ai_provider_configured',   label_pt: 'Provedor de IA configurado',                  href: '/configuracoes?aba=ia' },
-  { key: 'thesis_exists',            label_pt: 'Pelo menos 1 tese editorial cadastrada',      href: '/conteudo?aba=teses' },
+  { key: 'thesis_exists',            label_pt: 'Pelo menos 1 tese editorial cadastrada',      href: '/planejamento/teses' },
   { key: 'actor_account_healthy',    label_pt: 'Conta com papel actor saudável',              href: '/configuracoes?aba=contas' },
   { key: 'kill_switch_off',          label_pt: 'Kill-switch global desligado',                href: '/configuracoes?aba=saude' },
-  { key: 'approved_variant_exists',  label_pt: 'Pelo menos 1 variante aprovada aguardando',   href: '/conteudo?aba=conteudos' },
-  { key: 'contact_policy_configured', label_pt: 'Políticas de contato definidas',             href: '/relacionamento?aba=politicas' },
+  { key: 'approved_variant_exists',  label_pt: 'Pelo menos 1 variante aprovada aguardando',   href: '/planejamento/conteudos' },
+  { key: 'contact_policy_configured', label_pt: 'Políticas de contato definidas',             href: '/publico/politicas' },
 ]
 
 /** Lookup rápido por key */

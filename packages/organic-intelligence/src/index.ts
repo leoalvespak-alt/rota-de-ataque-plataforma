@@ -13,6 +13,7 @@ export const observationSchema = z.object({
   publishedAt: z.string().datetime().nullable().optional(),
   title: z.string().optional(),
   text: z.string().optional(),
+  context: z.record(z.string(), z.string().nullable()).optional(),
   metrics: z.record(z.string(), z.number().nullable()).default({}),
   rawSchemaVersion: z.string().min(1),
 })

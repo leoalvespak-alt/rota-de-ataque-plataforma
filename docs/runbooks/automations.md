@@ -1,8 +1,16 @@
 # Runbook de automações
 
+## Atualização de rotas, incidentes e Reddit externo (25/08/2026)
+
+As rotas operacionais canônicas agora ficam em `/sistema`, com `/sistema/motores`, `/sistema/integracoes`, `/sistema/saude`, `/sistema/incidentes` e as páginas avançadas de workers, filas, agendamentos, IA, scoring e runbooks. Redirects legados permanecem apenas para compatibilidade.
+
+O contrato de prontidão e incidentes usa `automation_incidents` não resolvidos, heartbeats e `worker_runs` atuais; falhas históricas não são exibidas como erro corrente sem incidente aberto ou divergência de desired state. A migration de runtime esperada neste estado local é `0038_reddit_observation_context`, após `0036` e `0037`.
+
+O scheduler também reconcilia `market_watches` Reddit vencidos e enfileira `discovery`: Apify é primário quando configurado, Bright Data é fallback e provider `auto` escolhe o primeiro disponível. O endpoint de canário exige operador e limita a 10 observações. O worker e pacote oficiais de Reddit continuam no inventário até o canário externo verde; não registrar ainda a redução para 40 consumidores.
+
 ## Estado reconciliado (25/08/2026)
 
-O contrato auditado contém scheduler, sete supervisores por motor, 41 consumidores/heartbeats, health separado e a migration `0035_reconcile_automation_runtime`. O checker de deploy exige os oito processos de infraestrutura na imagem exata da release e valida que o manifesto distribui os 41 workers uma única vez; a implantação e o canário são confirmados separadamente no registro pós-deploy.
+O contrato auditado contém scheduler, sete supervisores por motor, 41 consumidores/heartbeats, health separado e as migrations `0035_reconcile_automation_runtime` até `0038_reddit_observation_context`. O checker de deploy exige os oito processos de infraestrutura na imagem exata da release e valida que o manifesto distribui os 41 workers uma única vez; a implantação e o canário são confirmados separadamente no registro pós-deploy.
 
 Cada supervisor executa um único `node --import tsx` e carrega os workers do respectivo motor conforme `docker/worker-supervisors.json`. O loader continua necessário porque os `exports` compartilhados ainda apontam para TypeScript-fonte. Os workers preservam filas, controles, pools, graceful shutdown e heartbeats individuais; somente o overhead de 41 processos/containers foi consolidado em sete domínios de falha. O primeiro rollout completo comprovou que 41 processos Node isolados saturavam a VPS de 8 GB mesmo pausados.
 
@@ -14,15 +22,15 @@ Estados devem ser lidos separadamente: `desiredState` (intenção persistida), `
 
 Endpoints públicos de operação: `/api/health/live`, `/api/health/ready`, `/api/health/operational` e `/api/health`. O último só deve ser usado como agregado; para decidir se uma ação pode ser enfileirada, use o estado operacional.
 
-> O registro de 22/08/2026 é histórico. O estado vigente inclui `0035_reconcile_automation_runtime`; produção só deve usar os procedimentos de motores depois de confirmar `0034` + `0035` e a comparação dos 41 valores de `enabled` passar sem divergência.
+> O registro de 22/08/2026 é histórico. O estado vigente inclui `0035`–`0038`; produção só deve usar os procedimentos de motores depois de confirmar o ledger completo e a comparação dos 41 valores de `enabled` passar sem divergência.
 
-O bloco de estado histórico acima não substitui a reconciliação de 24/08: o rollout vigente deve validar `0034_automation_engines` e `0035_reconcile_automation_runtime` juntos, sem reescrever a migration publicada `0034`.
+O bloco de estado histórico acima não substitui a reconciliação de 24/08: o rollout vigente deve validar `0034_automation_engines`, `0035_reconcile_automation_runtime`, `0036_content_variant_timestamps`, `0037_market_watches_external_reddit` e `0038_reddit_observation_context` juntos, sem reescrever migrations publicadas.
 
 ## Motores e abas
 
-A rota canônica `/automacoes` usa o parâmetro `?aba=`. `/automations` permanece como redirect permanente:
+A rota canônica `/sistema` usa subrotas explícitas. `/automations` e as raízes antigas permanecem como redirects permanentes:
 
-- `motores`: sete cartões operacionais cobrindo os 41 workers;
+- `motores`: sete cartões operacionais cobrindo os 41 workers atuais;
 - `workers`: controles individuais preservados;
 - `filas`: contagens waiting/active/failed, execução imediata e limpeza de DLQ;
 - `agendamentos`: somente os nove workers presentes em `MANAGED_SCHEDULER_CONFIG`.
@@ -48,11 +56,15 @@ Pré-requisito pendente bloqueia apenas uma nova ativação; nunca desliga autom
 
 O runbook da interface informa o estado do front-end. PostgreSQL descartável e Docker Compose real foram validados no VPS isoladamente; a base de produção nunca deve ser usada como banco descartável. Redis, navegador autenticado e canário operacional são confirmados na release implantada.
 
-Para `0034_automation_engines` + `0035_reconcile_automation_runtime`, o gate inclui: aplicar ambos os `up`/`down` em banco descartável e dump sanitizado, comparar os 41 valores de `enabled` com `docs/snapshots/workers-pre-0034.csv`, confirmar zero `engine_key` nulo e verificar a reversibilidade sem reescrever migrações aplicadas. Não use a base de produção como banco descartável.
+Para `0034`–`0038`, o gate inclui: aplicar os `up`/`down` em banco descartável e dump sanitizado, comparar os 41 valores de `enabled` com `docs/snapshots/workers-pre-0034.csv`, confirmar zero `engine_key` nulo, validar as colunas do funil e o contexto de observações Reddit e verificar a reversibilidade sem reescrever migrations aplicadas. Não use a base de produção como banco descartável.
+
+### Reddit externo: gate de segurança
+
+O runtime oficial do Reddit permanece pausado até que Apify ou Bright Data esteja completo. Além do token/ator ou chave/dataset, `DISCOVERY_AUTHOR_HASH_SALT` é obrigatório: sem ele a integração aparece como parcial e nenhum watch é enfileirado. O canário sempre limita a 10 itens, registra provider, custo estimado, provenance e `traceId`; somente após um canário real verde a operação pode remover o worker oficial em uma migration posterior.
 
 ## Configurar agendamento de um worker
 
-A aba `/automacoes?aba=agendamentos` permite editar somente os nove workers com `schedulable=true`. Os demais mostram `Acionado por …` na visão avançada e recebem HTTP 409 se alguém tentar `set_schedule` diretamente:
+A rota `/sistema/avancado/agendamentos` permite editar somente os nove workers com `schedulable=true`. Os demais mostram `Acionado por …` na visão avançada e recebem HTTP 409 se alguém tentar `set_schedule` diretamente:
 
 - **Formato `every:<ms>`** — intervalo fixo em milissegundos (ex: `every:900000` = 15 min).
 - **Formato cron** — expressão cron padrão em UTC (ex: `0 */6 * * *` = a cada 6h). A prévia da UI e o BullMQ usam explicitamente o mesmo fuso, independentemente do sistema operacional do navegador, runner ou container.

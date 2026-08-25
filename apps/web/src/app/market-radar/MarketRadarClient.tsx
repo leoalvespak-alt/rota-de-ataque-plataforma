@@ -11,11 +11,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 type Signal = { id: string; label: string; kind: string; velocity_7d: string | null; velocity_30d: string | null; volume_current: number | null; status: string; last_seen_at: string; evidence_refs: unknown[] }
-type Watch = { id: string; kind: string; value: string; active: boolean; last_run_at: string | null; next_run_at: string | null }
+type Watch = { id: string; kind: string; value: string; provider_preference: 'auto' | 'apify' | 'bright_data'; active: boolean; last_run_at: string | null; next_run_at: string | null }
 
 const watchSchema = z.object({
-  kind: z.enum(['subreddit', 'search_query', 'user']),
-  value: z.string().min(2, 'Obrigatório. Mínimo 2 caracteres')
+  kind: z.enum(['subreddit', 'search_query', 'user', 'keyword_across']),
+  value: z.string().min(2, 'Obrigatório. Mínimo 2 caracteres'),
+  provider: z.enum(['auto', 'apify', 'bright_data'])
 })
 type WatchFormData = z.infer<typeof watchSchema>
 
@@ -41,7 +42,7 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
 
   const { register, handleSubmit, watch, trigger, reset, formState: { errors } } = useForm<WatchFormData>({
     resolver: zodResolver(watchSchema),
-    defaultValues: { kind: 'subreddit', value: '' }
+    defaultValues: { kind: 'subreddit', value: '', provider: 'auto' }
   })
 
   const formValues = watch()
@@ -73,7 +74,7 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
       const response = await fetch(appPath('/api/reddit/watches'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ kind: data.kind, value: data.value, active: true })
+        body: JSON.stringify({ kind: data.kind, value: data.value, provider: data.provider, active: true, limit: 10 })
       })
       const body = await response.json() as { id?: string; error?: string }
       
@@ -84,6 +85,7 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
           id: body.id!,
           kind: data.kind,
           value: data.value,
+          provider_preference: data.provider,
           active: true,
           last_run_at: null,
           next_run_at: new Date().toISOString()
@@ -99,6 +101,17 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
     } finally {
       setBusy(false)
     }
+  }
+
+  async function runCanary(item: Watch) {
+    const provider = item.provider_preference === 'bright_data' ? 'bright_data' : 'apify'
+    setBusy(true)
+    try {
+      const response = await fetch(appPath('/api/market-watches/canary'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchId: item.id, provider, limit: 10 }) })
+      const body = await response.json() as { message?: string; error?: string }
+      if (!response.ok) throw new Error(body.message ?? body.error ?? 'Não foi possível enfileirar o canário.')
+      toast.success(`Canário ${provider} enfileirado com limite de 10 observações.`)
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Erro inesperado') } finally { setBusy(false) }
   }
 
   return (
@@ -165,6 +178,7 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
                         <option value="subreddit">Subreddit</option>
                         <option value="search_query">Consulta (Keyword)</option>
                         <option value="user">Usuário</option>
+                        <option value="keyword_across">Keyword em comunidades</option>
                       </select>
                       {errors.kind && <span style={{color:'var(--status-error)'}}>{errors.kind.message}</span>}
                     </label>
@@ -173,6 +187,15 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
                       Alvo
                       <input {...register('value')} placeholder="Ex.: concursospublicos" />
                       {errors.value && <span style={{color:'var(--status-error)'}}>{errors.value.message}</span>}
+                    </label>
+
+                    <label className="editor-field">
+                      Provedor
+                      <select {...register('provider')}>
+                        <option value="auto">Automático (Apify → Bright Data)</option>
+                        <option value="apify">Apify</option>
+                        <option value="bright_data">Bright Data</option>
+                      </select>
                     </label>
                     
                     <button type="button" className="bridge-button" data-variant="primary" disabled={!ready || !formValues.value} onClick={handleNextStep}>
@@ -190,6 +213,8 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
                     <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-4) 0', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                       <li><strong>Tipo:</strong> {formValues.kind}</li>
                       <li><strong>Alvo:</strong> {formValues.value}</li>
+                      <li><strong>Provedor:</strong> {formValues.provider}</li>
+                      <li><strong>Canário:</strong> limitado a 10 observações</li>
                       <li><strong>Próximo passo:</strong> criar watch e aguardar o worker confirmar a coleta</li>
                     </ul>
                     
@@ -214,6 +239,8 @@ export function MarketRadarClient({ initialSignals, initialWatches, redditStatus
                     <StatusBadge status={watch.active ? 'Ativo' : 'Pausado'} />
                     <strong style={{ flex: 1 }}>{watch.value}</strong>
                     <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{watch.kind.replace('_', ' ')}</span>
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>{watch.provider_preference}</span>
+                    <button type="button" className="bridge-button" data-variant="quiet" disabled={!ready || busy} onClick={() => void runCanary(watch)}>Canário (10)</button>
                     <small style={{ color: 'var(--text-tertiary)', minWidth: '150px', textAlign: 'right' }}>
                       {watch.last_run_at ? `Última coleta ${new Date(watch.last_run_at).toLocaleString('pt-BR')}` : 'Aguardando primeira coleta'}
                     </small>

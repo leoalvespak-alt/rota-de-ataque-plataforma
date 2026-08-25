@@ -6,8 +6,6 @@ import { AutomationsClient, type WorkerInfo } from './AutomationsClient'
 import { MotoresTab } from './components/MotoresTab'
 import { QueuesTab } from './components/QueuesTab'
 import { SchedulesTab } from './components/SchedulesTab'
-import { useUiMode } from '@/components/UiModeProvider'
-import { useEffect } from 'react'
 
 const tabs = [
   { id: 'motores', label: 'Motores' },
@@ -25,14 +23,9 @@ export function AutomationsTabs({ workers }: { workers: WorkerInfo[] }) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const { mode, revealAdvanced } = useUiMode()
   const requestedTab = searchParams.get('aba')
   const activeTab: TabValue = isTab(requestedTab) ? requestedTab : 'motores'
-  const visibleTabs = mode === 'advanced' ? tabs : tabs.filter((tab) => tab.id === 'motores')
-
-  useEffect(() => {
-    if (activeTab !== 'motores') revealAdvanced()
-  }, [activeTab, revealAdvanced])
+  const visibleTabs = tabs
 
   function setActiveTab(tab: TabValue) {
     const params = new URLSearchParams(searchParams.toString())

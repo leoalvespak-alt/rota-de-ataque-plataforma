@@ -13,7 +13,6 @@ import { AutomationsTabs } from './app/automations/AutomationsTabs'
 import { AISettingsClient } from './app/ai-settings/AISettingsClient'
 import { PublishingClient } from './app/publishing/PublishingClient'
 import { TooltipProvider } from '@plataforma/ui-bridge'
-import { UiModeProvider } from './components/UiModeProvider'
 
 vi.mock('next/navigation',()=>({useRouter:()=>({replace:vi.fn(),push:vi.fn(),refresh:vi.fn()}),usePathname:()=>'/leads',useSearchParams:()=>new URLSearchParams()}))
 
@@ -35,7 +34,7 @@ describe('critical pages accessibility', () => {
     Object.assign(globalThis, { window: dom.window, document: dom.window.document, Node: dom.window.Node, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement })
     const axe = (await import('axe-core')).default
     for (const [at, page] of pages.entries()) {
-      dom.window.document.body.innerHTML = `<main>${renderToStaticMarkup(createElement(UiModeProvider, null, createElement(TooltipProvider, null, page)))}</main>`
+      dom.window.document.body.innerHTML = `<main>${renderToStaticMarkup(createElement(TooltipProvider, null, page))}</main>`
       const result = await axe.run(dom.window.document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa'] }, rules: { 'color-contrast': { enabled: false } } })
       expect(result.violations.filter((item) => ['critical', 'serious'].includes(item.impact ?? '')), `page ${at + 1}`).toEqual([])
     }

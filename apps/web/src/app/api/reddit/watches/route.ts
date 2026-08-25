@@ -1,10 +1,5 @@
-import { createDatabase } from '@plataforma/db'
-import { createQueueRegistry, enqueueOnce } from '@plataforma/queue'
-import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { getCampaignContext } from '@/lib/campaign-context'
-import { requireRole } from '@/lib/permissions'
+/** Compatibilidade por uma release. A operação canônica vive em /api/market-watches. */
+import { GET as marketWatchesGet, POST as marketWatchesPost } from '@/app/api/market-watches/route'
 
-const Input=z.object({campaignId:z.string().uuid().optional(),kind:z.enum(['subreddit','search_query','user','keyword_across']),value:z.string().trim().min(1).max(300),active:z.boolean().default(true)})
-export async function GET(){await requireRole('viewer');const{pool}=createDatabase(process.env.DATABASE_URL!);try{const{selected}=await getCampaignContext(pool);return NextResponse.json({data:(await pool.query(`SELECT watch.*,campaign.name campaign FROM reddit_watches watch JOIN campaigns campaign ON campaign.id=watch.campaign_id WHERE ($1::uuid IS NULL OR watch.campaign_id=$1) ORDER BY watch.active DESC,watch.next_run_at NULLS FIRST`,[selected?.id??null])).rows,meta:{requestId:crypto.randomUUID(),campaignId:selected?.id??null,generatedAt:new Date().toISOString(),sourceStatus:'ready'}})}finally{}}
-export async function POST(request:Request){const user=await requireRole('operator');const parsed=Input.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:'invalid_request'},{status:400});const{pool}=createDatabase(process.env.DATABASE_URL!);const registry=createQueueRegistry(process.env.REDIS_URL!);try{const{selected}=await getCampaignContext(pool);const campaignId=parsed.data.campaignId??selected?.id;if(!campaignId)return NextResponse.json({error:'campaign_not_found'},{status:409});const row=(await pool.query<{id:string}>(`INSERT INTO reddit_watches(campaign_id,kind,value,active,next_run_at) VALUES($1,$2,$3,$4,now()) ON CONFLICT(kind,value) DO UPDATE SET campaign_id=EXCLUDED.campaign_id,active=EXCLUDED.active,next_run_at=now() RETURNING id`,[campaignId,parsed.data.kind,parsed.data.value,parsed.data.active])).rows[0]!;await pool.query(`INSERT INTO audit_log(actor_id,action,target,after) VALUES($1,'reddit_watch.upsert',$2,$3::jsonb)`,[user.email??'unknown',row.id,JSON.stringify({...parsed.data,campaignId})]);await enqueueOnce(registry.queues['reddit-intelligence'],'reddit-intelligence',[row.id,'manual'],{watchId:row.id});return NextResponse.json({id:row.id},{status:201})}finally{;await registry.connection.quit()}}
+export async function GET(_request: Request) { return marketWatchesGet() }
+export async function POST(request: Request) { return marketWatchesPost(request) }

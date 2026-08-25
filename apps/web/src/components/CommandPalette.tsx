@@ -16,14 +16,13 @@ import {
 } from 'kbar'
 import { helpRegistry } from '@/lib/help-registry'
 import { NAVIGATION, navigationHref } from '@/lib/navigation'
-import { useUiMode } from './UiModeProvider'
 import { appPath } from '@/lib/base-path'
 
 const QUICK_ACTIONS = [
-  { id: 'action-create-thesis', name: 'Criar Tese', keywords: 'nova tese', shortcut: ['c', 't'], href: '/conteudo?aba=teses&action=create' },
-  { id: 'action-create-opportunity', name: 'Criar Oportunidade', keywords: 'nova oportunidade', shortcut: ['c', 'o'], href: '/conteudo?aba=oportunidades&action=create' },
-  { id: 'action-open-queue', name: 'Abrir Fila de Engagement', keywords: 'fila engajamento', shortcut: ['g', 'q'], href: '/decisoes?aba=engajamento' },
-  { id: 'action-pause-system', name: 'Pausar Sistema', keywords: 'killswitch emergência pare', href: '/automacoes?aba=saude&action=killswitch' },
+  { id: 'action-create-thesis', name: 'Criar Tese', keywords: 'nova tese', shortcut: ['c', 't'], href: '/planejamento/teses?action=create' },
+  { id: 'action-create-opportunity', name: 'Criar Oportunidade', keywords: 'nova oportunidade', shortcut: ['c', 'o'], href: '/planejamento/oportunidades?action=create' },
+  { id: 'action-open-queue', name: 'Abrir fila de decisões', keywords: 'fila engajamento', shortcut: ['g', 'q'], href: '/decisoes' },
+  { id: 'action-open-system', name: 'Abrir prontidão do sistema', keywords: 'sistema incidentes canário', shortcut: ['g', 's'], href: '/sistema' },
 ] as const
 
 function DynamicProviders() {
@@ -76,7 +75,7 @@ function LeadsProvider() {
             id: `lead-${item.id}`,
             name: `@${item.username_current}`,
             parent: 'search-leads',
-            perform: () => router.push(`/relacionamento?aba=leads&search=${encodeURIComponent(item.username_current)}`)
+            perform: () => router.push(`/publico/pessoas?search=${encodeURIComponent(item.username_current)}`)
           })))
         }
       } catch (err) {}
@@ -91,8 +90,6 @@ function LeadsProvider() {
 
 export function CommandPalette({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const { revealAdvanced } = useUiMode()
-
   const staticActions: Action[] = [
     ...NAVIGATION.flatMap((destination) => destination.tabs.map((tab) => ({
       id: `nav-${destination.id}-${tab.id}`,
@@ -100,7 +97,6 @@ export function CommandPalette({ children }: { children: React.ReactNode }) {
       section: 'Páginas',
       keywords: `${destination.title} ${tab.label_pt} ${'legacyPath' in tab ? tab.legacyPath : ''}`,
       perform: () => {
-        if (tab.tier === 'advanced') revealAdvanced()
         router.push(navigationHref(destination, tab))
       },
     }))),

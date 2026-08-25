@@ -3,7 +3,7 @@ import { Redis } from 'ioredis'
 
 export const SCHEDULER_HEARTBEAT_KEY = 'runtime:scheduler:heartbeat'
 const HEARTBEAT_MAX_AGE_SECONDS = 90
-const DEFAULT_EXPECTED_MIGRATION = '0035_reconcile_automation_runtime'
+const DEFAULT_EXPECTED_MIGRATION = '0038_reddit_observation_context'
 
 type ComponentStatus = 'ok' | 'error' | 'unavailable'
 export interface HealthPayload {

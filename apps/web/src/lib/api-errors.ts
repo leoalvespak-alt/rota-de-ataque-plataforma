@@ -30,11 +30,11 @@ function codeFor(error: PublicError, fallback: string) {
 }
 
 const actionByCode: Record<string, { label: string; href: string }> = {
-  RUNTIME_UNAVAILABLE: { label: 'Verificar operação', href: '/automacoes?aba=saude' },
-  QUEUE_UNAVAILABLE: { label: 'Abrir saúde do sistema', href: '/automacoes?aba=saude' },
-  PREREQUISITE_MISSING: { label: 'Abrir checklist de prontidão', href: '/automacoes?aba=motores' },
-  ACCOUNT_AUTH_REQUIRED: { label: 'Vincular conta', href: '/automacoes?aba=contas' },
-  PROVIDER_NOT_CONFIGURED: { label: 'Configurar provedor', href: '/automacoes?aba=ia' },
+  RUNTIME_UNAVAILABLE: { label: 'Verificar operação', href: '/sistema/saude' },
+  QUEUE_UNAVAILABLE: { label: 'Abrir saúde do sistema', href: '/sistema/saude' },
+  PREREQUISITE_MISSING: { label: 'Abrir checklist de prontidão', href: '/sistema/motores' },
+  ACCOUNT_AUTH_REQUIRED: { label: 'Vincular conta', href: '/sistema/integracoes' },
+  PROVIDER_NOT_CONFIGURED: { label: 'Configurar provedor', href: '/sistema/avancado/ia' },
   HUMAN_APPROVAL_REQUIRED: { label: 'Abrir decisões', href: '/decisoes' },
 }
 

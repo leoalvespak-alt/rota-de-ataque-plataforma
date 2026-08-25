@@ -5,7 +5,7 @@ x-worker: &worker
   env_file: .env
   environment:
     DATABASE_POOL_MAX: "1"
-    EXPECTED_DB_MIGRATION: "0035_reconcile_automation_runtime"
+    EXPECTED_DB_MIGRATION: "0038_reddit_observation_context"
   entrypoint: ["/app/docker/worker-entrypoint.sh"]
   depends_on:
     postgres: { condition: service_healthy }
@@ -67,7 +67,7 @@ services:
     env_file: .env
     environment:
       DATABASE_POOL_MAX: "10"
-      EXPECTED_DB_MIGRATION: "0035_reconcile_automation_runtime"
+      EXPECTED_DB_MIGRATION: "0038_reddit_observation_context"
     ports:
       - "127.0.0.1:3010:3000"
     depends_on:

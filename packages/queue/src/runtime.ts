@@ -5,7 +5,7 @@ import { EMBEDDING_DIM, logger, ReasonCodeSchema, type QueueName } from '@plataf
 import { startWorkerHeartbeat, type WorkerJob, type WorkerResult } from '@plataforma/shared/worker'
 
 const flagName = (queue: string) => `WORKER_${queue.replaceAll('-', '_').toUpperCase()}_ENABLED`
-const DEFAULT_EXPECTED_MIGRATION = '0035_reconcile_automation_runtime'
+const DEFAULT_EXPECTED_MIGRATION = '0038_reddit_observation_context'
 
 function reasonCodeFor(error: unknown) {
   const value = error as { reasonCode?: string; code?: string; message?: string } | null
