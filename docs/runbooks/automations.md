@@ -4,7 +4,7 @@
 
 O contrato auditado contém scheduler, Compose com 41 workers, health separado e a migration `0035_reconcile_automation_runtime`. O checker de deploy exige os 42 runtimes na imagem exata da release; a implantação e o canário são confirmados separadamente no registro pós-deploy.
 
-Cada container de worker preserva no Compose o pacote que executa, mas o entrypoint substitui o processo intermediário do `pnpm` por `node workers/<nome>/dist/main.js`. Assim, os 41 runtimes continuam isolados e auditáveis sem manter outros 41 processos residentes nem repetir a pressão de startup observada no primeiro rollout.
+Cada container de worker preserva no Compose o pacote que executa, mas o entrypoint substitui o processo intermediário residente do `pnpm` por um único `node --import tsx workers/<nome>/src/main.ts`. O loader continua necessário porque os `exports` dos pacotes compartilhados ainda apontam para TypeScript-fonte; o checker estrutural impede tanto retirar o loader prematuramente quanto voltar a manter 41 processos `pnpm` residentes. Assim, os runtimes continuam isolados e auditáveis com metade da árvore de processos observada no primeiro rollout.
 
 Estados devem ser lidos separadamente: `desiredState` (intenção persistida), `runtimeState` (heartbeat real), `lastRunState` (`succeeded`, `skipped`, `blocked` ou `failed`) e `queueState`. `NO_INPUT` é trabalho inexistente, não sucesso silencioso; `RUNTIME_UNAVAILABLE` impede `run-now` quando não existe consumer `running`; `SQL_CONTRACT_ERROR` aponta para drift de query/schema. Todos os reason codes do runtime têm mensagem e próxima ação catalogadas. Incidentes podem ser reconhecidos pelo operador com nota e são resolvidos por uma execução posterior bem-sucedida.
 

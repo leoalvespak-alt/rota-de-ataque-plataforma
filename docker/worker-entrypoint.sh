@@ -17,11 +17,12 @@ fi
 printf '{"level":"info","worker":"%s","state":"starting_controlled_runtime"}\n' "$package"
 
 # O Compose preserva o nome do pacote como contrato declarativo, mas não mantém
-# um processo pnpm residente para cada um dos 41 workers. Isso reduz pela metade
-# a árvore de processos e evita saturação da VPS durante o startup em massa.
-worker_main="/app/workers/$package/dist/main.js"
+# um processo pnpm residente para cada um dos 41 workers. Os pacotes compartilhados
+# ainda exportam TypeScript-fonte, por isso o único processo Node carrega o loader
+# tsx diretamente até que todo o workspace publique exports compilados.
+worker_main="/app/workers/$package/src/main.ts"
 if [ ! -f "$worker_main" ]; then
   printf '{"level":"error","worker":"%s","state":"entrypoint_missing","path":"%s"}\n' "$package" "$worker_main" >&2
   exit 1
 fi
-exec node --enable-source-maps "$worker_main"
+exec node --import tsx --enable-source-maps "$worker_main"
