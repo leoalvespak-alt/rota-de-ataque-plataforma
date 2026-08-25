@@ -240,7 +240,7 @@ deploy_prospector() {
           ;;
       esac
     done < <(docker compose --project-name rotadeataque-prospector-czj6hb --file "$compose_file" config --services)
-    [[ "$runtime_count" -eq 42 ]] || fail "Prospector runtime expected 42 scheduler/worker services, found $runtime_count"
+    [[ "$runtime_count" -eq 8 ]] || fail "Prospector runtime expected scheduler plus 7 engine supervisors, found $runtime_count"
   )
   cleanup_images "prospector-platform-web"
   cleanup_images "prospector-platform-worker"

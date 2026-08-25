@@ -7,14 +7,14 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo, n
 ### Implemented (2026-08-24)
 
 - Auditoria de fechamento (25/08): allowlist pública passou a respeitar método HTTP; `run-now` exige consumer `running`; scheduler remove recorrências de workers desligados; health exige a migration exata; runtime consulta papel/saúde da conta no banco; canário sintético conclui `worker_runs`; e o catálogo cobre todos os reason codes emitidos.
-- Gate SQL executado em PostgreSQL descartável com as 35 migrations e 777 literais; corrigido o contrato de `whatsapp_messages.created_at`. Compose renderizado pelo Docker real com scheduler e 41 workers, sem tocar a base de produção.
+- Gate SQL executado em PostgreSQL descartável com as 35 migrations e 777 literais; corrigido o contrato de `whatsapp_messages.created_at`. O manifesto de runtime preserva scheduler e 41 consumidores, sem tocar a base de produção.
 - Agendamentos cron agora fixam UTC tanto na prévia quanto no BullMQ, removendo divergência de horário entre Windows, CI e containers Linux.
-- Entrypoint dos 41 workers agora executa um único processo `node --import tsx` sobre o fonte de cada worker, eliminando o `pnpm` residente sem quebrar pacotes compartilhados que ainda exportam TypeScript. Um checker estrutural protege esse contrato após o primeiro deploy revelar o acoplamento.
+- Os 41 consumidores foram consolidados em sete supervisores Node por motor, preservando filas, controles e heartbeats individuais. O manifesto é validado contra todos os entrypoints e o deploy exige scheduler + sete supervisores na imagem da release; a mudança elimina a saturação comprovada na VPS com 41 processos isolados.
 
 - Entry point client-safe separado em `@plataforma/shared/client`; o Turbo agora aguarda o build do próprio pacote antes de lint, typecheck e testes, evitando corrida com `.next/types` e testes contra `dist` obsoleto.
 
 - Reconciliado o branch local com `origin/main` sem reescrever a migration publicada `0034`; criada a `0035_reconcile_automation_runtime` com remapeamentos, proveniência editorial, estados/contagens de execução, reason codes e incidentes.
-- Compose de deploy ampliado com scheduler e os 41 workers, além de checker estrutural do runtime; `check-runtime-deps` e o inventário de rotas passam localmente.
+- Compose de deploy contém scheduler e sete supervisores que hospedam exatamente os 41 workers, além de checker estrutural do runtime; `check-runtime-deps` e o inventário de rotas passam localmente.
 - Separados liveness, readiness e saúde operacional; `AppShell`, middleware e allowlist pública agora usam os contratos reais de health/webhooks sob o base path.
 - Aprovação de sugestão deixou de criar publicação diretamente e passou a criar/ligar oportunidade; agendamento exige item e variante aprovados e o funil expõe proveniência e transições órfãs.
 - Navegação principal consolidada em sete áreas, preservando recursos legados por redirects e abas avançadas.

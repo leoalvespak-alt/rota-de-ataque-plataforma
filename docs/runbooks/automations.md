@@ -2,9 +2,9 @@
 
 ## Estado reconciliado (25/08/2026)
 
-O contrato auditado contém scheduler, Compose com 41 workers, health separado e a migration `0035_reconcile_automation_runtime`. O checker de deploy exige os 42 runtimes na imagem exata da release; a implantação e o canário são confirmados separadamente no registro pós-deploy.
+O contrato auditado contém scheduler, sete supervisores por motor, 41 consumidores/heartbeats, health separado e a migration `0035_reconcile_automation_runtime`. O checker de deploy exige os oito processos de infraestrutura na imagem exata da release e valida que o manifesto distribui os 41 workers uma única vez; a implantação e o canário são confirmados separadamente no registro pós-deploy.
 
-Cada container de worker preserva no Compose o pacote que executa, mas o entrypoint substitui o processo intermediário residente do `pnpm` por um único `node --import tsx workers/<nome>/src/main.ts`. O loader continua necessário porque os `exports` dos pacotes compartilhados ainda apontam para TypeScript-fonte; o checker estrutural impede tanto retirar o loader prematuramente quanto voltar a manter 41 processos `pnpm` residentes. Assim, os runtimes continuam isolados e auditáveis com metade da árvore de processos observada no primeiro rollout.
+Cada supervisor executa um único `node --import tsx` e carrega os workers do respectivo motor conforme `docker/worker-supervisors.json`. O loader continua necessário porque os `exports` compartilhados ainda apontam para TypeScript-fonte. Os workers preservam filas, controles, pools, graceful shutdown e heartbeats individuais; somente o overhead de 41 processos/containers foi consolidado em sete domínios de falha. O primeiro rollout completo comprovou que 41 processos Node isolados saturavam a VPS de 8 GB mesmo pausados.
 
 Estados devem ser lidos separadamente: `desiredState` (intenção persistida), `runtimeState` (heartbeat real), `lastRunState` (`succeeded`, `skipped`, `blocked` ou `failed`) e `queueState`. `NO_INPUT` é trabalho inexistente, não sucesso silencioso; `RUNTIME_UNAVAILABLE` impede `run-now` quando não existe consumer `running`; `SQL_CONTRACT_ERROR` aponta para drift de query/schema. Todos os reason codes do runtime têm mensagem e próxima ação catalogadas. Incidentes podem ser reconhecidos pelo operador com nota e são resolvidos por uma execução posterior bem-sucedida.
 

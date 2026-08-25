@@ -2,6 +2,12 @@
 set -eu
 
 package=''
+if [ "${1:-}" = 'supervisor' ]; then
+engine="${2:-}"
+printf '{"level":"info","component":"worker-supervisor","engine":"%s","state":"starting_controlled_runtime"}\n' "$engine"
+exec node --import tsx --enable-source-maps /app/docker/worker-supervisor.ts "$engine"
+fi
+
 for argument in "$@"; do
   case "$argument" in
     @plataforma/worker-*) package="${argument#@plataforma/worker-}" ;;
