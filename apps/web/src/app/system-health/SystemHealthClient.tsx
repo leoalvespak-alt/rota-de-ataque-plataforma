@@ -46,7 +46,7 @@ interface WorkerState {
   failed: number;
 }
 function RunbookLink({ href, name }: { href: string; name: string }) {
-  return <UiRunbookLink href={appPath(href)} name={name} />;
+    return <UiRunbookLink href={href} name={name} />;
 }
 export function SystemHealthClient({
   heartbeats,
@@ -101,7 +101,7 @@ export function SystemHealthClient({
       setMessage(
         stopped ? "Sistema reativado." : "Kill-switch global ativado.",
       );
-    } else setMessage("Não foi possível alterar o kill-switch.");
+    } else throw new Error("Não foi possível alterar o kill-switch.");
     setConfirming(false);
   }
   return (
@@ -119,7 +119,7 @@ export function SystemHealthClient({
             </button>
             {confirming && (
               <ConfirmDestructiveDialog
-                onConfirm={() => void toggleKillSwitch()}
+                onConfirm={toggleKillSwitch}
               />
             )}
           </>

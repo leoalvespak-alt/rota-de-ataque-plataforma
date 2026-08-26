@@ -11,11 +11,7 @@ const Subtype = z.enum(['feed', 'reels', 'stories', 'carousel', 'threads', 'stat
 
 const ContentStructure = z.object({
   roteiro: z.string().max(10000).optional(),
-  slides: z.array(z.object({
-    ordem: z.number().int().min(1),
-    titulo: z.string().max(200),
-    texto: z.string().max(2000),
-  })).max(20).optional(),
+  slides: z.array(z.object({ ordem: z.number().int().min(1), titulo: z.string().max(200), texto: z.string().max(2000) })).max(20).optional(),
   legenda_longa: z.string().max(5000).optional(),
   observacoes: z.string().max(2000).optional(),
 }).nullable().optional()
@@ -48,11 +44,29 @@ const transitions: Record<string, string[]> = {
   failed: ['scheduled', 'draft'],
 }
 
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function copyData(input: z.infer<typeof PublicationInput>, previous?: unknown) {
+  const value = { ...asObject(previous) }
+  if (input.content_structure !== undefined) {
+    for (const [key, item] of Object.entries(input.content_structure ?? {})) value[key] = item
+  }
+  if (input.hashtags !== undefined) value.hashtags = input.hashtags ?? []
+  if (input.pillar !== undefined) value.pillar = input.pillar
+  return JSON.stringify(value)
+}
+
+async function readCompatibility(client: { query<T>(sql: string, values?: unknown[]): Promise<{ rows: T[] }> }, id: string) {
+  return (await client.query(`SELECT * FROM scheduled_publications_compat WHERE id=$1`, [id])).rows[0]
+}
+
 export async function POST(request: Request) {
   try {
     const user = await requireRole('operator')
     const parsed = PublicationInput.safeParse(await request.json().catch(() => null))
-    if (!parsed.success || parsed.data.id) return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+    if (!parsed.success || parsed.data.id) return NextResponse.json({ error: 'invalid_request', traceId: crypto.randomUUID() }, { status: 400 })
     const { pool } = createDatabase(process.env.DATABASE_URL!)
     const client = await pool.connect()
     try {
@@ -61,26 +75,26 @@ export async function POST(request: Request) {
       const { selected } = await getCampaignContext(client)
       if (!selected) {
         await client.query('ROLLBACK')
-        return NextResponse.json({ error: 'campaign_not_found' }, { status: 409 })
+        return NextResponse.json({ error: 'campaign_not_found', traceId: crypto.randomUUID() }, { status: 409 })
       }
       const input = parsed.data
-      const item = (await client.query(
+      const created = (await client.query<{ id: string }>(
         `INSERT INTO unified_creatives(
-          batch_id,title,caption,channel,format,status,scheduled_for,origin,
-          thesis_id,cta,copy_data,curation_status,approved_by
-        ) VALUES($1,$2,$3,$4,$5,$6,$7,'prospector',
-        $8,$9,$10::jsonb,'approved',$11)
-        RETURNING *,id AS external_id`,
-        [selected.id, input.title ?? null, input.caption ?? null, input.channel ?? 'instagram', input.subtype ?? 'post',
-          input.status ?? 'idea', input.scheduled_for ?? null, input.thesis_id ?? null, input.cta ?? null,
-          input.content_structure ? JSON.stringify(input.content_structure) : '{}', user.email ?? 'operator'],
-      )).rows[0]
+          campaign_id,title,caption,channel,format,status,scheduled_for,origin,
+          thesis_id,cta,copy_data,curation_status,approved_by,external_id
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,'approved',$12,$13)
+        RETURNING id`,
+        [selected.id, input.title ?? null, input.caption ?? null, input.channel ?? 'instagram', input.format ?? input.subtype ?? 'feed',
+          input.status ?? 'idea', input.scheduled_for ?? null, input.origin ?? 'manual', input.thesis_id ?? null, input.cta ?? null,
+          copyData(input), user.email ?? 'operator', input.external_id ?? null],
+      )).rows[0]!
+      const item = await readCompatibility(client, created.id)
       await client.query(
         `INSERT INTO audit_log(actor_id,action,target,after) VALUES($1,'publication.manual_created',$2,$3::jsonb)`,
-        [user.email ?? 'operator', item.id, JSON.stringify(item)],
+        [user.email ?? 'operator', created.id, JSON.stringify(item)],
       )
       await client.query('COMMIT')
-      return NextResponse.json({ item }, { status: 201 })
+      return NextResponse.json({ item, traceId: crypto.randomUUID() }, { status: 201 })
     } catch (error) {
       await client.query('ROLLBACK')
       throw error
@@ -96,44 +110,41 @@ export async function PATCH(request: Request) {
   try {
     const user = await requireRole('operator')
     const parsed = PublicationInput.safeParse(await request.json().catch(() => null))
-    if (!parsed.success || !parsed.data.id) return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+    if (!parsed.success || !parsed.data.id) return NextResponse.json({ error: 'invalid_request', traceId: crypto.randomUUID() }, { status: 400 })
     const { pool } = createDatabase(process.env.DATABASE_URL!)
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
       await client.query("SET LOCAL app.actor_type = 'human'")
-      const before = (await client.query<Record<string, unknown>>(
-        `SELECT * FROM unified_creatives WHERE id=$1 FOR UPDATE`, [parsed.data.id],
-      )).rows[0]
+      const before = (await client.query<Record<string, unknown>>(`SELECT * FROM unified_creatives WHERE id=$1 FOR UPDATE`, [parsed.data.id])).rows[0]
       if (!before) {
         await client.query('ROLLBACK')
-        return NextResponse.json({ error: 'not_found' }, { status: 404 })
+        return NextResponse.json({ error: 'not_found', traceId: crypto.randomUUID() }, { status: 404 })
       }
       const input = parsed.data
       const previousStatus = String(before.status)
       const nextStatus = input.status ?? previousStatus
       if (nextStatus !== previousStatus && !(transitions[previousStatus] ?? []).includes(nextStatus)) {
         await client.query('ROLLBACK')
-        return NextResponse.json({ error: 'invalid_state' }, { status: 409 })
+        return NextResponse.json({ error: 'invalid_state', traceId: crypto.randomUUID() }, { status: 409 })
       }
-      const value = <T,>(key: string, supplied: T | undefined) => supplied === undefined ? before[key] : supplied
-      const csRaw = input.content_structure !== undefined ? input.content_structure : before.copy_data
-      const item = (await client.query(
+      const value = <T,>(key: string, supplied: T | undefined) => supplied === undefined ? before[key] as T : supplied
+      const item = (await client.query<{ id: string }>(
         `UPDATE unified_creatives SET
           title=$2,caption=$3,channel=$4,format=$5,status=$6,scheduled_for=$7,
-          thesis_id=$8,cta=$9,copy_data=$10::jsonb
-         WHERE id=$1 RETURNING *,id AS external_id`,
+          thesis_id=$8,cta=$9,copy_data=$10::jsonb,locked_at=$11,external_id=$12
+         WHERE id=$1 RETURNING id`,
         [input.id, value('title', input.title), value('caption', input.caption), value('channel', input.channel),
-          value('format', input.subtype ?? before.format), nextStatus, value('scheduled_for', input.scheduled_for),
-          value('thesis_id', input.thesis_id), value('cta', input.cta),
-          csRaw ? JSON.stringify(csRaw) : '{}'],
-      )).rows[0]
+          input.format ?? input.subtype ?? value('format', undefined), nextStatus, value('scheduled_for', input.scheduled_for),
+          value('thesis_id', input.thesis_id), value('cta', input.cta), copyData(input, before.copy_data), value('locked_at', input.locked_at), value('external_id', input.external_id)],
+      )).rows[0]!
+      const updated = await readCompatibility(client, item.id)
       await client.query(
         `INSERT INTO audit_log(actor_id,action,target,before,after) VALUES($1,'publication.manual_updated',$2,$3::jsonb,$4::jsonb)`,
-        [user.email ?? 'operator', item.id, JSON.stringify(before), JSON.stringify(item)],
+        [user.email ?? 'operator', item.id, JSON.stringify(before), JSON.stringify(updated)],
       )
       await client.query('COMMIT')
-      return NextResponse.json({ item })
+      return NextResponse.json({ item: updated, traceId: crypto.randomUUID() })
     } catch (error) {
       await client.query('ROLLBACK')
       throw error

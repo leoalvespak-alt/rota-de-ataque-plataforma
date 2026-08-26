@@ -163,7 +163,7 @@ export function MotoresTab({ initialEngines }: { initialEngines?: EngineState[] 
   })
   if (pageState === 'loading') return <section aria-busy="true" style={{ padding: 40 }}>Carregando motores…</section>
   if (pageState === 'forbidden') return <EmptyState message="Seu papel não permite visualizar as automações." />
-  if (pageState === 'error') return <ErrorState traceId={error?.traceId ?? 'trace_indisponivel'} runbook={appPath('/docs/runbooks/automations')} onRetry={() => void fetchEngines()} />
+  if (pageState === 'error') return <ErrorState traceId={error?.traceId ?? 'trace_indisponivel'} runbook="/docs/runbooks/automations" onRetry={() => void fetchEngines()} />
   if (pageState === 'empty') return <EmptyState message="Nenhum motor de automação foi encontrado." />
 
   return <div style={{ display: 'grid', gap: 24, paddingTop: 16 }}>

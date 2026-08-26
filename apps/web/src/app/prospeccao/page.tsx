@@ -7,5 +7,5 @@ export default async function ProspectingPage({ searchParams }: { searchParams: 
   const tab = typeof (await searchParams).aba === 'string' ? (await searchParams).aba as string : 'leads'
   const props = { searchParams: searchParams as never }
   const content = tab === 'timeline' ? <TimelineView {...props} /> : tab === 'identidades' ? <IdentitiesView /> : <LeadsView {...props} />
-  return <RouteTabs destinationId="relationship" activeTab={tab}>{content}</RouteTabs>
+  return <RouteTabs destinationId="audience" activeTab={tab}>{content}</RouteTabs>
 }

@@ -3,11 +3,14 @@ export type NavigationTab = {
   label_pt: string
   href: string
   legacyPath?: string
+  legacyPaths?: readonly string[]
   temporal?: boolean
 }
 
+export type NavigationDestinationId = 'pulse' | 'intelligence' | 'decisions' | 'planning' | 'audience' | 'performance' | 'system'
+
 export type NavigationDestination = {
-  id: string
+  id: NavigationDestinationId
   title: string
   href: string
   icon: 'home' | 'intelligence' | 'decisions' | 'content' | 'relationship' | 'performance' | 'automations'
@@ -32,7 +35,7 @@ export const NAVIGATION = [
     { id: 'engajamento', label_pt: 'Engajamento', href: '/decisoes/engajamento', legacyPath: '/engagement-queue' },
   ] },
   { id: 'planning', title: 'Planejamento', href: '/planejamento', icon: 'content', tabs: [
-    { id: 'funil', label_pt: 'Funil', href: '/planejamento/funil', temporal: true },
+    { id: 'funil', label_pt: 'Funil', href: '/planejamento/funil', legacyPath: '/conteudo', temporal: true },
     { id: 'oportunidades', label_pt: 'Oportunidades', href: '/planejamento/oportunidades', legacyPath: '/content-opportunity' },
     { id: 'conteudos', label_pt: 'Conteúdos', href: '/planejamento/conteudos', legacyPath: '/content-items' },
     { id: 'teses', label_pt: 'Teses', href: '/planejamento/teses', legacyPath: '/theses' },
@@ -44,7 +47,7 @@ export const NAVIGATION = [
   { id: 'audience', title: 'Público', href: '/publico', icon: 'relationship', tabs: [
     { id: 'leads', label_pt: 'Pessoas', href: '/publico/pessoas', legacyPath: '/leads' },
     { id: 'segmentos', label_pt: 'Segmentos', href: '/publico/segmentos' },
-    { id: 'conversas', label_pt: 'Conversas', href: '/publico/conversas', legacyPath: '/conversations' },
+    { id: 'conversas', label_pt: 'Conversas', href: '/publico/conversas', legacyPaths: ['/conversations', '/relacionamento'] },
     { id: 'timeline', label_pt: 'Timeline', href: '/publico/timeline', legacyPath: '/timeline', temporal: true },
     { id: 'identidades', label_pt: 'Identidades', href: '/publico/identidades', legacyPath: '/identities' },
     { id: 'canais', label_pt: 'Canais', href: '/publico/canais', legacyPath: '/communities' },
@@ -54,11 +57,11 @@ export const NAVIGATION = [
   { id: 'performance', title: 'Performance', href: '/performance', icon: 'performance', tabs: [
     { id: 'roi', label_pt: 'Atribuição', href: '/performance/roi', legacyPath: '/source-roi', temporal: true },
     { id: 'orcamento', label_pt: 'Orçamento', href: '/performance/orcamento', legacyPath: '/organic-budgets', temporal: true },
-    { id: 'conteudo', label_pt: 'Conteúdo', href: '/performance/conteudo', temporal: true },
+    { id: 'conteudo', label_pt: 'Conteúdo', href: '/performance/conteudo', legacyPath: '/desempenho', temporal: true },
   ] },
   { id: 'system', title: 'Sistema', href: '/sistema', icon: 'automations', tabs: [
     { id: 'motores', label_pt: 'Motores', href: '/sistema/motores', legacyPath: '/automations' },
-    { id: 'contas', label_pt: 'Integrações', href: '/sistema/integracoes', legacyPath: '/accounts' },
+    { id: 'contas', label_pt: 'Integrações', href: '/sistema/integracoes', legacyPaths: ['/accounts', '/configuracoes'] },
     { id: 'saude', label_pt: 'Saúde', href: '/sistema/saude', legacyPath: '/system-health' },
     { id: 'notificacoes', label_pt: 'Incidentes', href: '/sistema/incidentes', legacyPath: '/notifications' },
     { id: 'ia', label_pt: 'IA', href: '/sistema/avancado/ia', legacyPath: '/ai-settings' },
@@ -76,8 +79,13 @@ export function navigationHref(destination: Pick<NavigationDestination, 'href'>,
 
 export const LEGACY_REDIRECTS = Object.fromEntries(
   NAVIGATION.flatMap((destination) => destination.tabs
-    .filter((tab) => 'legacyPath' in tab && tab.legacyPath)
-    .map((tab) => [('legacyPath' in tab ? tab.legacyPath : undefined)!, `${destination.href}?aba=${tab.id}`])),
+    .flatMap((tab) => {
+      const paths = [
+        ...(('legacyPath' in tab && tab.legacyPath) ? [tab.legacyPath] : []),
+        ...(('legacyPaths' in tab && tab.legacyPaths) ? tab.legacyPaths : []),
+      ]
+      return paths.map((legacyPath) => [legacyPath, `${destination.href}?aba=${tab.id}`] as const)
+    })),
 ) as Record<string, string>
 
 export function isTemporalDestination(pathname: string, tabId: string | null) {

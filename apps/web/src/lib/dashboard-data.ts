@@ -5,6 +5,16 @@ import { getCampaignContext } from './campaign-context'
 export const DashboardViewSchema = z.enum(['overview', 'radar', 'competitive-intel', 'content-opportunity', 'community', 'conversations', 'timeline', 'identities', 'email-flows', 'contact-policies', 'source-roi', 'configs'])
 export type DashboardView = z.infer<typeof DashboardViewSchema>
 
+export const conversationsQuery = `SELECT * FROM (
+              SELECT thread.id,'instagram' channel,account.username account,thread.participant_username participant,thread.unread_count,thread.last_message_at,state.current_stage stage,state.detected_intent,state.requires_human_review,NULL::timestamptz session_window_expires_at,NULL::jsonb optin_evidence
+              FROM own_dm_threads thread JOIN accounts account ON account.id=thread.account_id LEFT JOIN conversation_state state ON state.thread_id=thread.id
+              WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM leads lead JOIN lead_scores score ON score.lead_id=lead.id WHERE score.campaign_id=$1 AND lead.username_current=thread.participant_username)
+              UNION ALL
+              SELECT conversation.id,'whatsapp' channel,NULL account,identity.external_handle participant,0 unread_count,COALESCE(conversation.last_inbound_at,conversation.last_outbound_at) last_message_at,conversation.stage,NULL detected_intent,conversation.requires_human_review,conversation.session_window_expires_at,optin.evidence optin_evidence
+              FROM whatsapp_conversations conversation LEFT JOIN whatsapp_optins optin ON optin.id=conversation.optin_id LEFT JOIN identities identity ON identity.lead_id=conversation.lead_id AND identity.channel='whatsapp'
+              WHERE conversation.stage <> 'cooled' AND ($1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.lead_id=conversation.lead_id AND score.campaign_id=$1))
+              ) conversations ORDER BY last_message_at DESC NULLS LAST LIMIT 200`
+
 const queries: Record<DashboardView, string> = {
   overview: `SELECT campaign_id,name,leads,conversions,completed_actions,recommendations FROM mv_campaign_performance WHERE ($1::uuid IS NULL OR campaign_id=$1) ORDER BY name`,
   radar: `SELECT radar.post_id id,radar.opportunity_score,radar.velocity,radar.new_leads,radar.avg_intent,post.post_url,competitor.username competitor
@@ -29,15 +39,7 @@ const queries: Record<DashboardView, string> = {
               LEFT JOIN lead_scores score ON score.lead_id=membership.lead_id AND ($1::uuid IS NULL OR score.campaign_id=$1)
               GROUP BY community.id HAVING $1::uuid IS NULL OR count(score.lead_id)>0
               ORDER BY community.cohesion_score DESC NULLS LAST LIMIT 200`,
-  conversations: `SELECT * FROM (
-              SELECT thread.id,'instagram' channel,account.username account,thread.participant_username participant,thread.unread_count,thread.last_message_at,state.current_stage stage,state.detected_intent,state.requires_human_review,NULL::timestamptz session_window_expires_at,NULL::jsonb optin_evidence
-              FROM own_dm_threads thread JOIN accounts account ON account.id=thread.account_id LEFT JOIN conversation_state state ON state.thread_id=thread.id
-              WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM leads lead JOIN lead_scores score ON score.lead_id=lead.id WHERE score.campaign_id=$1 AND lead.username_current=thread.participant_username)
-              UNION ALL
-              SELECT conversation.id,'whatsapp' channel,NULL account,identity.external_handle participant,0 unread_count,COALESCE(conversation.last_inbound_at,conversation.last_outbound_at) last_message_at,conversation.stage,NULL detected_intent,conversation.requires_human_review,conversation.session_window_expires_at,optin.evidence optin_evidence
-              FROM whatsapp_conversations conversation LEFT JOIN whatsapp_optins optin ON optin.id=conversation.optin_id LEFT JOIN identities identity ON identity.lead_id=conversation.lead_id AND identity.channel='whatsapp'
-              WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.lead_id=conversation.lead_id AND score.campaign_id=$1)
-              ) conversations ORDER BY last_message_at DESC NULLS LAST LIMIT 200`,
+  conversations: conversationsQuery,
   timeline: `SELECT event.id,lead.username_current lead,event.channel,event.event_type,event.at,event.source,event.metadata,event.external_ref
              FROM timeline_events event LEFT JOIN leads lead ON lead.id=event.lead_id
              WHERE ($1::uuid IS NULL OR event.campaign_id=$1) ORDER BY event.at DESC LIMIT 300`,

@@ -3,7 +3,8 @@ import { createDatabase } from '@plataforma/db'
 import { z } from 'zod'
 import { requireRole } from '@/lib/permissions'
 
-const Body = z.object({ scope: z.enum(['global', 'provider', 'campaign']), scopeId: z.string().min(1).max(100), period: z.enum(['daily', 'monthly']), limitUsd: z.number().min(0).max(100000) }).strict()
+const Body = z.object({ scope: z.enum(['global', 'provider', 'campaign']), scopeId: z.string().min(1).max(100), period: z.enum(['daily', 'monthly']), limitUsd: z.number().finite().min(0).max(100000) }).strict()
+const PROVIDERS = new Set(['exa', 'apify', 'bright-data'])
 export async function GET() {
   await requireRole('viewer')
   const { pool } = createDatabase(process.env.DATABASE_URL!)
@@ -15,7 +16,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   const user = await requireRole('admin')
   const parsed = Body.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'invalid_budget' }, { status: 400 })
+  if (!parsed.success || (parsed.data.scope === 'provider' && !PROVIDERS.has(parsed.data.scopeId))) return NextResponse.json({ error: 'invalid_budget', traceId: crypto.randomUUID() }, { status: 400 })
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {
     const periodStart = parsed.data.period === 'daily' ? 'current_date' : "date_trunc('month',now())"

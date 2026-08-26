@@ -11,7 +11,7 @@ export default async function OrganicBudgetsPage() {
   const { pool } = createDatabase(process.env.DATABASE_URL!)
   try {
     const budgets = (await pool.query(
-      `SELECT scope, scope_id, period, limit_usd, spent_usd, period_started_at
+      `SELECT scope, scope_id, period, limit_usd, spent_usd, reserved_usd, hard_limit, period_started_at
        FROM organic_budgets
        WHERE scope = 'provider' AND period_started_at IN (current_date, date_trunc('month', now()))
        ORDER BY scope_id, period`,

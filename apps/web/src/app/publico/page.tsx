@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { permanentRedirect } from 'next/navigation'
 import { createDatabase } from '@plataforma/db'
 import { ModulePage } from '@/components/ModulePage'
+import { getCampaignContext } from '@/lib/campaign-context'
+import { conversationsQuery } from '@/lib/dashboard-data'
 
 export default async function AudiencePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams
@@ -9,10 +11,11 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
   const legacyTabs: Record<string, string> = { leads: '/publico/pessoas', segmentos: '/publico/segmentos', conversas: '/publico/conversas', timeline: '/publico/timeline', identidades: '/publico/identidades', grupos: '/publico/canais', canais: '/publico/canais', politicas: '/publico/politicas', email: '/publico/email' }
   if (tab && legacyTabs[tab]) permanentRedirect(legacyTabs[tab])
   const { pool } = createDatabase(process.env.DATABASE_URL!)
+  const { selected } = await getCampaignContext(pool)
   const counts = (await pool.query<{ people: number; segments: number; conversations: number; pending: number }>(`SELECT
-    (SELECT count(*)::int FROM leads WHERE merged_into IS NULL) people,
-    (SELECT count(*)::int FROM communities) segments,
-    (SELECT count(*)::int FROM conversations WHERE status NOT IN ('closed','archived')) conversations,
-    (SELECT count(*)::int FROM engagement_actions WHERE status IN ('pending','awaiting_approval')) pending`)).rows[0] ?? { people: 0, segments: 0, conversations: 0, pending: 0 }
+    (SELECT count(*)::int FROM leads lead WHERE lead.merged_into IS NULL AND ($1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.lead_id=lead.id AND score.campaign_id=$1))) people,
+    (SELECT count(DISTINCT community.id)::int FROM communities community LEFT JOIN lead_community_membership membership ON membership.community_id=community.id WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM lead_scores score WHERE score.lead_id=membership.lead_id AND score.campaign_id=$1)) segments,
+    (SELECT count(*)::int FROM (${conversationsQuery.replace(/ORDER BY[\s\S]*$/u, '')}) audience_conversations) conversations,
+    (SELECT count(*)::int FROM engagement_actions action WHERE action.status IN ('pending','awaiting_approval') AND ($1::uuid IS NULL OR action.campaign_id=$1)) pending`, [selected?.id ?? null])).rows[0] ?? { people: 0, segments: 0, conversations: 0, pending: 0 }
   return <ModulePage eyebrow="Pessoas e relacionamento" title="Público" subtitle="Pessoas, segmentos, identidades e conversas no contexto das políticas do canal." metrics={[{ label: 'Pessoas qualificadas', value: counts.people, period: 'identidades não mescladas', sourceStatus: 'ready', href: '/publico/pessoas' }, { label: 'Segmentos', value: counts.segments, period: 'comunidades cadastradas', sourceStatus: 'ready', href: '/publico/segmentos' }, { label: 'Conversas', value: counts.conversations, period: 'não encerradas', sourceStatus: 'ready', href: '/publico/conversas' }, { label: 'Atenção', value: counts.pending, period: 'ações pendentes', sourceStatus: 'ready', href: '/decisoes/engajamento' }]} navigation={[{ label: 'Visão geral', href: '/publico' }, { label: 'Pessoas', href: '/publico/pessoas' }, { label: 'Segmentos', href: '/publico/segmentos' }, { label: 'Conversas', href: '/publico/conversas' }, { label: 'Timeline', href: '/publico/timeline' }, { label: 'Políticas', href: '/publico/politicas' }]} main={<><header className="module-panel-header"><div><p className="module-eyebrow">Entidade central</p><h2>Pessoas e segmentos</h2></div><Link href="/publico/pessoas">Abrir pessoas →</Link></header><div className="module-list"><Link href="/publico/pessoas"><strong>Pessoas</strong><span>Prioridade, intenção, origem, freshness e próxima ação.</span></Link><Link href="/publico/segmentos"><strong>Segmentos e comunidades</strong><span>Clusters de audiência com origem e política explícitas.</span></Link><Link href="/publico/conversas"><strong>Conversas</strong><span>Master-detail com opt-in, janela do canal e próximo passo.</span></Link><Link href="/publico/timeline"><strong>Timeline</strong><span>Interações e eventos de relacionamento em ordem temporal.</span></Link></div></>} rail={<><section><p className="module-eyebrow">Política</p><h2>Contato elegível</h2><p>Opt-in, opt-out, janela e regra do canal aparecem antes de qualquer CTA.</p></section><section><p className="module-eyebrow">Identidade</p><h2>Privacidade</h2><p><Link href="/publico/identidades">Ver candidatos de identidade</Link></p><p><Link href="/publico/politicas">Ver políticas de contato</Link></p></section></>} />
 }

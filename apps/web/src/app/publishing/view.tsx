@@ -7,14 +7,11 @@ export default async function PublishingPage({ section = 'calendario' }: { secti
   try {
     const { selected } = await getCampaignContext(pool)
     const publications = (await pool.query(
-      `SELECT scheduled.id,COALESCE(scheduled.title,item.hook,opportunity.thesis) title,scheduled.caption,scheduled.scheduled_for,scheduled.status,scheduled.channel,
+      `SELECT scheduled.id,COALESCE(scheduled.title,scheduled.caption) title,scheduled.caption,scheduled.scheduled_for,scheduled.status,scheduled.channel,
         scheduled.origin,scheduled.locked_at,scheduled.subtype,scheduled.hashtags,scheduled.cta,scheduled.thesis_id,scheduled.pillar,scheduled.format,
-        scheduled.content_structure,scheduled.ig_media_id external_id
-       FROM scheduled_publications scheduled
-       LEFT JOIN content_opportunities opportunity ON opportunity.id=scheduled.content_opportunity_id
-       LEFT JOIN content_variants variant ON variant.id=scheduled.variant_id
-       LEFT JOIN content_items item ON item.id=variant.content_item_id
-       WHERE ($1::uuid IS NULL OR COALESCE(scheduled.campaign_id,opportunity.campaign_id)=$1)
+        scheduled.content_structure,scheduled.external_id
+       FROM scheduled_publications_compat scheduled
+       WHERE ($1::uuid IS NULL OR scheduled.campaign_id=$1)
        ORDER BY scheduled.scheduled_for DESC NULLS LAST LIMIT 500`, [selected?.id ?? null],
     )).rows
 

@@ -74,6 +74,8 @@ export const API_ROUTE_MANIFEST = [
   { path: '/api/meta/oauth/start', auth: 'session', methods: ['GET'] as const },
   { path: '/api/meta/webhook', auth: 'public', methods: ['GET', 'POST'] as const },
   { path: '/api/metrics', auth: 'session', methods: ['GET'] as const },
+  { path: '/api/performance/content/export', auth: 'session', methods: ['GET'] as const },
+  { path: '/api/performance/source-roi/export', auth: 'session', methods: ['GET'] as const },
   { path: '/api/reddit/watches', auth: 'session', methods: ['GET', 'POST'] as const },
   { path: '/api/review-inbox/:id/:action', auth: 'session', methods: ['POST'] as const },
   { path: '/api/theses', auth: 'session', methods: ['GET', 'POST', 'PATCH'] as const },

@@ -216,3 +216,19 @@ describe('manual organic growth baseline migration', () => {
     expect(down).not.toMatch(/INSERT INTO/u)
   })
 })
+
+describe('publication compatibility migration', () => {
+  it('keeps unified_creatives as the write source and exposes a complete read projection', async () => {
+    const up = await migration('0039_publication_compatibility.up.sql')
+    const down = await migration('0039_publication_compatibility.down.sql')
+
+    expect(up).toMatch(/ALTER TABLE unified_creatives[\s\S]*source_suggestion_id[\s\S]*external_id/u)
+    expect(up).toMatch(/promoted_creative_id/u)
+    expect(up).toMatch(/DROP VIEW IF EXISTS scheduled_publications_compat/u)
+    expect(up).toMatch(/CREATE VIEW scheduled_publications_compat/u)
+    expect(up).toMatch(/COALESCE\(external_id, id::text\)/u)
+    expect(up).toMatch(/Writes belong to unified_creatives/u)
+    expect(down).toMatch(/DROP COLUMN IF EXISTS external_id/u)
+    expect(down).toMatch(/DROP COLUMN IF EXISTS promoted_creative_id/u)
+  })
+})

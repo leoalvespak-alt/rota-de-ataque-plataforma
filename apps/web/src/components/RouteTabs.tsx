@@ -2,9 +2,9 @@
 
 import Link from 'next/link'
 import { useRef, type ReactNode } from 'react'
-import { NAVIGATION, navigationHref } from '@/lib/navigation'
+import { NAVIGATION, navigationHref, type NavigationDestination } from '@/lib/navigation'
 
-export function RouteTabs({ destinationId, activeTab, children }: { destinationId: string; activeTab: string; children: ReactNode }) {
+export function RouteTabs({ destinationId, activeTab, children }: { destinationId: NavigationDestination['id']; activeTab: string; children: ReactNode }) {
   const destination = NAVIGATION.find((item) => item.id === destinationId)
   const refs = useRef<Array<HTMLAnchorElement | null>>([])
   if (!destination) throw new Error(`Destino de navegação desconhecido: ${destinationId}`)

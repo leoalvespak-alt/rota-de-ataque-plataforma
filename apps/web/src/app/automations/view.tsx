@@ -1,7 +1,7 @@
 import { createDatabase } from '@plataforma/db'
 import { createQueueRegistry } from '@plataforma/queue'
 import { AutomationsTabs } from './AutomationsTabs'
-import SettingsPage from '../configuracoes/page'
+import SettingsPage from '../configuracoes/SettingsPage'
 
 export default async function AutomationsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams

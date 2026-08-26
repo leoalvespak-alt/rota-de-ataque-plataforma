@@ -15,12 +15,12 @@ export async function POST(request: Request) {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    const pub = (await client.query<{ id: string; status: string }>(`SELECT id,status FROM scheduled_publications WHERE id=$1 FOR UPDATE`, [parsed.data.publicationId])).rows[0]
+    const pub = (await client.query<{ id: string; status: string }>(`SELECT id,status FROM unified_creatives WHERE id=$1 FOR UPDATE`, [parsed.data.publicationId])).rows[0]
     if (!pub) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'not_found', traceId: crypto.randomUUID() }, { status: 404 }) }
     if (pub.status === 'published') { await client.query('ROLLBACK'); return conflictResponse('already_published') }
     if (!isManualConfirmationAllowed(pub.status)) { await client.query('ROLLBACK'); return conflictResponse('invalid_state') }
 
-    await client.query(`UPDATE scheduled_publications SET status='published',published_at=now(),ig_media_id=$2,error=NULL WHERE id=$1`, [parsed.data.publicationId, parsed.data.externalId])
+    await client.query(`UPDATE unified_creatives SET status='published',published_at=now(),external_id=$2,error=NULL WHERE id=$1`, [parsed.data.publicationId, parsed.data.externalId])
     await client.query(`INSERT INTO audit_log(actor_id,action,target,after) VALUES($1,'publication.confirmed_manual',$2,$3::jsonb)`, [user.email ?? 'unknown', parsed.data.publicationId, JSON.stringify({ externalId: parsed.data.externalId, confirmedAt: new Date().toISOString() })])
     await client.query('COMMIT')
     return NextResponse.json({ confirmed: true })

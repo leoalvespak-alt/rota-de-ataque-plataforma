@@ -5,7 +5,7 @@ import { toast } from '@plataforma/ui-bridge'
 import { useState } from 'react'
 import { appPath } from '@/lib/base-path'
 
-interface Budget { scope: string; scope_id: string; period: string; limit_usd: number; spent_usd: number; period_started_at: string }
+interface Budget { scope: string; scope_id: string; period: string; limit_usd: number; spent_usd: number; reserved_usd: number; hard_limit: boolean; period_started_at: string }
 interface Spend { provider: string; total_usd: number; call_count: number }
 interface ProviderInfo {
   id: string; name: string; envEnabled: string; envKey: string
@@ -103,9 +103,10 @@ export function OrganicBudgetsClient({ providers }: { providers: ProviderInfo[] 
                       ) : budget ? (
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                            <span>${Number(budget.spent_usd).toFixed(2)}</span>
-                            <span style={{ color: 'var(--text-secondary)' }}>${Number(budget.limit_usd).toFixed(2)}</span>
+                            <span>Consumido ${Number(budget.spent_usd).toFixed(2)} · reservado ${Number(budget.reserved_usd ?? 0).toFixed(2)}</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>Teto ${Number(budget.limit_usd).toFixed(2)}</span>
                           </div>
+                          <small>Restante ${Math.max(0, Number(budget.limit_usd) - Number(budget.spent_usd) - Number(budget.reserved_usd ?? 0)).toFixed(2)} · {budget.hard_limit ? 'bloqueio rígido' : 'alerta'}</small>
                           <div style={{ height: '6px', background: 'var(--surface-overlay)', borderRadius: '3px', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${Math.min(100, pct)}%`, background: pct > 90 ? 'var(--status-error)' : pct > 70 ? 'var(--status-warning)' : 'var(--status-success)', borderRadius: '3px', transition: 'width 0.3s' }} />
                           </div>

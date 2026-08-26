@@ -26,10 +26,12 @@ describe('manual publication editor contract', () => {
     const route = source('app/api/admin/publications/route.ts')
 
     expect(client).toMatch(/appPath\(['"]\/api\/admin\/publications['"]\)/u)
-    expect(page).toMatch(/COALESCE\(scheduled\.title,item\.hook,opportunity\.thesis\)/u)
-    expect(page).toMatch(/COALESCE\(scheduled\.campaign_id,opportunity\.campaign_id\)=\$1/u)
+    expect(page).toMatch(/COALESCE\(scheduled\.title,scheduled\.caption\)/u)
+    expect(page).toContain('FROM scheduled_publications_compat scheduled')
+    expect(page).toMatch(/scheduled\.campaign_id=\$1/u)
     expect(route).toMatch(/requireRole\(['"]operator['"]\)/u)
     expect(route).toMatch(/SET LOCAL app\.actor_type = 'human'/u)
+    expect(route).toContain('INSERT INTO unified_creatives')
   })
 
   it('opens Rota de Ataque as the initial campaign while preserving explicit selection', () => {

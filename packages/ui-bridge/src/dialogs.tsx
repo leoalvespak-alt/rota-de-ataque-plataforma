@@ -110,19 +110,21 @@ export function ConfirmDialog({
   description: ReactNode
   confirmText?: string
   cancelText?: string
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   variant?: 'primary' | 'danger'
 }) {
   const titleId = useId()
   const descriptionId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     if (!open) return undefined
     const previousFocus = document.activeElement as HTMLElement | null
     const focusable = 'button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
     const timer = window.setTimeout(() => dialogRef.current?.querySelector<HTMLElement>(focusable)?.focus(), 0)
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); onOpenChange(false); return }
+      if (event.key === 'Escape') { event.preventDefault(); if (!busy) onOpenChange(false); return }
       if (event.key !== 'Tab' || !dialogRef.current) return
       const elements = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(focusable))
       if (!elements.length) { event.preventDefault(); dialogRef.current.focus(); return }
@@ -133,14 +135,27 @@ export function ConfirmDialog({
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => { window.clearTimeout(timer); document.removeEventListener('keydown', handleKeyDown); previousFocus?.focus() }
-  }, [onOpenChange, open])
+  }, [busy, onOpenChange, open])
   if (!open) return null
+  const confirm = async () => {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onConfirm()
+      onOpenChange(false)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível concluir a ação.')
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
     <>
       <div
         className="bridge-alert-overlay"
         style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)' }}
-        onClick={() => onOpenChange(false)}
+        onClick={() => { if (!busy) onOpenChange(false) }}
         aria-hidden
       />
       <div
@@ -148,6 +163,7 @@ export function ConfirmDialog({
         aria-modal
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
+        aria-busy={busy}
         ref={dialogRef}
         tabIndex={-1}
         className="bridge-alert-content"
@@ -170,20 +186,26 @@ export function ConfirmDialog({
         </p>
         <div className="bridge-alert-actions" style={{ display: 'flex', gap: 'var(--space-2, 0.5rem)', justifyContent: 'flex-end' }}>
           <button
+            type="button"
             className="bridge-button"
             data-variant="secondary"
+            disabled={busy}
             onClick={() => onOpenChange(false)}
           >
             {cancelText}
           </button>
           <button
+            type="button"
             className="bridge-button"
             data-variant={variant}
-            onClick={() => { onConfirm(); onOpenChange(false) }}
+            disabled={busy}
+            aria-busy={busy}
+            onClick={() => void confirm()}
           >
-            {confirmText}
+            {busy ? 'Salvando…' : confirmText}
           </button>
         </div>
+        {error && <p role="alert" style={{ color: 'var(--status-error)', marginTop: 'var(--space-3, 0.75rem)' }}>{error}</p>}
       </div>
     </>
   )
