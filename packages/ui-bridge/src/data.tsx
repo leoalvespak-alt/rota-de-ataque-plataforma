@@ -1,5 +1,6 @@
 'use client'
 import React, { type ReactNode, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import {
   type ColumnDef,
   useTable,
@@ -62,7 +63,7 @@ export const KpiCard = ({
       )}
     </div>
     <strong className="bridge-kpi-value">
-      {drillDownHref ? <a href={drillDownHref}>{value}</a> : value}
+      {drillDownHref ? <Link href={drillDownHref}>{value}</Link> : value}
     </strong>
     {delta !== undefined && (
       <small className={`bridge-kpi-delta ${trend || (delta >= 0 ? 'up' : 'down')}`} aria-label={`Variação ${delta}%`}>

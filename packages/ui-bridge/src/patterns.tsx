@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import Link from 'next/link'
 
 export const FilterBar=({filters,onClear,onSelect}:{filters:string[];onClear?:()=>void;onSelect?:(filter:string)=>void})=><nav className="filter-bar" aria-label="Filtros ativos">{filters.map((filter)=>onSelect?<button type="button" key={filter} onClick={()=>onSelect(filter)}>{filter}</button>:<span className="filter-chip" key={filter}>{filter}</span>)}{filters.length>0&&onClear&&<button type="button" onClick={onClear}>Limpar filtros</button>}</nav>
 import { motion } from 'framer-motion'
@@ -15,10 +16,10 @@ export const PriorityChip=({priority}:{priority:'P0'|'P1'|'P2'|'P3'})=><span cla
 export const ConfidencePill=({value}:{value:number})=><span className="confidence" aria-label={`Confiança ${value}%`}>◉ {value}%</span>
 export const TimelineFeed=({events}:{events:Array<{id:string;kind:string;text:string;at:string;direction?:string;source?:string}>})=><ol className="timeline">{events.map((event)=><li key={event.id}><span>{event.direction==='inbound'?'←':event.direction==='outbound'?'→':'•'}</span><strong>{event.kind}</strong> {event.text}<small>{event.source} · {event.at}</small></li>)}</ol>
 export const SuggestedActionCard=({title,rationale,confidence,onApprove,onReview}:{title:ReactNode;rationale:string;confidence:number;onApprove?:()=>void;onReview?:()=>void})=><article className="card suggestion"><h3>{title}</h3><ConfidencePill value={confidence}/><details><summary>Por quê?</summary>{rationale}</details>{onApprove&&<button type="button" onClick={onApprove}>Aprovar ação</button>}{onReview&&<button type="button" onClick={onReview}>Mandar para Review Inbox</button>}</article>
-export const QuotaMeter=({used,limit}:{used:number;limit:number})=><div className="quota"><label>Usado {used}/{limit} · {Math.round(used/limit*100)}%</label><progress value={used} max={limit}/></div>
+export const QuotaMeter=({used,limit}:{used:number;limit:number})=><div className="quota"><label>{limit > 0 ? `Usado ${used}/${limit} · ${Math.round(used/limit*100)}%` : 'Limite não configurado'}</label>{limit > 0 ? <progress value={used} max={limit}/> : <span className="quota-unconfigured">Não medido</span>}</div>
 export const HealthDial=({value,state}:{value:number;state:string})=><div className="health" role="meter" aria-label={`Saúde: ${state}`} aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}><strong>{value}</strong><span>{state}</span></div>
-export const EmptyState=({message,action}:{message:string;action?:ReactNode})=><section className="state empty"><span aria-hidden>◇</span><p>{message}</p>{action}</section>
-export const ErrorState=({traceId,runbook,onRetry}:{traceId:string;runbook:string;onRetry?:()=>void})=><section className="state error"><strong>Não deu para carregar</strong><code>{traceId}</code><a href={runbook} target="_blank" rel="noreferrer">Runbook</a><button onClick={onRetry}>Tentar novamente</button></section>
+export const EmptyState=({message,action,title='Sem dados para exibir'}:{message:string;action?:ReactNode;title?:string})=><section className="state empty" role="status"><span className="state-mark" aria-hidden>◇</span><strong>{title}</strong><p>{message}</p>{action}</section>
+export const ErrorState=({traceId,runbook,onRetry,message='A fonte não respondeu. Verifique o contexto e tente novamente.',impact='O restante da tela permanece disponível.'}:{traceId:string;runbook:string;onRetry?:()=>void;message?:string;impact?:string})=><section className="state error" role="alert"><strong>Não deu para carregar</strong><p>{message}</p><small>{impact}</small><code>traceId: {traceId}</code><Link href={runbook} target="_blank" rel="noreferrer">Abrir runbook</Link>{onRetry && <button type="button" onClick={onRetry}>Tentar novamente</button>}</section>
 export function ConfirmDestructiveDialog({name,onConfirm}:{name?:string;onConfirm:()=>void}){const[ready,setReady]=useState(false);const[value,setValue]=useState('');useEffect(()=>{const timer=setTimeout(()=>setReady(true),3000);return()=>clearTimeout(timer)},[]);return <dialog open><h2>Confirmar ação destrutiva</h2><p>Esta ação pode afetar dados e não pode ser desfeita.</p>{name&&<input aria-label="Digite o nome para confirmar" value={value} onChange={(event)=>setValue(event.target.value)}/>}<button disabled={!ready||(name!==undefined&&value!==name)} onClick={onConfirm}>Confirmar</button></dialog>}
 export const AsyncBanner=({kind='partial',children}:{kind?:string;children:ReactNode})=><div className={`banner ${kind}`} role="status">{children}</div>
 import { Tooltip } from './feedback'
@@ -27,8 +28,8 @@ export const LiveBadge=({connected,lastUpdate,details}:{connected:boolean;lastUp
   const badge = <span className={`live ${connected?'connected':'reconnecting'}`} style={{ cursor: 'help' }}><i/>{connected?'Ao vivo':'Reconectando…'} · {lastUpdate}</span>;
   return <Tooltip content={details || (connected ? 'Conexão em tempo real estabelecida com sucesso.' : 'Tentando reconectar ao servidor...')}>{badge}</Tooltip>;
 }
-export const RunbookLink=({href,name}:{href:string;name:string})=><a className="runbook" href={href} target="_blank" rel="noreferrer">▣ {name}</a>
-export const RoleBadge=({role}:{role:'collector'|'actor'})=><span className={`role ${role}`}>{role==='collector'?'🕷 collector':'🎯 actor'}</span>
+export const RunbookLink=({href,name}:{href:string;name:string})=><Link className="runbook" href={href} target="_blank" rel="noreferrer">▣ {name}</Link>
+export const RoleBadge=({role}:{role:'collector'|'actor'})=><span className={`role ${role}`}>{role==='collector'?'Coleta':'Ação'}</span>
 export type MultichannelName = 'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group'|'reddit'
 export const ChannelBadge=({channel}:{channel:MultichannelName})=><span className={`channel-badge ${channel}`}>{channel.replace('_',' ')}</span>
 export const ContentItemCard=({title,status,channels=[]}:{title:string;status:string;channels?:MultichannelName[]})=><article className="card content-item-card"><small>{status}</small><h3>{title}</h3><div>{channels.map((channel)=><ChannelBadge key={channel} channel={channel}/>)}</div></article>

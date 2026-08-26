@@ -1,6 +1,6 @@
 'use client'
 
-import React, { type ReactNode, useState, useRef, useEffect, useCallback, createContext, useContext, useId } from 'react'
+import React, { type ReactNode, useState, useRef, useEffect, createContext, useContext, useId } from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 // Tooltip is the canonical wrapper exported from feedback.tsx
@@ -15,15 +15,35 @@ export function Drawer({
   onOpenChange,
   children,
   trigger,
+  label = 'Painel de detalhe',
 }: {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   children: ReactNode
   trigger?: ReactNode
+  label?: string
 }) {
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') onOpenChange?.(false)
-  }, [onOpenChange])
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    const focusable = 'button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    document.body.style.overflow = 'hidden'
+    const timer = window.setTimeout(() => dialogRef.current?.querySelector<HTMLElement>(focusable)?.focus(), 0)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onOpenChange?.(false); return }
+      if (event.key !== 'Tab' || !dialogRef.current) return
+      const elements = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(focusable))
+      if (!elements.length) { event.preventDefault(); dialogRef.current.focus(); return }
+      const first = elements[0]!
+      const last = elements[elements.length - 1]!
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => { window.clearTimeout(timer); document.removeEventListener('keydown', handleKeyDown); document.body.style.overflow = previousOverflow; previousFocus?.focus() }
+  }, [onOpenChange, open])
 
   return (
     <>
@@ -33,18 +53,21 @@ export function Drawer({
         </span>
       )}
       {open && (
-        <div
+        <button
+          type="button"
           className="bridge-drawer-overlay"
           style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.5)' }}
           onClick={() => onOpenChange?.(false)}
-          aria-hidden
+          aria-label="Fechar painel de detalhe"
         />
       )}
-      <div
+      {open && <div
         role="dialog"
-        aria-modal={open}
+        aria-modal="true"
+        aria-label={label}
         className="bridge-drawer-content"
-        onKeyDown={handleKeyDown}
+        ref={dialogRef}
+        tabIndex={-1}
         style={{
           position: 'fixed',
           top: 0, left: 0, height: '100vh',
@@ -61,11 +84,10 @@ export function Drawer({
           className="bridge-drawer-close"
           aria-label="Fechar"
           onClick={() => onOpenChange?.(false)}
-          style={{ position: 'absolute', top: 12, right: 12 }}
         >
           ×
         </button>
-      </div>
+      </div>}
     </>
   )
 }

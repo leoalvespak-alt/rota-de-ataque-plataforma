@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Bell, BrainCircuit, FileText, LayoutDashboard, ListChecks, Menu, Moon, PanelLeftClose, PanelLeftOpen, Settings, Sun, TrendingUp, Users, X } from 'lucide-react'
+import { useKBar } from 'kbar'
+import { Bell, BrainCircuit, FileText, LayoutDashboard, ListChecks, Menu, Moon, PanelLeftClose, PanelLeftOpen, Settings, Shield, Sun, TrendingUp, Users, X } from 'lucide-react'
 import { LiveBadge, Tooltip } from '@plataforma/ui-bridge'
 import { appPath, basePath } from '@/lib/base-path'
 import type { CampaignOption } from '@/lib/campaign-context'
@@ -57,6 +58,7 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { query: commandQuery } = useKBar()
   const current = relativePath(pathname)
   const session = useSession()
   const [switching, setSwitching] = useState(false)
@@ -88,9 +90,22 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
     if (!mobileOpen && mobileWasOpen.current) mobileTriggerRef.current?.focus()
     mobileWasOpen.current = mobileOpen
     if (!mobileOpen) return
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileOpen(false) }
+    const focusable = 'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setMobileOpen(false); return }
+      if (event.key !== 'Tab') return
+      const drawer = document.getElementById('prospector-mobile-drawer')
+      if (!drawer) return
+      const elements = Array.from(drawer.querySelectorAll<HTMLElement>(focusable))
+      if (!elements.length) return
+      const first = elements[0]!
+      const last = elements[elements.length - 1]!
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
     document.addEventListener('keydown', onKeyDown)
     document.body.style.overflow = 'hidden'
+    window.setTimeout(() => document.getElementById('prospector-mobile-drawer')?.querySelector<HTMLElement>(focusable)?.focus(), 0)
     return () => { document.removeEventListener('keydown', onKeyDown); document.body.style.overflow = '' }
   }, [mobileOpen])
 
@@ -153,10 +168,12 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
     <div className="sidebar-system"><NavContent current={current} collapsed={collapsed} systemOnly /></div>
   </>
 
-  return <div className={`shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
+  const openCommands = () => commandQuery.toggle()
+
+  return <div className={`shell ${collapsed ? 'sidebar-collapsed' : ''}`} data-sidebar-collapsed={collapsed}>
     <aside className="sidebar desktop-sidebar" aria-label="Menu lateral">
-      <div className="brand"><span aria-hidden>◆</span><span className="label">Rota de Ataque</span></div>
-      <div className="sidebar-search"><button type="button" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}><span aria-hidden>⌕</span><span className="label">Buscar</span><kbd>⌘K</kbd></button></div>
+      <div className="brand"><span aria-hidden><Shield size={16} /></span><span className="label">Rota de Ataque</span></div>
+      <div className="sidebar-search"><button type="button" onClick={openCommands}><span aria-hidden>⌕</span><span className="label">Buscar</span><kbd>⌘K</kbd></button></div>
       {sidebarNav}
       <div className="sidebar-footer">
         <ThemeToggle />
@@ -168,19 +185,19 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
     </aside>
 
     {mobileOpen && <button className="mobile-overlay" type="button" aria-label="Fechar menu" onClick={() => setMobileOpen(false)} />}
-    <aside className="sidebar mobile-drawer" hidden={!mobileOpen} aria-label="Menu móvel">
-      <div className="mobile-drawer-header"><div className="brand"><span aria-hidden>◆</span>Rota de Ataque</div><button type="button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={19} /></button></div>
+    <aside id="prospector-mobile-drawer" className="sidebar mobile-drawer" hidden={!mobileOpen} aria-hidden={!mobileOpen} aria-label="Menu móvel">
+      <div className="mobile-drawer-header"><div className="brand"><span aria-hidden><Shield size={16} /></span>Rota de Ataque</div><button type="button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={19} /></button></div>
       <div className="mobile-drawer-content">{sidebarNav}</div>
       <div className="sidebar-footer"><ThemeToggle />{account}</div>
     </aside>
 
     <div className="content">
       <header className="context-header">
-        <button ref={mobileTriggerRef} className="mobile-menu-btn" type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu" aria-expanded={mobileOpen}><Menu size={22} /></button>
+        <button ref={mobileTriggerRef} className="mobile-menu-btn" type="button" onClick={() => setMobileOpen(true)} aria-controls="prospector-mobile-drawer" aria-label="Abrir menu" aria-expanded={mobileOpen}><Menu size={22} /></button>
         <div className="context-campaign"><small>Campanha ativa</small><strong>{selected?.name ?? 'Nenhuma campanha ativa'}</strong></div>
         <div className="context-actions">
           {showPeriod && <select aria-label="Período de análise" value={period} onChange={(event) => changePeriod(event.target.value)}><option value="7d">7 dias</option><option value="30d">30 dias</option><option value="90d">90 dias</option></select>}
-          <button type="button" aria-label="Abrir comandos" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}>Buscar <kbd>⌘K</kbd></button>
+          <button type="button" aria-label="Abrir comandos" onClick={openCommands}>Buscar <kbd>⌘K</kbd></button>
           {session.role === 'admin' && <div className="notification-wrap"><button type="button" aria-label={`Notificações${notifCount > 0 ? ` — ${notifCount} não lidas` : ''}`} aria-haspopup="dialog" aria-expanded={notifOpen} onClick={() => setNotifOpen((value) => !value)}><Bell size={17} />{notifCount > 0 && <span className="notification-count" aria-hidden>{notifCount > 9 ? '9+' : notifCount}</span>}</button>{notifOpen && <div className="notification-popover" role="dialog" aria-label="Notificações recentes"><header><strong>Incidentes recentes</strong><button type="button" onClick={() => setNotifOpen(false)} aria-label="Fechar"><X size={15} /></button></header>{recentNotifs.length ? recentNotifs.map((notification) => <div key={notification.id}><p>{notification.message}</p><small>{new Date(notification.created_at).toLocaleString('pt-BR')}</small></div>) : <p>Nenhuma notificação.</p>}<Link href="/sistema/incidentes" onClick={() => setNotifOpen(false)}>Abrir incidentes →</Link></div>}</div>}
           <LiveBadge connected={health.connected} lastUpdate={health.text} />
         </div>

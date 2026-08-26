@@ -1,49 +1,152 @@
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --surface-canvas: #f5f5f0; --surface-card: #fff; --surface-subtle: #eaeae5; --surface-raised: #fff;
-  --bg-default: var(--surface-canvas); --border-default: #d4d4cf; --border-strong: #8a8a84;
-  --text-primary: #0a0a0a; --text-secondary: #3d3d3d; --text-tertiary: #6f6f69; --text-disabled: #8a8a84;
-  --accent-primary: #c1121f; --accent-secondary: #246bce;
-  --status-success: #18864b; --status-success-subtle: #dff7e8; --status-success-strong: #0d6235;
-  --status-warn: #a66300; --status-warning-subtle: #fff1d6; --status-error: #b42318; --status-info: #246bce;
-  --score-high: var(--status-error); --score-med: var(--status-warn); --score-low: var(--status-info);
-  --role-collector: #6857c8; --role-actor: #246bce; --radius: 4px;
-  --radius-sm: 10px; --radius-md: 14px; --radius-lg: 18px; --radius-xl: 22px; --radius-full: 9999px;
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
-  --shadow-sm: 0 1px 2px rgba(10,10,10,.08); --shadow-md: 0 14px 36px rgba(10,10,10,.12); --shadow-lg: 0 24px 64px rgba(10,10,10,.18);
-  --surface-overlay: #f0f0eb; --border: var(--border-default); --accent: var(--accent-primary); --background: var(--surface-canvas); --muted: var(--text-secondary);
-  --motion-fast: 150ms; --motion-panel: 220ms; --motion-page: 180ms;
-  --sidebar-width-expanded: 256px; --sidebar-width-collapsed: 72px;
-  --layout-gap: 16px; --panel-radius: 4px; --operational-row-height: 64px;
-  --bg-canvas: var(--surface-canvas); --bg-surface: var(--surface-card); --bg-subtle: var(--surface-subtle);
-  --priority-p0: var(--status-error); --priority-p1: #f97316; --priority-p2: #eab308; --priority-p3: var(--text-tertiary);
+
+  /* Rota de Ataque: neutral canvas + one decisive brand accent. */
+  --surface-canvas: #f5f5f0;
+  --surface-card: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-subtle: #eeeeea;
+  --surface-overlay: #e6e6e1;
+  --surface-hover: #deded9;
+  --border-default: #d0d0ca;
+  --border-strong: #8a8a84;
+  --border-subtle: #e2e2dc;
+  --text-primary: #0a0a0a;
+  --text-secondary: #3d3d3d;
+  --text-tertiary: #6f6f69;
+  --text-disabled: #8a8a84;
+
+  --brand-red: #c1121f;
+  --brand-red-hover: #a00f1a;
+  --brand-red-pressed: #8b0000;
+  --brand-red-accent: #e33640;
+  --brand-red-soft: rgba(193, 18, 31, 0.12);
+  --accent-primary: var(--brand-red);
+  --accent-secondary: var(--brand-red-accent);
+  --accent: var(--accent-primary);
+  --focus-ring: var(--brand-red-accent);
+
+  --status-success: #18864b;
+  --status-success-subtle: #dff7e8;
+  --status-success-strong: #0d6235;
+  --status-warn: #a66300;
+  --status-warning-subtle: #fff1d6;
+  --status-error: #b42318;
+  --status-error-subtle: #fde8e7;
+  --status-info: #246bce;
+  --status-info-subtle: #e4efff;
+  --score-high: var(--status-error);
+  --score-med: var(--status-warn);
+  --score-low: var(--status-info);
+  --role-collector: #6857c8;
+  --role-actor: #246bce;
+
+  --font-heading: "Rajdhani", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-numeral: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Mono", monospace;
+  --font-sans: var(--font-body);
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  --radius: var(--radius-sm);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --layout-gap: var(--space-4);
+  --content-max-width: 1480px;
+  --module-grid-columns: 12;
+  --module-main-columns: 8;
+  --module-rail-columns: 4;
+  --operational-row-height: 64px;
+
+  --shadow-sm: 0 1px 2px rgba(10, 10, 10, 0.08);
+  --shadow-md: 0 14px 36px rgba(10, 10, 10, 0.12);
+  --shadow-lg: 0 24px 64px rgba(10, 10, 10, 0.18);
+  --shadow-focus: 0 0 0 3px var(--brand-red-soft);
+  --motion-fast: 150ms;
+  --motion-panel: 220ms;
+  --motion-page: 180ms;
+  --sidebar-width-expanded: 256px;
+  --sidebar-width-collapsed: 72px;
+  --sidebar-width: var(--sidebar-width-expanded);
+
+  /* Legacy aliases remain available while older surfaces migrate. */
+  --bg-default: var(--surface-canvas);
+  --background: var(--surface-canvas);
+  --muted: var(--text-secondary);
+  --border: var(--border-default);
+  --bg-canvas: var(--surface-canvas);
+  --bg-surface: var(--surface-card);
+  --bg-subtle: var(--surface-subtle);
+  --priority-p0: var(--status-error);
+  --priority-p1: #f97316;
+  --priority-p2: #eab308;
+  --priority-p3: var(--text-tertiary);
 }
 
 :root[data-theme="dark"] {
-    color-scheme: dark;
-    --surface-canvas: #0a0a0a; --surface-card: #171717; --surface-subtle: #1f1f1f; --surface-raised: #242424;
-    --bg-default: var(--surface-canvas); --border-default: #3d3d3d; --border-strong: #777;
-    --text-primary: #f0f0f0; --text-secondary: #b0b0b0; --text-tertiary: #888; --text-disabled: #777;
-    --accent-primary: #e33640; --accent-secondary: #6ea8fe;
-    --status-success: #22c55e; --status-success-subtle: #123b25; --status-success-strong: #6ee7a0;
-    --status-warn: #f59e0b; --status-warning-subtle: #4d3410; --status-error: #ef4444; --status-info: #60a5fa;
-    --role-collector: #9b8afb; --role-actor: #60a5fa; --surface-overlay: #262626;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,.22); --shadow-md: 0 18px 44px rgba(0,0,0,.28); --shadow-lg: 0 28px 72px rgba(0,0,0,.38);
-    --bg-canvas: var(--surface-canvas); --bg-surface: var(--surface-card); --bg-subtle: var(--surface-subtle);
-    --priority-p0: var(--status-error); --priority-p1: #fb923c; --priority-p2: #facc15; --priority-p3: var(--text-tertiary);
+  color-scheme: dark;
+  --surface-canvas: #0a0a0a;
+  --surface-card: #171717;
+  --surface-raised: #1f1f1f;
+  --surface-subtle: #1f1f1f;
+  --surface-overlay: #262626;
+  --surface-hover: #303030;
+  --border-default: #303030;
+  --border-strong: #777777;
+  --border-subtle: #262626;
+  --text-primary: #e5e5e5;
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #858585;
+  --text-disabled: #707070;
+  --accent-primary: var(--brand-red-accent);
+  --accent-secondary: #f0646b;
+  --focus-ring: #f0646b;
+  --status-success: #22c55e;
+  --status-success-subtle: #123b25;
+  --status-success-strong: #6ee7a0;
+  --status-warn: #f59e0b;
+  --status-warning-subtle: #4d3410;
+  --status-error: #ef4444;
+  --status-error-subtle: #431b1b;
+  --status-info: #60a5fa;
+  --status-info-subtle: #172b45;
+  --role-collector: #9b8afb;
+  --role-actor: #60a5fa;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.38);
 }
 
+/* The inline bootstrap in layout.tsx normally sets data-theme before paint. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    color-scheme: dark;
-    --surface-canvas: #0a0a0a; --surface-card: #171717; --surface-subtle: #1f1f1f; --surface-raised: #242424;
-    --bg-default: var(--surface-canvas); --border-default: #3d3d3d; --border-strong: #777;
-    --text-primary: #f0f0f0; --text-secondary: #b0b0b0; --text-tertiary: #888; --text-disabled: #777;
-    --accent-primary: #e33640; --accent-secondary: #6ea8fe;
-    --status-success: #22c55e; --status-success-subtle: #123b25; --status-success-strong: #6ee7a0;
-    --status-warn: #f59e0b; --status-warning-subtle: #4d3410; --status-error: #ef4444; --status-info: #60a5fa;
-    --role-collector: #9b8afb; --role-actor: #60a5fa; --surface-overlay: #262626;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,.22); --shadow-md: 0 18px 44px rgba(0,0,0,.28); --shadow-lg: 0 28px 72px rgba(0,0,0,.38);
+    --surface-canvas: #0a0a0a;
+    --surface-card: #171717;
+    --surface-raised: #1f1f1f;
+    --surface-subtle: #1f1f1f;
+    --surface-overlay: #262626;
+    --surface-hover: #303030;
+    --border-default: #303030;
+    --border-subtle: #262626;
+    --text-primary: #e5e5e5;
+    --text-secondary: #a3a3a3;
+    --text-tertiary: #858585;
+    --accent-primary: var(--brand-red-accent);
+    --accent-secondary: #f0646b;
+    --focus-ring: #f0646b;
   }
 }

@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased] — aproximação visual máxima do Prospector (25/08/2026)
+
+### Changed
+
+- Aplicado o blueprint visual compartilhado aos tokens, fontes self-hosted, AppShell, Pulso e primitives do `@plataforma/ui-bridge`, preservando rotas, handlers, dados e contratos operacionais.
+- Adicionados estados de fonte, freshness, erro seguro com impacto/traceId, workspace principal/rail, foco contido em drawer e links internos compatíveis com base path.
+- Corrigida a compressão vertical da navegação desktop e o acionamento da Command Palette via `useKBar().query.toggle()`.
+
+### Verification
+
+- `ui-bridge`: 24 testes; web: 59 testes; typecheck e build de produção concluídos.
+- A validação local de dados permanece degradada sem Redis/PostgreSQL; a observação autenticada de produção depende de sessão autorizada e não foi simulada.
+
 ## [Unreleased] — plano de 25/08/2026
 
 ### Added
