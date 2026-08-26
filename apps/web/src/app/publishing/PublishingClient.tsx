@@ -5,13 +5,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@plataforma/ui-bridge'
 import { appPath } from '@/lib/base-path'
-
-interface ContentStructure {
-  roteiro?: string
-  slides?: Array<{ ordem?: number; titulo?: string; texto?: string }>
-  legenda_longa?: string
-  observacoes?: string
-}
+import { ContentCopyFields, type ContentStructure } from './ContentCopyFields'
 
 interface Publication {
   id: string
@@ -241,7 +235,7 @@ export function PublishingClient({ publications: initialPubs, scheduled, publish
                         <ChannelBadge channel={item.channel as MultichannelName} />
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title || item.caption?.slice(0, 30) || 'Sem título'}</span>
                         <button type="button" className="bridge-button" data-variant="quiet" aria-label={`Reagendar ${item.title || 'publicação'}`} onClick={(event) => { event.stopPropagation(); setEditing(item) }}>Reagendar</button>
-                        {item.content_structure?.roteiro || item.content_structure?.legenda_longa ? <span title="Copy preenchida" style={{ fontSize: '10px', color: 'var(--status-success)' }}>✓copy</span> : <span title="Copy faltando" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>copy?</span>}
+                        {item.content_structure?.copy_principal || item.content_structure?.roteiro || item.content_structure?.texto_arte || item.content_structure?.slides?.length || item.content_structure?.stories?.length || item.content_structure?.legenda_longa ? <span title="Copy preenchida" style={{ fontSize: '10px', color: 'var(--status-success)' }}>✓copy</span> : <span title="Copy faltando" style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>copy?</span>}
                         {item.locked_at && <span title="Fixado">🔒</span>}
                         {item.status === 'awaiting_manual_publish' && <button className="bridge-button" data-variant="primary" onClick={(event) => { event.stopPropagation(); setManualError(''); setManualExternalId(item.external_id ?? ''); setManualPublicationId(item.id) }}>Confirmar</button>}
                         {item.status === 'scheduled' && item.scheduled_for && new Date(item.scheduled_for).getTime() - Date.now() <= 600_000 && new Date(item.scheduled_for).getTime() > Date.now() && <button className="bridge-button" data-variant="quiet" onClick={(event) => { event.stopPropagation(); setCancelError(''); setCancelReason(''); setCancelPublicationId(item.id) }}>Cancelável (10 min)</button>}
@@ -370,23 +364,10 @@ function SlotEditor({ publication, pillars, formats, onSave, onLock, onClose }: 
           </div>
           <details style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3)' }}>
             <summary style={{ cursor: 'pointer', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
-              Copy {form.content_structure?.roteiro || form.content_structure?.legenda_longa ? '✓' : '(vazio)'}
+              Copy {form.content_structure?.copy_principal || form.content_structure?.roteiro || form.content_structure?.texto_arte || form.content_structure?.slides?.length || form.content_structure?.stories?.length || form.content_structure?.legenda_longa ? '✓' : '(vazio)'}
             </summary>
-            <div style={{ display: 'grid', gap: '12px', marginTop: 'var(--space-2)' }}>
-              <TextareaField label="Roteiro / Copy longa" value={form.content_structure?.roteiro ?? ''} onChange={e => setForm(f => ({ ...f, content_structure: { ...f.content_structure, roteiro: e.target.value } }))} rows={6} />
-              <TextareaField label="Legenda longa (além do limite do caption)" value={form.content_structure?.legenda_longa ?? ''} onChange={e => setForm(f => ({ ...f, content_structure: { ...f.content_structure, legenda_longa: e.target.value } }))} rows={4} />
-              <TextareaField label="Observações para o editor" value={form.content_structure?.observacoes ?? ''} onChange={e => setForm(f => ({ ...f, content_structure: { ...f.content_structure, observacoes: e.target.value } }))} rows={3} />
-              {(form.content_structure?.slides ?? []).map((slide, idx) => (
-                <div key={idx} style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '8px', display: 'grid', gap: '6px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ fontSize: '13px' }}>Slide {idx + 1}</strong>
-                    <button type="button" style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setForm(f => ({ ...f, content_structure: { ...f.content_structure, slides: (f.content_structure?.slides ?? []).filter((_, i) => i !== idx) } }))}>Remover</button>
-                  </div>
-                  <InputField label="Título" value={slide.titulo} onChange={e => setForm(f => { const slides = [...(f.content_structure?.slides ?? [])]; slides[idx] = { ...slides[idx], titulo: e.target.value }; return { ...f, content_structure: { ...f.content_structure, slides } } })} />
-                  <TextareaField label="Texto" value={slide.texto} onChange={e => setForm(f => { const slides = [...(f.content_structure?.slides ?? [])]; slides[idx] = { ...slides[idx], texto: e.target.value }; return { ...f, content_structure: { ...f.content_structure, slides } } })} rows={3} />
-                </div>
-              ))}
-              <button type="button" className="bridge-button" data-variant="ghost" onClick={() => setForm(f => ({ ...f, content_structure: { ...f.content_structure, slides: [...(f.content_structure?.slides ?? []), { ordem: (f.content_structure?.slides?.length ?? 0) + 1, titulo: '', texto: '' }] } }))}>+ Adicionar slide</button>
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <ContentCopyFields format={form.subtype ?? form.format} value={form.content_structure} onChange={content_structure => setForm(f => ({ ...f, content_structure }))} />
             </div>
           </details>
         </div>

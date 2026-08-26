@@ -1,10 +1,11 @@
 'use client'
 
-import { Dialog, EmptyState, InputField, KpiCard, KpiRow, PageHeader, PriorityChip, TextareaField, ThreePaneLayout } from '@plataforma/ui-bridge'
+import { Dialog, EmptyState, InputField, KpiCard, KpiRow, PageHeader, PriorityChip, TabArrowButtons, TextareaField, ThreePaneLayout } from '@plataforma/ui-bridge'
 import { toast } from '@plataforma/ui-bridge'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { appPath } from '@/lib/base-path'
 import { useSearchParams } from 'next/navigation'
+import { ContentCopyFields, type ContentStructure } from '../publishing/ContentCopyFields'
 
 interface ReviewItem {
   id: string
@@ -37,6 +38,20 @@ interface RadarFinding {
 
 interface CompetitorInsight { id: string; competitor_handle: string; insight_type: string; title: string; description: string | null; hypothesis: string | null; evidence: Record<string, unknown>; metrics: Record<string, unknown>; is_outlier: boolean; outlier_multiplier: number | null; created_at: string }
 interface ContentSuggestion { id: string; source_type: string; title: string; description: string | null; suggested_format: string | null; suggested_channel: string | null; pillar: string | null; thesis_id: string | null; campaign_id: string | null; evidence: Record<string, unknown>; curation_status: string; created_at: string }
+
+function cleanContentStructure(value: ContentStructure): ContentStructure {
+  const cleaned: ContentStructure = {}
+  const textFields: Array<keyof Pick<ContentStructure, 'copy_principal' | 'roteiro' | 'texto_arte' | 'legenda_longa' | 'observacoes'>> = ['copy_principal', 'roteiro', 'texto_arte', 'legenda_longa', 'observacoes']
+  for (const field of textFields) {
+    const text = value[field]?.trim()
+    if (text) cleaned[field] = text
+  }
+  const slides = (value.slides ?? []).map((slide, index) => ({ ordem: index + 1, titulo: slide.titulo?.trim() ?? '', texto: slide.texto?.trim() ?? '' })).filter((slide) => slide.titulo || slide.texto)
+  if (slides.length) cleaned.slides = slides
+  const stories = (value.stories ?? []).map((story, index) => ({ ordem: index + 1, texto: story.texto?.trim() ?? '', sticker: story.sticker?.trim() || undefined })).filter((story) => story.texto || story.sticker)
+  if (stories.length) cleaned.stories = stories
+  return cleaned
+}
 
 function label(value: string) { return value.replace(/_/g, ' ').replace(/^./, (character) => character.toUpperCase()) }
 
@@ -82,11 +97,13 @@ export function ReviewInboxClient({ initialItems, decidedToday, radarFindings = 
   const [suggestionFormat, setSuggestionFormat] = useState('reels')
   const [suggestionChannel, setSuggestionChannel] = useState<'instagram' | 'threads'>('instagram')
   const [suggestionScheduledFor, setSuggestionScheduledFor] = useState('')
+  const [suggestionCopy, setSuggestionCopy] = useState<ContentStructure>({})
   const [dialogReason, setDialogReason] = useState('')
   const [dialogError, setDialogError] = useState('')
   const [dialogBusy, setDialogBusy] = useState(false)
   const [liveMessage, setLiveMessage] = useState('')
   const current = items[index]
+  const tabIndex = TABS.indexOf(activeTab)
 
   const postOrganicAction = useCallback(async (path: string, body: Record<string, unknown>, onSuccess: () => void): Promise<boolean> => {
     try {
@@ -165,7 +182,7 @@ export function ReviewInboxClient({ initialItems, decidedToday, radarFindings = 
   }, [])
 
   const openSuggestionDialog = useCallback((kind: 'edit-suggestion' | 'reject-suggestion', suggestion: ContentSuggestion) => {
-    setSelectedSuggestion(suggestion); setSuggestionTitle(suggestion.title); setSuggestionDescription(suggestion.description ?? ''); setSuggestionCaption(suggestion.description ?? suggestion.title); setSuggestionHashtags(''); setSuggestionCta(''); setSuggestionFormat(suggestion.suggested_format ?? 'reels'); setSuggestionChannel(suggestion.suggested_channel === 'threads' ? 'threads' : 'instagram'); setSuggestionScheduledFor(''); setDialogReason(''); setDialogError(''); setDialog(kind)
+    setSelectedSuggestion(suggestion); setSuggestionTitle(suggestion.title); setSuggestionDescription(suggestion.description ?? ''); setSuggestionCaption(suggestion.description ?? suggestion.title); setSuggestionHashtags(''); setSuggestionCta(''); setSuggestionFormat(suggestion.suggested_format ?? 'reels'); setSuggestionChannel(suggestion.suggested_channel === 'threads' ? 'threads' : 'instagram'); setSuggestionScheduledFor(''); setSuggestionCopy({}); setDialogReason(''); setDialogError(''); setDialog(kind)
   }, [])
 
   const submitDialog = useCallback(async (event: FormEvent<HTMLFormElement>) => {
@@ -183,21 +200,20 @@ export function ReviewInboxClient({ initialItems, decidedToday, radarFindings = 
         if (!suggestionTitle.trim()) throw new Error('Informe um título.')
         const scheduledFor = suggestionScheduledFor ? new Date(suggestionScheduledFor).toISOString() : undefined
         if (scheduledFor && new Date(scheduledFor).getTime() <= Date.now()) throw new Error('Escolha um horário futuro.')
-        ok = await postOrganicAction(`/api/admin/content-suggestions/${selectedSuggestion.id}/action`, { action: 'edit-approve', title: suggestionTitle.trim(), description: suggestionDescription.trim() || undefined, caption: suggestionCaption.trim() || undefined, hashtags: suggestionHashtags.split(/[\n,]/u).map((tag) => tag.trim().replace(/^#/u, '')).filter(Boolean), cta: suggestionCta.trim() || undefined, format: suggestionFormat, channel: suggestionChannel, scheduledFor }, () => setSuggestions((rows) => rows.filter((row) => row.id !== selectedSuggestion.id)))
+        ok = await postOrganicAction(`/api/admin/content-suggestions/${selectedSuggestion.id}/action`, { action: 'edit-approve', title: suggestionTitle.trim(), description: suggestionDescription.trim() || undefined, caption: suggestionCaption.trim() || undefined, hashtags: suggestionHashtags.split(/[\n,]/u).map((tag) => tag.trim().replace(/^#/u, '')).filter(Boolean), cta: suggestionCta.trim() || undefined, format: suggestionFormat, channel: suggestionChannel, contentStructure: cleanContentStructure(suggestionCopy), scheduledFor }, () => setSuggestions((rows) => rows.filter((row) => row.id !== selectedSuggestion.id)))
       } else if (dialog === 'reject-suggestion' && selectedSuggestion) {
         ok = await postOrganicAction(`/api/admin/content-suggestions/${selectedSuggestion.id}/action`, { action: 'reject', rejectionReason: dialogReason.trim() || undefined }, () => setSuggestions((rows) => rows.filter((row) => row.id !== selectedSuggestion.id)))
       }
       if (ok) setDialog(null)
     } catch (error) { setDialogError(error instanceof Error ? error.message : 'Não foi possível concluir a ação') } finally { setDialogBusy(false) }
-  }, [dialog, dialogBusy, dialogReason, postOrganicAction, selectedFinding, selectedSuggestion, slotCaption, slotChannel, slotScheduledFor, slotTitle, suggestionCaption, suggestionCta, suggestionDescription, suggestionFormat, suggestionHashtags, suggestionScheduledFor, suggestionTitle, suggestionChannel])
+  }, [dialog, dialogBusy, dialogReason, postOrganicAction, selectedFinding, selectedSuggestion, slotCaption, slotChannel, slotScheduledFor, slotTitle, suggestionCaption, suggestionCta, suggestionCopy, suggestionDescription, suggestionFormat, suggestionHashtags, suggestionScheduledFor, suggestionTitle, suggestionChannel])
 
-  const tabIndex = TABS.indexOf(activeTab)
   return <div className="page" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
     <PageHeader title="Review Inbox" subtitle="Triagem humana com contexto legível e trilha de auditoria" />
     <KpiRow><KpiCard label="Pendentes" value={items.length} /><KpiCard label="Decididos hoje" value={decidedToday} /></KpiRow>
-    <div style={{ display: 'flex', gap: '4px', marginBottom: 'var(--space-4)', padding: '2px', background: 'var(--surface-raised)', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
+    <div className="bridge-tab-navigation" style={{ width: 'fit-content' }}><TabArrowButtons previous={tabIndex > 0 ? { label: label(TABS[tabIndex - 1]!), onSelect: () => setActiveTab(TABS[tabIndex - 1]!) } : undefined} next={tabIndex < TABS.length - 1 ? { label: label(TABS[tabIndex + 1]!), onSelect: () => setActiveTab(TABS[tabIndex + 1]!) } : undefined} /><div style={{ display: 'flex', gap: '4px', marginBottom: 'var(--space-4)', padding: '2px', background: 'var(--surface-raised)', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
       <div role="tablist" aria-label="Filas de revisão">{TABS.map((tab, position) => { const count = tab === 'inbox' ? items.length : tab === 'radar' ? radar.length : tab === 'insights' ? insights.length : suggestions.length; return <button key={tab} role="tab" aria-selected={activeTab === tab} aria-controls={`review-panel-${tab}`} tabIndex={activeTab === tab ? 0 : -1} onClick={() => setActiveTab(tab)} onKeyDown={(event) => { if (event.key === 'ArrowRight') { event.preventDefault(); setActiveTab(TABS[(position + 1) % TABS.length] ?? 'inbox') } if (event.key === 'ArrowLeft') { event.preventDefault(); setActiveTab(TABS[(position - 1 + TABS.length) % TABS.length] ?? 'inbox') } }} style={{ padding: '4px 12px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', background: activeTab === tab ? 'var(--accent-primary)' : 'transparent', color: activeTab === tab ? 'white' : 'var(--text-secondary)', fontSize: '13px' }}>{label(tab)} ({count})</button> })}</div>
-    </div>
+    </div></div>
     <p role="status" aria-live="polite" style={{ minHeight: '1.25rem' }}>{liveMessage}</p>
     {activeTab === 'inbox' && <p className="keyboard-help">Atalhos: J/K navegar · A aprovar · E editar · R rejeitar · B bloquear · S pular · . adiar</p>}
 
@@ -210,7 +226,7 @@ export function ReviewInboxClient({ initialItems, decidedToday, radarFindings = 
     <Dialog open={dialog !== null} busy={dialogBusy} onOpenChange={(open) => { if (!open && !dialogBusy) setDialog(null) }} title={dialog === 'slot' ? 'Criar slot editorial' : dialog === 'dismiss-radar' ? 'Descartar achado do radar' : dialog === 'edit-suggestion' ? 'Editar e aprovar sugestão' : 'Rejeitar sugestão'}>
       <form onSubmit={submitDialog} style={{ display: 'grid', gap: 'var(--space-3)' }}>
         {dialog === 'slot' && <><InputField label="Título" value={slotTitle} onChange={(event) => setSlotTitle(event.target.value)} maxLength={180} autoFocus /><TextareaField label="Conteúdo" value={slotCaption} onChange={(event) => setSlotCaption(event.target.value)} rows={6} maxLength={4000} /><label className="editor-field">Canal<select value={slotChannel} onChange={(event) => setSlotChannel(event.target.value as 'instagram' | 'threads')}><option value="instagram">Instagram</option><option value="threads">Threads</option></select></label><InputField label="Horário sugerido" type="datetime-local" value={slotScheduledFor} onChange={(event) => setSlotScheduledFor(event.target.value)} /></>}
-        {dialog === 'edit-suggestion' && <><fieldset style={{ display: 'grid', gap: 'var(--space-3)', border: 0, padding: 0, margin: 0 }}><legend>Ideia</legend><InputField label="Título" value={suggestionTitle} onChange={(event) => setSuggestionTitle(event.target.value)} maxLength={180} autoFocus /><TextareaField label="Descrição" value={suggestionDescription} onChange={(event) => setSuggestionDescription(event.target.value)} rows={4} maxLength={10000} /></fieldset><fieldset style={{ display: 'grid', gap: 'var(--space-3)', border: 0, padding: 0, margin: 0 }}><legend>Criativo promovido</legend><TextareaField label="Legenda / conteúdo" value={suggestionCaption} onChange={(event) => setSuggestionCaption(event.target.value)} rows={6} maxLength={4000} /><InputField label="Hashtags" description="Separe por vírgula ou quebra de linha; o # é opcional." value={suggestionHashtags} onChange={(event) => setSuggestionHashtags(event.target.value)} maxLength={2000} /><InputField label="CTA" value={suggestionCta} onChange={(event) => setSuggestionCta(event.target.value)} maxLength={500} /></fieldset><fieldset style={{ display: 'grid', gap: 'var(--space-3)', border: 0, padding: 0, margin: 0 }}><legend>Distribuição</legend><label className="editor-field">Formato<select value={suggestionFormat} onChange={(event) => setSuggestionFormat(event.target.value)}><option value="reels">Reels</option><option value="carrossel">Carrossel</option><option value="estatico">Estático</option><option value="stories">Stories</option></select></label><label className="editor-field">Canal<select value={suggestionChannel} onChange={(event) => setSuggestionChannel(event.target.value as 'instagram' | 'threads')}><option value="instagram">Instagram</option><option value="threads">Threads</option></select></label><InputField label="Agendar para (opcional)" type="datetime-local" value={suggestionScheduledFor} onChange={(event) => setSuggestionScheduledFor(event.target.value)} /><small>Fuso operacional: America/Sao_Paulo. Sem horário, o criativo fica planejado para revisão no calendário.</small></fieldset><details><summary>Ver evidências da sugestão</summary><ReadableRecord value={selectedSuggestion?.evidence ?? {}} /></details></>}
+        {dialog === 'edit-suggestion' && <><fieldset style={{ display: 'grid', gap: 'var(--space-3)', border: 0, padding: 0, margin: 0 }}><legend>Ideia</legend><InputField label="Título" value={suggestionTitle} onChange={(event) => setSuggestionTitle(event.target.value)} maxLength={180} autoFocus /><TextareaField label="Descrição" value={suggestionDescription} onChange={(event) => setSuggestionDescription(event.target.value)} rows={4} maxLength={10000} /></fieldset><fieldset style={{ display: 'grid', gap: 'var(--space-3)', border: 0, padding: 0, margin: 0 }}><legend>Criativo promovido</legend><TextareaField label="Legenda / conteúdo" value={suggestionCaption} onChange={(event) => setSuggestionCaption(event.target.value)} rows={6} maxLength={4000} /><InputField label="Hashtags" description="Separe por vírgula ou quebra de linha; o # é opcional." value={suggestionHashtags} onChange={(event) => setSuggestionHashtags(event.target.value)} maxLength={2000} /><InputField label="CTA" value={suggestionCta} onChange={(event) => setSuggestionCta(event.target.value)} maxLength={500} /></fieldset><fieldset style={{ display: 'grid', gap: 'var(--space-3)', border: 0, padding: 0, margin: 0 }}><legend>Copy do formato</legend><ContentCopyFields format={suggestionFormat} value={suggestionCopy} onChange={setSuggestionCopy} /></fieldset><fieldset style={{ display: 'grid', gap: 'var(--space-3)', border: 0, padding: 0, margin: 0 }}><legend>Distribuição</legend><label className="editor-field">Formato<select value={suggestionFormat} onChange={(event) => setSuggestionFormat(event.target.value)}><option value="reels">Reels</option><option value="carrossel">Carrossel</option><option value="estatico">Estático / post</option><option value="stories">Stories</option></select></label><label className="editor-field">Canal<select value={suggestionChannel} onChange={(event) => setSuggestionChannel(event.target.value as 'instagram' | 'threads')}><option value="instagram">Instagram</option><option value="threads">Threads</option></select></label><InputField label="Agendar para (opcional)" type="datetime-local" value={suggestionScheduledFor} onChange={(event) => setSuggestionScheduledFor(event.target.value)} /><small>Fuso operacional: America/Sao_Paulo. Sem horário, o criativo fica planejado para revisão no calendário.</small></fieldset><details><summary>Ver evidências da sugestão</summary><ReadableRecord value={selectedSuggestion?.evidence ?? {}} /></details></>}
         {(dialog === 'dismiss-radar' || dialog === 'reject-suggestion') && <TextareaField label="Motivo (opcional)" description="O motivo ajuda a calibrar a curadoria." value={dialogReason} onChange={(event) => setDialogReason(event.target.value)} rows={4} maxLength={1000} autoFocus />}
         {dialogError && <p role="alert" style={{ color: 'var(--status-error)' }}>{dialogError}</p>}
         <div className="action-row"><button type="button" className="bridge-button" data-variant="quiet" disabled={dialogBusy} onClick={() => setDialog(null)}>Cancelar</button><button type="submit" className="bridge-button" data-variant={dialog === 'dismiss-radar' || dialog === 'reject-suggestion' ? 'quiet' : 'primary'} disabled={dialogBusy}>{dialogBusy ? 'Salvando…' : dialog === 'dismiss-radar' ? 'Descartar' : dialog === 'reject-suggestion' ? 'Rejeitar' : 'Confirmar'}</button></div>

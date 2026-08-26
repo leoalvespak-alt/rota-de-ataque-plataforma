@@ -10,11 +10,14 @@ const Channel = z.enum(['instagram', 'threads'])
 const Subtype = z.enum(['feed', 'reels', 'stories', 'carousel', 'threads', 'static'])
 
 const ContentStructure = z.object({
+  copy_principal: z.string().max(10_000).optional(),
   roteiro: z.string().max(10000).optional(),
+  texto_arte: z.string().max(5_000).optional(),
   slides: z.array(z.object({ ordem: z.number().int().min(1), titulo: z.string().max(200), texto: z.string().max(2000) })).max(20).optional(),
+  stories: z.array(z.object({ ordem: z.number().int().min(1), texto: z.string().max(2000), sticker: z.string().max(200).optional() })).max(30).optional(),
   legenda_longa: z.string().max(5000).optional(),
   observacoes: z.string().max(2000).optional(),
-}).nullable().optional()
+}).strict().nullable().optional()
 
 const PublicationInput = z.object({
   id: z.string().uuid().optional(),

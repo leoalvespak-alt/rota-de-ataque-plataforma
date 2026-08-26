@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, HealthDial, InputField, IntegrationState, KpiCard, KpiRow, PageHeader, RoleBadge, EmptyState, SelectField, StatusBadge } from '@plataforma/ui-bridge'
+import { Dialog, HealthDial, InputField, IntegrationState, KpiCard, KpiRow, PageHeader, RoleBadge, EmptyState, SelectField, StatusBadge, TabArrowButtons } from '@plataforma/ui-bridge'
 import { useEffect, useState, useTransition } from 'react'
 import type { IntegrationCapability } from '@/lib/integration-capabilities'
 import { appPath } from '@/lib/base-path'
@@ -20,12 +20,20 @@ const competitorSchema = z.object({
   username: z.string().min(2, 'No mínimo 2 caracteres')
 })
 type CompetitorFormData = z.infer<typeof competitorSchema>
+const accountTabs = ['connections', 'freshness', 'nba', 'history'] as const
+const accountTabLabels: Record<typeof accountTabs[number], string> = {
+  connections: 'Conexões',
+  freshness: 'Frescor de dados',
+  nba: 'Next Best Action',
+  history: 'Histórico',
+}
 
 export function AccountsClient({ accounts:initialAccounts, competitors:initialCompetitors, campaigns, capabilities, freshness = [], nba = [], history = [], notice }:{ accounts:Account[]; competitors:Competitor[]; campaigns:Campaign[]; capabilities:IntegrationCapability[]; freshness?:Array<{id:string;username:string;role:string;status:string;last_checked:string|null}>; nba?:Array<{id:string;suggested_action:string|null;chosen_channel:string|null;confidence:string|null;status:string;username_current:string|null}>; history?:Array<{action:string;target:string;created_at:string}>; notice?:string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tab = searchParams.get('tab') || 'connections'
+  const accountTabIndex = Math.max(0, accountTabs.indexOf(tab as typeof accountTabs[number]))
   const [isPending, startTransition] = useTransition()
 
   const [accounts, setAccounts] = useState(initialAccounts)
@@ -93,8 +101,8 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
     <PageHeader title="Contas e Configurações" subtitle="Integrações, políticas, saúde e concorrentes monitorados" />
     {notice && <p className="banner" role="status">{notice}</p>}
     
-    <div role="tablist" aria-label="Seções de contas" style={{ display: 'flex', gap: 'var(--space-4)', borderBottom: '1px solid var(--border)', marginBottom: 'var(--space-6)', marginTop: 'var(--space-6)' }}>
-      {(['connections', 'freshness', 'nba', 'history'] as const).map((t, index) => (
+    <div className="bridge-tab-navigation" style={{ marginTop: 'var(--space-6)' }}><TabArrowButtons previous={accountTabIndex > 0 ? { label: accountTabLabels[accountTabs[accountTabIndex - 1]!], onSelect: () => changeTab(accountTabs[accountTabIndex - 1]!) } : undefined} next={accountTabIndex < accountTabs.length - 1 ? { label: accountTabLabels[accountTabs[accountTabIndex + 1]!], onSelect: () => changeTab(accountTabs[accountTabIndex + 1]!) } : undefined} /><div role="tablist" aria-label="Seções de contas" style={{ display: 'flex', flex: 1, gap: 'var(--space-4)', borderBottom: '1px solid var(--border)', marginBottom: 'var(--space-6)' }}>
+      {accountTabs.map((t, index) => (
         <button 
           key={t}
           role="tab"
@@ -103,13 +111,13 @@ export function AccountsClient({ accounts:initialAccounts, competitors:initialCo
           aria-controls={`accounts-panel-${t}`}
           tabIndex={tab === t ? 0 : -1}
           onClick={() => changeTab(t)}
-          onKeyDown={(event) => { if (event.key === 'ArrowRight') changeTab((['connections', 'freshness', 'nba', 'history'] as const)[(index + 1) % 4] ?? 'connections'); if (event.key === 'ArrowLeft') changeTab((['connections', 'freshness', 'nba', 'history'] as const)[(index + 3) % 4] ?? 'connections') }}
+          onKeyDown={(event) => { if (event.key === 'ArrowRight') changeTab(accountTabs[(index + 1) % accountTabs.length] ?? 'connections'); if (event.key === 'ArrowLeft') changeTab(accountTabs[(index - 1 + accountTabs.length) % accountTabs.length] ?? 'connections') }}
           style={{ padding: 'var(--space-2) var(--space-4)', border: 'none', background: 'transparent', cursor: 'pointer', borderBottom: tab === t ? '2px solid var(--accent-primary)' : '2px solid transparent', color: tab === t ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: tab === t ? 'bold' : 'normal' }}
         >
           {t === 'connections' ? 'Conexões (Contas)' : t === 'freshness' ? 'Frescor de Dados' : t === 'nba' ? 'Next Best Action' : 'Histórico'}
         </button>
       ))}
-    </div>
+    </div></div>
     
     {tab === 'connections' && (
       <>

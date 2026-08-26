@@ -1,6 +1,6 @@
 'use client'
 
-import { PageHeader } from '@plataforma/ui-bridge'
+import { PageHeader, TabArrowButtons } from '@plataforma/ui-bridge'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { AutomationsClient, type WorkerInfo } from './AutomationsClient'
 import { MotoresTab } from './components/MotoresTab'
@@ -26,6 +26,7 @@ export function AutomationsTabs({ workers }: { workers: WorkerInfo[] }) {
   const requestedTab = searchParams.get('aba')
   const activeTab: TabValue = isTab(requestedTab) ? requestedTab : 'motores'
   const visibleTabs = tabs
+  const activeIndex = visibleTabs.findIndex((tab) => tab.id === activeTab)
 
   function setActiveTab(tab: TabValue) {
     const params = new URLSearchParams(searchParams.toString())
@@ -42,7 +43,7 @@ export function AutomationsTabs({ workers }: { workers: WorkerInfo[] }) {
 
   return <div className="bridge-page-content">
     <PageHeader title="Automações" subtitle="Gerencie os motores, workers individuais, filas e agendamentos." />
-    <nav role="tablist" aria-label="Seções de automações" className="tabs">
+    <div className="bridge-tab-navigation"><TabArrowButtons previous={activeIndex > 0 ? { label: visibleTabs[activeIndex - 1]!.label, onSelect: () => setActiveTab(visibleTabs[activeIndex - 1]!.id) } : undefined} next={activeIndex < visibleTabs.length - 1 ? { label: visibleTabs[activeIndex + 1]!.label, onSelect: () => setActiveTab(visibleTabs[activeIndex + 1]!.id) } : undefined} /><nav role="tablist" aria-label="Seções de automações" className="tabs">
       {visibleTabs.map((tab, index) => <button
         id={`automation-tab-${tab.id}`}
         key={tab.id}
@@ -57,7 +58,7 @@ export function AutomationsTabs({ workers }: { workers: WorkerInfo[] }) {
           if (event.key === 'ArrowLeft') { event.preventDefault(); moveTab(index, -1) }
         }}
       >{tab.label}</button>)}
-    </nav>
+    </nav></div>
     <div id={`automation-panel-${activeTab}`} role="tabpanel" aria-labelledby={`automation-tab-${activeTab}`}>
       {activeTab === 'motores' && <MotoresTab />}
       {activeTab === 'workers' && <AutomationsClient workers={workers} />}

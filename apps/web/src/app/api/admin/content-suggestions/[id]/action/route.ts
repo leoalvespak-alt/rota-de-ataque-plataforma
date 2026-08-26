@@ -11,6 +11,15 @@ const Body = z.object({
   caption: z.string().trim().max(4_000).optional(),
   hashtags: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
   cta: z.string().trim().max(500).optional(),
+  contentStructure: z.object({
+    copy_principal: z.string().trim().max(10_000).optional(),
+    roteiro: z.string().trim().max(10_000).optional(),
+    texto_arte: z.string().trim().max(5_000).optional(),
+    slides: z.array(z.object({ ordem: z.number().int().min(1), titulo: z.string().trim().max(200), texto: z.string().trim().max(2_000) }).strict()).max(20).optional(),
+    stories: z.array(z.object({ ordem: z.number().int().min(1), texto: z.string().trim().max(2_000), sticker: z.string().trim().max(200).optional() }).strict()).max(30).optional(),
+    legenda_longa: z.string().trim().max(5_000).optional(),
+    observacoes: z.string().trim().max(2_000).optional(),
+  }).strict().optional(),
   format: z.enum(['carrossel', 'carousel', 'reels', 'static', 'estatico', 'stories', 'feed']).optional(),
   channel: z.enum(['instagram', 'threads', 'feed', 'stories']).optional(),
   timezone: z.string().trim().min(1).max(100).optional(),
@@ -54,7 +63,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const hashtags = parsed.data.hashtags ?? []
     const timezone = parsed.data.timezone ?? 'America/Sao_Paulo'
     const status = parsed.data.scheduledFor ? 'scheduled' : 'approved'
-    const copyData = { description, hashtags, timezone, pillar: suggestion.pillar, sourceSuggestionId: id.data, evidence: suggestion.evidence }
+    const copyData = { ...(parsed.data.contentStructure ?? {}), description, hashtags, timezone, pillar: suggestion.pillar, sourceSuggestionId: id.data, evidence: suggestion.evidence }
     const opportunity = (await client.query<Record<string, unknown>>(
       `INSERT INTO content_opportunities(campaign_id,thesis,angle,hook,evidence,status,source_suggestion_id)
        VALUES($1,$2,$3,$4,$5::jsonb,'new',$6)

@@ -1,5 +1,8 @@
-import Link from 'next/link'
 import type { ReactNode } from 'react'
+import Link from 'next/link'
+import { ModuleSubnav } from './ModuleSubnav'
+
+export { ModuleSubnav } from './ModuleSubnav'
 
 export type MetricViewModel = {
   label: string
@@ -82,8 +85,4 @@ export function FilteredEmptyState({ message, reset }: { message: string; reset?
 
 export function NotMeasuredState({ title = 'Ainda não medido', reason }: { title?: string; reason: string }) {
   return <section className="state not-measured" role="status"><strong>{title}</strong><p>{reason}</p></section>
-}
-
-export function ModuleSubnav({ items, current }: { items: Array<{ label: string; href: string }>; current?: string }) {
-  return <nav className="bridge-tabs" aria-label="Seções do módulo">{items.map((item) => <Link href={item.href} aria-current={current === item.href ? 'page' : undefined} key={item.href}>{item.label}</Link>)}</nav>
 }

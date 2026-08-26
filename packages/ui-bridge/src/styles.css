@@ -176,6 +176,14 @@
 .bridge-tabs a { flex: 0 0 auto; padding: 8px 12px; border-radius: var(--radius-sm, 8px); color: var(--text-secondary); text-decoration: none; }
 .bridge-tabs a:hover,
 .bridge-tabs a[aria-current="page"] { background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.bridge-tab-navigation { display: flex; align-items: stretch; gap: 6px; margin: 0 0 var(--space-5, 20px); min-width: 0; }
+.bridge-tab-navigation .bridge-tabs { flex: 1; min-width: 0; margin: 0; }
+.bridge-tab-navigation > .tabs,
+.bridge-tab-navigation > [role="tablist"] { flex: 1; min-width: 0; margin: 0; }
+.bridge-tab-arrows { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--border-default); border-radius: var(--radius-md, 10px); background: var(--surface-subtle); }
+.bridge-tab-arrow { display: grid; place-items: center; min-width: 34px; min-height: 34px; padding: 0 8px; border: 1px solid var(--border-default); border-radius: var(--radius-sm, 8px); background: var(--surface-card); color: var(--text-primary); text-decoration: none; font-size: 18px; line-height: 1; cursor: pointer; }
+.bridge-tab-arrow:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-primary); }
+.bridge-tab-arrow:disabled { cursor: not-allowed; opacity: .45; }
 .state { display: grid; justify-items: start; gap: 8px; min-height: 160px; margin: var(--space-4, 16px); padding: var(--space-5, 20px); border: 1px solid var(--border-default); border-radius: var(--radius-md, 10px); background: var(--surface-subtle); text-align: left; }
 .state .state-mark { color: var(--accent-primary); font-size: 1.5rem; }
 .state p { margin: 0; color: var(--text-secondary); }
