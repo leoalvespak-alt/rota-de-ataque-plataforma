@@ -471,3 +471,4 @@ export function overlapScore(
     input.search * weights.search
   );
 }
+export { reportIaUsage, type IaUsageEvent } from './ia-usage.js'

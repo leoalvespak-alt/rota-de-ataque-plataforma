@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { createDatabase, loadLlmRuntimeConfig } from '@plataforma/db'
-import { EMBEDDING_DIM, embeddingsLatency } from '@plataforma/shared'
+import { EMBEDDING_DIM, embeddingsLatency, reportIaUsage } from '@plataforma/shared'
 import { z } from 'zod'
 
 interface EmbeddingCache { get(key: string): Promise<string | null>; set(key: string, value: string, mode: 'EX', ttl: number): Promise<unknown> }
@@ -16,7 +16,8 @@ export async function classifyComment(text: string, llm: (prompt: string) => Pro
 
 export class HttpJsonLlmClient {
   constructor(private endpoint: string | undefined, private model: string, private apiKey?: string, private provider: 'anthropic' | 'openai-compatible' = 'openai-compatible', private maxOutputTokens = 512, private temperature = 0, private databaseManaged = true) {}
-  async complete(prompt: string) {
+  async complete(prompt: string, feature = 'prospector_classification') {
+    const startedAt = Date.now()
     const managed = this.databaseManaged ? await currentDatabaseConfig() : undefined
     const provider = managed?.provider ?? this.provider, endpoint = managed?.endpoint ?? this.endpoint, model = managed?.model ?? this.model, apiKey = managed?.apiKey ?? this.apiKey, maxOutputTokens = managed?.maxOutputTokens ?? this.maxOutputTokens, temperature = managed?.temperature ?? this.temperature
     const anthropic = provider === 'anthropic'
@@ -26,12 +27,18 @@ export class HttpJsonLlmClient {
     if (anthropic) { headers.set('x-api-key', apiKey ?? ''); headers.set('anthropic-version', '2023-06-01') }
     else if (apiKey) headers.set('authorization', `Bearer ${apiKey}`)
     const body = anthropic ? { model, max_tokens: maxOutputTokens, temperature, system: 'Responda apenas JSON válido.', messages: [{ role: 'user', content: prompt }] } : { model, max_tokens: maxOutputTokens, temperature, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'Responda apenas JSON válido.' }, { role: 'user', content: prompt }] }
-    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
-    if (!response.ok) throw new Error(`LLM error ${response.status}: ${await response.text()}`)
-    const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }>; content?: Array<{ type?: string; text?: string }> }
-    const content = anthropic ? payload.content?.find((item) => item.type === 'text')?.text : payload.choices?.[0]?.message?.content
-    if (!content) throw new Error('LLM returned no content')
-    return content
+    try {
+      const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+      if (!response.ok) throw new Error(`LLM error ${response.status}: ${await response.text()}`)
+      const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }>; content?: Array<{ type?: string; text?: string }>; usage?: { prompt_tokens?: number; completion_tokens?: number; input_tokens?: number; output_tokens?: number } }
+      const content = anthropic ? payload.content?.find((item) => item.type === 'text')?.text : payload.choices?.[0]?.message?.content
+      if (!content) throw new Error('LLM returned no content')
+      reportIaUsage({ feature, provider, model, input_tokens: payload.usage?.prompt_tokens ?? payload.usage?.input_tokens, output_tokens: payload.usage?.completion_tokens ?? payload.usage?.output_tokens, latency_ms: Date.now() - startedAt, success: true })
+      return content
+    } catch (error) {
+      reportIaUsage({ feature, provider, model, latency_ms: Date.now() - startedAt, success: false, error_code: error instanceof Error ? error.name : 'unknown' })
+      throw error
+    }
   }
 }
 
@@ -50,11 +57,11 @@ async function currentDatabaseConfig(): Promise<DynamicLlmConfig | undefined> {
 export class ConfigurableLlmClient {
   private cached?: { value: DynamicLlmConfig; expiresAt: number }
   constructor(private load: () => Promise<DynamicLlmConfig>, private ttlMs = 30_000) {}
-  async complete(prompt: string) {
+  async complete(prompt: string, feature?: string) {
     const now = Date.now()
     if (!this.cached || this.cached.expiresAt <= now) this.cached = { value: await this.load(), expiresAt: now + this.ttlMs }
     const config = this.cached.value
-    return new HttpJsonLlmClient(config.endpoint, config.model, config.apiKey, config.provider, config.maxOutputTokens, config.temperature, false).complete(prompt)
+    return new HttpJsonLlmClient(config.endpoint, config.model, config.apiKey, config.provider, config.maxOutputTokens, config.temperature, false).complete(prompt, feature)
   }
   clearCache() { this.cached = undefined }
 }

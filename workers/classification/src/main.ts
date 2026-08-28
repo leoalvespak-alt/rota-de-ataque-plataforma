@@ -81,7 +81,7 @@ const worker = runWorker(
   spec.queue,
   createClassificationProcessor(repository, queue, {
     embed: (text) => embeddings.embed(text),
-    complete: (prompt) => llm.complete(prompt),
+    complete: (prompt) => llm.complete(prompt, 'prospector_classification'),
   }),
 );
 const stopHeartbeat = startWorkerHeartbeat(

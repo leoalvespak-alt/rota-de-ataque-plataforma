@@ -16,15 +16,27 @@ interface ModelConfig {
   model: string
   capabilities: Capability[]
   url: string
-  keyEnv: 'DEEPSEEK_API_KEY' | 'ANTHROPIC_API_KEY' | 'FAL_API_KEY'
+  keyEnv: 'DEEPSEEK_API_KEY_DESIGN_SYSTEM' | 'ANTHROPIC_API_KEY' | 'FAL_API_KEY'
   inputUsdPerMillion?: number
   outputUsdPerMillion?: number
 }
 
 const PROMPT_VERSION = 'design-copy-v2'
 const PARAMETER_VERSION = 'design-ai-params-v1'
+const IA_USAGE_ENDPOINT = process.env.IA_USAGE_ENDPOINT ?? ''
+const IA_USAGE_KEY = process.env.IA_USAGE_KEY ?? ''
+
+function reportDesignIaUsage(event: Record<string, unknown>): void {
+  if (!IA_USAGE_ENDPOINT || !IA_USAGE_KEY) return
+  void fetch(IA_USAGE_ENDPOINT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-internal-key': IA_USAGE_KEY },
+    body: JSON.stringify({ events: [{ bucket: 'design_system', projeto: 'design_system', ...event }] }),
+    signal: AbortSignal.timeout(5_000),
+  }).catch(() => undefined)
+}
 const MODELS: ModelConfig[] = [
-  { id: 'deepseek-default', label: 'DeepSeek Chat', provider: 'deepseek', model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat', capabilities: ['text', 'json'], url: 'https://api.deepseek.com/chat/completions', keyEnv: 'DEEPSEEK_API_KEY', inputUsdPerMillion: 0.28, outputUsdPerMillion: 0.42 },
+  { id: 'deepseek-default', label: 'DeepSeek Chat', provider: 'deepseek', model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat', capabilities: ['text', 'json'], url: 'https://api.deepseek.com/chat/completions', keyEnv: 'DEEPSEEK_API_KEY_DESIGN_SYSTEM', inputUsdPerMillion: 0.28, outputUsdPerMillion: 0.42 },
   { id: 'claude-default', label: 'Claude Sonnet', provider: 'claude', model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-20250514', capabilities: ['text', 'json'], url: 'https://api.anthropic.com/v1/messages', keyEnv: 'ANTHROPIC_API_KEY', inputUsdPerMillion: 3, outputUsdPerMillion: 15 },
   { id: 'fal-flux-schnell', label: 'FLUX Schnell', provider: 'fal', model: 'fal-ai/flux/schnell', capabilities: ['image'], url: 'https://queue.fal.run/fal-ai/flux/schnell', keyEnv: 'FAL_API_KEY' },
 ]
@@ -38,7 +50,7 @@ function modelConfig(id: string, capability: Capability): ModelConfig {
 }
 
 function providerKey(config: ModelConfig): string {
-  const key = process.env[config.keyEnv]
+  const key = process.env[config.keyEnv] ?? (config.provider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined)
   if (!key) throw new ApiError(503, `Provider ${config.provider} não configurado.`)
   return key
 }
@@ -266,6 +278,7 @@ export const aiRoutes = new Hono()
         totalTokens: result.inputTokens + result.outputTokens, costUsd: cost.toFixed(8),
         metadata: { promptVersion: PROMPT_VERSION, parameterVersion: PARAMETER_VERSION },
       })
+      reportDesignIaUsage({ feature: 'design_copy_generate', provider: config.provider, model: config.model, input_tokens: result.inputTokens, output_tokens: result.outputTokens, success: true, user_id: userId, metadata: { operation: 'copy_generate', promptVersion: PROMPT_VERSION, parameterVersion: PARAMETER_VERSION } })
       return { content: result.content, usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: cost }, provider: config.provider, model: config.model, promptVersion: PROMPT_VERSION, parameterVersion: PARAMETER_VERSION, fallbackUsed: result.fallbackUsed }
     })
     return c.json(response)

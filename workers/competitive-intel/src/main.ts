@@ -61,7 +61,7 @@ const metaToken = process.env.META_ACCESS_TOKEN
 const igUserId = process.env.IG_USER_ID ?? null
 const metaClient = metaToken ? createMetaClient(metaToken) : null
 
-const processor = createCompetitiveIntelProcessor(repository, { embed: (text) => embeddings.embed(text), complete: (prompt) => llm.complete(prompt) })
+const processor = createCompetitiveIntelProcessor(repository, { embed: (text) => embeddings.embed(text), complete: (prompt) => llm.complete(prompt, 'prospector_competitive_intel') })
 
 runWorker(spec.queue, async (job) => {
   const payload = job.payload as { windowDays?: number; mode?: string }
@@ -71,7 +71,7 @@ runWorker(spec.queue, async (job) => {
       pool,
       metaClient,
       igUserId,
-      { complete: (prompt) => llm.complete(prompt) },
+      { complete: (prompt) => llm.complete(prompt, 'prospector_competitive_intel') },
       payload.windowDays ?? 7,
     )
     logger.info(organicResult, 'organic competitor intelligence complete')

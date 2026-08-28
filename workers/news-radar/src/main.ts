@@ -1,6 +1,6 @@
 import { createDatabase, loadLlmRuntimeConfig } from '@plataforma/db'
 import { runWorker } from '@plataforma/queue/runtime'
-import { logger } from '@plataforma/shared'
+import { logger, reportIaUsage } from '@plataforma/shared'
 import { processNewsRadar, type Repository, type AiClassifier, type NewsSource } from './index.js'
 
 const databaseUrl = process.env.DATABASE_URL
@@ -83,6 +83,7 @@ async function initAi(): Promise<AiClassifier | null> {
     const config = await loadLlmRuntimeConfig(pool)
     return {
       async classify(title, content) {
+        const startedAt = Date.now()
         const prompt = `Classify this news article about Brazilian civil service exams (concursos).
 Title: ${title}
 Content: ${(content ?? '').slice(0, 500)}
@@ -116,19 +117,24 @@ Return JSON with:
           body.max_tokens = config.maxOutputTokens
         }
 
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(30_000),
-        })
-
-        const data = await response.json()
-        const text = config.provider === 'anthropic'
-          ? data.content?.[0]?.text
-          : data.choices?.[0]?.message?.content
-
-        return JSON.parse(text)
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(30_000),
+          })
+          if (!response.ok) throw new Error(`LLM error ${response.status}`)
+          const data = await response.json()
+          const text = config.provider === 'anthropic'
+            ? data.content?.[0]?.text
+            : data.choices?.[0]?.message?.content
+          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: config.model, input_tokens: data.usage?.prompt_tokens ?? data.usage?.input_tokens, output_tokens: data.usage?.completion_tokens ?? data.usage?.output_tokens, latency_ms: Date.now() - startedAt, success: true })
+          return JSON.parse(text)
+        } catch (error) {
+          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: config.model, latency_ms: Date.now() - startedAt, success: false, error_code: error instanceof Error ? error.name : 'unknown' })
+          throw error
+        }
       },
     }
   } catch {
