@@ -43,6 +43,21 @@ export const knowledgeEmbeddings = pgTable('knowledge_embeddings', {
   id: uuid('id').primaryKey().defaultRandom(), chunkId: uuid('chunk_id').references(() => knowledgeChunks.id, { onDelete: 'cascade' }).notNull(), modelName: varchar('model_name', { length: 255 }).notNull(), modelVersion: varchar('model_version', { length: 255 }).notNull(), embedding: vector('embedding', 1536).notNull(), createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [index('knowledge_embeddings_chunk_idx').on(table.chunkId)])
 
+export const ragEmbeddings = pgTable('rag_embeddings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  chunkId: uuid('chunk_id').references(() => knowledgeChunks.id, { onDelete: 'cascade' }).notNull(),
+  modelName: varchar('model_name', { length: 255 }).notNull(),
+  modelVersion: varchar('model_version', { length: 255 }).notNull(),
+  embedding: vector('embedding', 768).notNull(),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+  contentHash: varchar('content_hash', { length: 128 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('rag_embeddings_chunk_model_unique').on(table.chunkId, table.modelName, table.modelVersion),
+  index('rag_embeddings_chunk_idx').on(table.chunkId),
+])
+
 export const editorialIntents = pgTable('editorial_intents', { id: uuid('id').primaryKey().defaultRandom(), name: varchar('name', { length: 100 }).notNull(), label: varchar('label', { length: 255 }).notNull(), description: text('description'), position: integer('position').default(0).notNull(), active: boolean('active').default(true).notNull() }, (table) => [uniqueIndex('editorial_intents_name_idx').on(table.name)])
 export const editorialAngles = pgTable('editorial_angles', { id: uuid('id').primaryKey().defaultRandom(), name: varchar('name', { length: 100 }).notNull(), label: varchar('label', { length: 255 }).notNull(), description: text('description'), position: integer('position').default(0).notNull(), active: boolean('active').default(true).notNull() }, (table) => [uniqueIndex('editorial_angles_name_idx').on(table.name)])
 export const editorialHooks = pgTable('editorial_hooks', { id: uuid('id').primaryKey().defaultRandom(), pattern: text('pattern').notNull(), category: varchar('category', { length: 30 }).notNull(), usageCount: integer('usage_count').default(0).notNull(), lastUsedAt: timestamp('last_used_at'), active: boolean('active').default(true).notNull(), createdAt: timestamp('created_at').defaultNow().notNull() })

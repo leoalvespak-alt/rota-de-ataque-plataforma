@@ -56,15 +56,14 @@ export async function POST(request: Request) {
       let created = 0
       for (const [position, candidate] of [...radar.map(item => ({ kind: 'radar' as const, item })), ...theses.map(item => ({ kind: 'evergreen' as const, item }))].entries()) {
         const isRadar = candidate.kind === 'radar'
-        const item = candidate.item
-        const hook = isRadar ? (item.hook ?? item.title) : `Evergreen · ${item.title}`
-        const angle = isRadar ? (item.angle ?? item.thesis) : (item.description ?? item.title)
-        const title = isRadar ? item.title : item.title
+        const hook = candidate.kind === 'radar' ? (candidate.item.hook ?? candidate.item.title) : `Evergreen · ${candidate.item.title}`
+        const angle = candidate.kind === 'radar' ? (candidate.item.angle ?? candidate.item.thesis) : (candidate.item.description ?? candidate.item.title)
+        const title = candidate.item.title
         const inserted = (await client.query<{ id: string }>(
           `INSERT INTO content_items(batch_id,campaign_id,opportunity_id,thesis_id,audience_segment,funnel_stage,objective,angle,hook,arguments,cta,intelligence_sources,brand_voice_version,status,created_by)
            VALUES($1,$2,$3,$4,'candidatos de concursos policiais','awareness','planejamento editorial de 15 dias',$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,'editorial-15d-v1','draft',$10)
            ON CONFLICT DO NOTHING RETURNING id`,
-          [batch.id, selected.id, isRadar ? item.id : null, isRadar ? null : item.id, angle, hook, JSON.stringify([{ role: 'brief', text: angle }]), JSON.stringify({ text: 'Salve para revisar' }), JSON.stringify({ source: isRadar ? 'radar' : 'evergreen', planned_for: addDays(startsOn, position % 15), evidence: isRadar ? item.evidence : {}, references: isRadar ? item.source_references : [] }), user.email ?? 'unknown'],
+          [batch.id, selected.id, isRadar ? candidate.item.id : null, isRadar ? null : candidate.item.id, angle, hook, JSON.stringify([{ role: 'brief', text: angle }]), JSON.stringify({ text: 'Salve para revisar' }), JSON.stringify({ source: isRadar ? 'radar' : 'evergreen', planned_for: addDays(startsOn, position % 15), evidence: candidate.kind === 'radar' ? candidate.item.evidence : {}, references: candidate.kind === 'radar' ? candidate.item.source_references : [] }), user.email ?? 'unknown'],
         )).rows[0]
         const contentItemId = inserted?.id ?? (await client.query<{ id: string }>('SELECT id FROM content_items WHERE batch_id=$1 AND hook=$2 LIMIT 1', [batch.id, hook])).rows[0]?.id
         if (!contentItemId) continue
