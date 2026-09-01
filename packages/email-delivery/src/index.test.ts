@@ -11,6 +11,11 @@ describe('email delivery boundaries', () => {
     expect(fetcher).not.toHaveBeenCalled()
   })
 
+  it('keeps Brevo disabled unless the explicit marketing opt-in is true', () => {
+    expect(createEmailDelivery({ BREVO_API_KEY: 'key' }).marketing.enabled).toBe(false)
+    expect(createEmailDelivery({ BREVO_API_KEY: 'key', BREVO_MARKETING_ENABLED: 'true' }).marketing.enabled).toBe(true)
+  })
+
   it('sends only transactional messages through Resend', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 're_123' }), { status: 200 }))
     const provider = new ResendTransactionalProvider('key', 'Rota <noreply@example.com>', fetcher)

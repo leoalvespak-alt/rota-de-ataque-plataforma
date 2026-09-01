@@ -92,8 +92,9 @@ export function createEmailDelivery(env: EmailEnvironment = currentEnvironment()
   const resendKey = required(env, 'RESEND_API_KEY')
   const resendFrom = required(env, 'RESEND_FROM_EMAIL')
   const brevoKey = required(env, 'BREVO_API_KEY')
+  const brevoMarketingEnabled = env.BREVO_MARKETING_ENABLED?.trim().toLowerCase() === 'true'
   return {
     transactional: resendKey && resendFrom ? new ResendTransactionalProvider(resendKey, resendFrom, fetcher) : new DisabledTransactionalProvider(),
-    marketing: brevoKey ? new BrevoMarketingProvider(brevoKey, fetcher) : new DisabledMarketingProvider(),
+    marketing: brevoKey && brevoMarketingEnabled ? new BrevoMarketingProvider(brevoKey, fetcher) : new DisabledMarketingProvider(),
   }
 }
