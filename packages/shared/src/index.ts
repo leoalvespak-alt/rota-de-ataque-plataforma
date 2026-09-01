@@ -54,7 +54,6 @@ export const ReasonCodeSchema = z.enum([
   "BUDGET_NOT_CONFIGURED",
   "MIGRATION_DRIFT",
   "RUNTIME_UNAVAILABLE",
-  "QUEUE_UNAVAILABLE",
   "SQL_CONTRACT_ERROR",
   "EXTERNAL_PROVIDER_ERROR",
   "POLICY_BLOCKED",
@@ -123,7 +122,6 @@ export const ConfigSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
   APP_URL: z.string().url(),
   META_API_VERSION: z
     .string()

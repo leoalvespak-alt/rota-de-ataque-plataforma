@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto'
-import type { Redis } from 'ioredis'
 
 export const OTP_RATE_LIMIT_POLICY = {
   windowMs: 15 * 60_000,
@@ -9,34 +8,13 @@ export const OTP_RATE_LIMIT_POLICY = {
 } as const
 
 export type OtpRateLimitScope = 'cooldown' | 'ip' | 'identifier'
-
 export type OtpRateLimitDecision =
   | { allowed: true }
   | { allowed: false; scope: OtpRateLimitScope; retryAfterSeconds: number }
 
-export const OTP_RATE_LIMIT_SCRIPT = `
-local cooldown_ttl = redis.call('PTTL', KEYS[1])
-if cooldown_ttl > 0 then
-  return {0, cooldown_ttl, 'cooldown'}
-end
-
-local ip_count = redis.call('INCR', KEYS[2])
-if ip_count == 1 then redis.call('PEXPIRE', KEYS[2], ARGV[2]) end
-local identifier_count = redis.call('INCR', KEYS[3])
-if identifier_count == 1 then redis.call('PEXPIRE', KEYS[3], ARGV[2]) end
-
-local ip_ttl = redis.call('PTTL', KEYS[2])
-local identifier_ttl = redis.call('PTTL', KEYS[3])
-if ip_count > tonumber(ARGV[3]) then
-  return {0, ip_ttl, 'ip'}
-end
-if identifier_count > tonumber(ARGV[3]) then
-  return {0, identifier_ttl, 'identifier'}
-end
-
-redis.call('SET', KEYS[1], '1', 'PX', ARGV[1])
-return {1, 0, 'allowed'}
-`
+export interface RateLimitDatabase {
+  query<T = unknown>(sql: string, values?: unknown[]): Promise<{ rows: T[] }>
+}
 
 function keyHash(value: string): string {
   return createHash('sha256').update(value).digest('hex')
@@ -54,10 +32,11 @@ export function normalizeClientAddress(value: string | null): string {
 export function otpRateLimitKeys(email: string, ip: string): [string, string, string] {
   const identifierHash = keyHash(`identifier:${normalizeOtpIdentifier(email)}`)
   const ipHash = keyHash(`ip:${ip}`)
+  const bucket = Math.floor(Date.now() / OTP_RATE_LIMIT_POLICY.windowMs)
   return [
-    `otp:v1:cooldown:${identifierHash}`,
-    `otp:v1:window:ip:${ipHash}`,
-    `otp:v1:window:identifier:${identifierHash}`,
+    `otp:v2:cooldown:${identifierHash}`,
+    `otp:v2:window:ip:${ipHash}:${bucket}`,
+    `otp:v2:window:identifier:${identifierHash}:${bucket}`,
   ]
 }
 
@@ -65,23 +44,39 @@ function retryAfterSeconds(ttlMs: number): number {
   return Math.max(1, Math.ceil(Math.max(ttlMs, 0) / 1000))
 }
 
-export async function checkOtpRateLimit(redis: Pick<Redis, 'eval'>, email: string, ip: string): Promise<OtpRateLimitDecision> {
-  const [cooldownKey, ipKey, identifierKey] = otpRateLimitKeys(email, ip)
-  const result = await redis.eval(
-    OTP_RATE_LIMIT_SCRIPT,
-    3,
-    cooldownKey,
-    ipKey,
-    identifierKey,
-    OTP_RATE_LIMIT_POLICY.cooldownMs,
-    OTP_RATE_LIMIT_POLICY.windowMs,
-    OTP_RATE_LIMIT_POLICY.maxRequests,
+async function increment(database: RateLimitDatabase, key: string, windowMs: number) {
+  const result = await database.query<{ count: number; retry_after_ms: number }>(
+    `INSERT INTO runtime_rate_limits(bucket_key, window_expires_at, count, updated_at)
+     VALUES($1, now() + ($2::double precision * interval '1 millisecond'), 1, now())
+     ON CONFLICT(bucket_key) DO UPDATE
+       SET count = runtime_rate_limits.count + 1, updated_at = now()
+     RETURNING count, GREATEST(1, CEIL(EXTRACT(epoch FROM (window_expires_at - now())) * 1000))::int AS retry_after_ms`,
+    [key, windowMs],
   )
-  if (!Array.isArray(result) || result.length < 3) throw new Error('OTP rate limiter returned an invalid result')
-  const [allowed, ttlMs, rawScope] = result
-  if (Number(allowed) === 1) return { allowed: true }
-  const scope = rawScope === 'ip' || rawScope === 'identifier' || rawScope === 'cooldown' ? rawScope : 'identifier'
-  return { allowed: false, scope, retryAfterSeconds: retryAfterSeconds(Number(ttlMs)) }
+  return { count: Number(result.rows[0]?.count ?? 1), retryAfterMs: Number(result.rows[0]?.retry_after_ms ?? windowMs) }
+}
+
+export async function checkOtpRateLimit(database: RateLimitDatabase, email: string, ip: string): Promise<OtpRateLimitDecision> {
+  const [cooldownKey, ipKey, identifierKey] = otpRateLimitKeys(email, ip)
+  const cooldown = await database.query<{ retry_after_ms: number }>(
+    `SELECT GREATEST(1, CEIL(EXTRACT(epoch FROM (window_expires_at - now())) * 1000))::int AS retry_after_ms
+     FROM runtime_rate_limits WHERE bucket_key = $1 AND window_expires_at > now()`,
+    [cooldownKey],
+  )
+  if (cooldown.rows[0]) return { allowed: false, scope: 'cooldown', retryAfterSeconds: retryAfterSeconds(Number(cooldown.rows[0].retry_after_ms)) }
+
+  const ipCount = await increment(database, ipKey, OTP_RATE_LIMIT_POLICY.windowMs)
+  const identifierCount = await increment(database, identifierKey, OTP_RATE_LIMIT_POLICY.windowMs)
+  if (ipCount.count > OTP_RATE_LIMIT_POLICY.maxRequests) return { allowed: false, scope: 'ip', retryAfterSeconds: retryAfterSeconds(ipCount.retryAfterMs) }
+  if (identifierCount.count > OTP_RATE_LIMIT_POLICY.maxRequests) return { allowed: false, scope: 'identifier', retryAfterSeconds: retryAfterSeconds(identifierCount.retryAfterMs) }
+
+  await database.query(
+    `INSERT INTO runtime_rate_limits(bucket_key, window_expires_at, count, updated_at)
+     VALUES($1, now() + ($2::double precision * interval '1 millisecond'), 1, now())
+     ON CONFLICT(bucket_key) DO UPDATE SET window_expires_at = EXCLUDED.window_expires_at, count = 1, updated_at = now()`,
+    [cooldownKey, OTP_RATE_LIMIT_POLICY.cooldownMs],
+  )
+  return { allowed: true }
 }
 
 export function otpMetric(outcome: 'allowed' | 'blocked' | 'error', scope?: OtpRateLimitScope): void {

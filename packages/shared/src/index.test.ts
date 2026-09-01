@@ -35,7 +35,7 @@ describe('preflight', () => {
 describe('shared domain contracts', () => {
   it('keeps embeddings fixed and rejects external providers', () => {
     expect(EMBEDDING_DIM).toBe(384)
-    expect(() => loadConfig({ DATABASE_URL: 'postgresql://x:x@localhost/x', REDIS_URL: 'redis://localhost', APP_URL: 'https://example.com', META_APP_SECRET: 'x', META_WEBHOOK_VERIFY_TOKEN: 'x', EMBEDDINGS_PROVIDER: 'openai', EMBEDDINGS_MODEL: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', EMBEDDINGS_ENDPOINT: 'http://localhost:8080', EMBEDDING_DIM: '384', TOKEN_ENCRYPTION_KEY: 'x'.repeat(32) })).toThrow()
+    expect(() => loadConfig({ DATABASE_URL: 'postgresql://x:x@localhost/x', APP_URL: 'https://example.com', META_APP_SECRET: 'x', META_WEBHOOK_VERIFY_TOKEN: 'x', EMBEDDINGS_PROVIDER: 'openai', EMBEDDINGS_MODEL: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', EMBEDDINGS_ENDPOINT: 'http://localhost:8080', EMBEDDING_DIM: '384', TOKEN_ENCRYPTION_KEY: 'x'.repeat(32) })).toThrow()
   })
   it('enforces account roles and inbound-only DM', () => {
     expect(() => assertRole('collector', 'follow')).toThrow(/cannot execute/)

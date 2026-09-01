@@ -1,9 +1,9 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { Context, MiddlewareHandler } from 'hono'
 import { getCookie } from 'hono/cookie'
-import Redis from 'ioredis'
 import { ApiError } from './routes/helpers'
-import { getRedis } from '@/server/infra/redis'
+import { pool } from './db'
+import { consumePostgresRateLimit } from '@/server/infra/postgres-rate-limit'
 
 export const OPERATOR_USER_ID = process.env.DESIGN_OPERATOR_USER_ID ?? '00000000-0000-4000-8000-000000000001'
 export const SESSION_COOKIE = 'rda_design_session'
@@ -18,7 +18,7 @@ function equalSecret(left: string, right: string): boolean {
 
 function sessionSecret(): string {
   const secret = process.env.API_SESSION_SECRET
-  if (!secret || secret.length < 32) throw new ApiError(503, 'Autenticação da API não configurada.')
+  if (!secret || secret.length < 32) throw new ApiError(503, 'AutenticaÃ§Ã£o da API nÃ£o configurada.')
   return secret
 }
 
@@ -51,7 +51,7 @@ export function authenticatePassword(password: string): boolean {
 
 export function getAuthenticatedUserId(c: Context): string {
   const userId = c.get('userId' as never) as string | undefined
-  if (!userId) throw new ApiError(401, 'Não autorizado.')
+  if (!userId) throw new ApiError(401, 'NÃ£o autorizado.')
   return userId
 }
 
@@ -60,22 +60,16 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   const apiToken = process.env.API_AUTH_TOKEN
   const bearerValid = Boolean(bearer && apiToken && equalSecret(bearer, apiToken))
   const userId = bearerValid ? OPERATOR_USER_ID : verifySession(getCookie(c, SESSION_COOKIE))
-  if (!userId) throw new ApiError(401, 'Não autorizado.')
+  if (!userId) throw new ApiError(401, 'NÃ£o autorizado.')
 
   if (!bearerValid && !['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
     const cookieToken = getCookie(c, CSRF_COOKIE)
     const headerToken = c.req.header('X-CSRF-Token')
-    if (!cookieToken || !headerToken || !equalSecret(cookieToken, headerToken)) {
-      throw new ApiError(403, 'Token CSRF inválido.')
-    }
+    if (!cookieToken || !headerToken || !equalSecret(cookieToken, headerToken)) throw new ApiError(403, 'Token CSRF invÃ¡lido.')
   }
 
   c.set('userId' as never, userId as never)
   await next()
-}
-
-function rateLimitRedis(): Redis {
-  return getRedis()
 }
 
 export function rateLimit(maxRequests: number, windowMs: number): MiddlewareHandler {
@@ -83,21 +77,15 @@ export function rateLimit(maxRequests: number, windowMs: number): MiddlewareHand
     const userId = getAuthenticatedUserId(c)
     const trustedProxy = process.env.TRUST_PROXY === 'true'
     const ip = trustedProxy ? c.req.header('X-Real-IP') ?? 'proxy-unknown' : 'direct'
-    const bucket = Math.floor(Date.now() / windowMs)
-    const key = `design-api:rate:${userId}:${ip}:${c.req.path}:${bucket}`
     try {
-      const client = rateLimitRedis()
-      if (client.status === 'wait') await client.connect()
-      const count = await client.incr(key)
-      if (count === 1) await client.pexpire(key, windowMs)
+      const result = await consumePostgresRateLimit(pool, { namespace: 'design-api', identity: `${userId}:${ip}`, path: c.req.path, windowMs })
       c.header('X-RateLimit-Limit', String(maxRequests))
-      c.header('X-RateLimit-Remaining', String(Math.max(0, maxRequests - count)))
-      if (count > maxRequests) throw new ApiError(429, 'Muitas requisições. Tente novamente mais tarde.')
+      c.header('X-RateLimit-Remaining', String(Math.max(0, maxRequests - result.count)))
+      if (result.count > maxRequests) throw new ApiError(429, 'Muitas requisiÃ§Ãµes. Tente novamente mais tarde.')
     } catch (error) {
       if (error instanceof ApiError) throw error
-      console.error(JSON.stringify({ level: 'warn', event: 'rate_limit_redis_unavailable', path: c.req.path }))
-      await next()
-      return
+      console.error(JSON.stringify({ level: 'error', event: 'rate_limit_postgres_unavailable', path: c.req.path }))
+      throw new ApiError(503, 'Limitador de requisiÃ§Ãµes indisponÃ­vel.')
     }
     await next()
   }

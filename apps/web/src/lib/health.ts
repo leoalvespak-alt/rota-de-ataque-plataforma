@@ -1,84 +1,44 @@
 import { createDatabase } from '@plataforma/db'
-import { Redis } from 'ioredis'
 
 const HEARTBEAT_MAX_AGE_SECONDS = 90
-const DEFAULT_EXPECTED_MIGRATION = '0040_prospector_expurgo_legacy'
-
+const DEFAULT_EXPECTED_MIGRATION = '0041_postgres_runtime_state'
 type ComponentStatus = 'ok' | 'error' | 'unavailable'
 export interface HealthPayload {
   ok: boolean
   service: 'web'
   status: 'online' | 'ready' | 'operational' | 'degraded' | 'unavailable'
   dependencies?: Record<string, ComponentStatus>
-  operational?: {
-    workersExpected: number
-    workersCurrent: number
-    workersRunning: number
-    workersPaused: number
-    missingConsumers: string[]
-    configuredButNotRunning: string[]
-    staleHeartbeats: string[]
-  }
+  operational?: { workersExpected: number; workersCurrent: number; workersRunning: number; workersPaused: number; missingConsumers: string[]; configuredButNotRunning: string[]; staleHeartbeats: string[] }
   at: string
   traceId: string
 }
-
-function makePayload(input: Omit<HealthPayload, 'at' | 'traceId'>): HealthPayload {
-  return { ...input, at: new Date().toISOString(), traceId: crypto.randomUUID() }
+function makePayload(input: Omit<HealthPayload, 'at' | 'traceId'>): HealthPayload { return { ...input, at: new Date().toISOString(), traceId: crypto.randomUUID() } }
+async function databasePool() {
+  const databaseUrl = process.env.DATABASE_URL
+  return databaseUrl ? createDatabase(databaseUrl).pool : null
 }
-
-function redisClient(url: string) {
-  return new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 1, connectTimeout: 3_000 })
-}
-
-export async function expectedMigrationApplied(
-  database: { query<T>(sql: string, values?: unknown[]): Promise<{ rows: T[] }> },
-  expected = process.env.EXPECTED_DB_MIGRATION ?? DEFAULT_EXPECTED_MIGRATION,
-) {
-  const result = await database.query<{ applied: boolean }>(
-    'SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1) AS applied',
-    [expected],
-  )
+export async function expectedMigrationApplied(database: { query<T>(sql: string, values?: unknown[]): Promise<{ rows: T[] }> }, expected = process.env.EXPECTED_DB_MIGRATION ?? DEFAULT_EXPECTED_MIGRATION) {
+  const result = await database.query<{ applied: boolean }>('SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1) AS applied', [expected])
   return result.rows[0]?.applied === true
 }
-
-export function liveHealth() {
-  return makePayload({ ok: true, service: 'web', status: 'online' })
-}
+export function liveHealth() { return makePayload({ ok: true, service: 'web', status: 'online' }) }
 
 export async function readinessHealth(): Promise<HealthPayload> {
-  const databaseUrl = process.env.DATABASE_URL
-  const redisUrl = process.env.REDIS_URL
-  if (!databaseUrl || !redisUrl) {
-    return makePayload({ ok: false, service: 'web', status: 'unavailable', dependencies: { database: 'unavailable', cache: 'unavailable', migrations: 'unavailable' } })
-  }
-  const { pool } = createDatabase(databaseUrl)
-  const redis = redisClient(redisUrl)
-  try {
-    await redis.connect()
-    const [database, cache, migrations] = await Promise.all([
-      pool.query('SELECT 1').then(() => 'ok' as const).catch(() => 'error' as const),
-      redis.ping().then((value) => value === 'PONG' ? 'ok' as const : 'error' as const).catch(() => 'error' as const),
-      expectedMigrationApplied(pool).then((applied) => applied ? 'ok' as const : 'error' as const).catch(() => 'error' as const),
-    ])
-    const ok = Object.values({ database, cache, migrations }).every((value) => value === 'ok')
-    return makePayload({ ok, service: 'web', status: ok ? 'ready' : 'degraded', dependencies: { database, cache, migrations } })
-  } catch {
-    return makePayload({ ok: false, service: 'web', status: 'unavailable', dependencies: { database: 'error', cache: 'error', migrations: 'unavailable' } })
-  } finally {
-    await redis.quit().catch(() => undefined)
-  }
+  const pool = await databasePool()
+  if (!pool) return makePayload({ ok: false, service: 'web', status: 'unavailable', dependencies: { database: 'unavailable', migrations: 'unavailable' } })
+  const [database, migrations] = await Promise.all([
+    pool.query('SELECT 1').then(() => 'ok' as const).catch(() => 'error' as const),
+    expectedMigrationApplied(pool).then((applied) => applied ? 'ok' as const : 'error' as const).catch(() => 'error' as const),
+  ])
+  const ok = database === 'ok' && migrations === 'ok'
+  return makePayload({ ok, service: 'web', status: ok ? 'ready' : 'degraded', dependencies: { database, migrations } })
 }
 
 export async function operationalHealth(): Promise<HealthPayload> {
-  const databaseUrl = process.env.DATABASE_URL
-  const redisUrl = process.env.REDIS_URL
+  const pool = await databasePool()
   const emptyOperational = { workersExpected: 0, workersCurrent: 0, workersRunning: 0, workersPaused: 0, missingConsumers: [], configuredButNotRunning: [], staleHeartbeats: [] }
-  if (!databaseUrl || !redisUrl) return makePayload({ ok: false, service: 'web', status: 'unavailable', operational: emptyOperational })
-  const { pool } = createDatabase(databaseUrl)
-  const redis = redisClient(redisUrl)
+  if (!pool) return makePayload({ ok: false, service: 'web', status: 'unavailable', operational: emptyOperational })
   try {
-    await redis.connect()
     const result = await pool.query<{ worker_name: string; enabled: boolean; state: string | null; last_beat_at: string | null }>(`SELECT ws.worker_name, ws.enabled, heartbeat.state, heartbeat.last_beat_at::text
       FROM worker_settings ws
       LEFT JOIN LATERAL (SELECT state, last_beat_at FROM worker_heartbeats WHERE worker = ws.worker_name ORDER BY last_beat_at DESC LIMIT 1) heartbeat ON true
@@ -87,12 +47,10 @@ export async function operationalHealth(): Promise<HealthPayload> {
     const missingConsumers = result.rows.filter((row) => row.enabled && !fresh(row)).map((row) => row.worker_name)
     const configuredButNotRunning = result.rows.filter((row) => row.enabled && (!fresh(row) || row.state !== 'running')).map((row) => row.worker_name)
     const staleHeartbeats = result.rows.filter((row) => fresh(row) && row.state !== 'running' && row.state !== 'paused').map((row) => row.worker_name)
-    const operational = { workersExpected: result.rows.filter((row) => row.enabled).length, workersCurrent: result.rows.filter((row) => fresh(row)).length, workersRunning: result.rows.filter((row) => fresh(row) && row.state === 'running').length, workersPaused: result.rows.filter((row) => fresh(row) && row.state === 'paused').length, missingConsumers, configuredButNotRunning, staleHeartbeats }
+    const operational = { workersExpected: result.rows.filter((row) => row.enabled).length, workersCurrent: result.rows.filter(fresh).length, workersRunning: result.rows.filter((row) => fresh(row) && row.state === 'running').length, workersPaused: result.rows.filter((row) => fresh(row) && row.state === 'paused').length, missingConsumers, configuredButNotRunning, staleHeartbeats }
     const ok = missingConsumers.length === 0 && configuredButNotRunning.length === 0 && staleHeartbeats.length === 0
     return makePayload({ ok, service: 'web', status: ok ? 'operational' : 'degraded', operational })
   } catch {
     return makePayload({ ok: false, service: 'web', status: 'unavailable', operational: emptyOperational })
-  } finally {
-    await redis.quit().catch(() => undefined)
   }
 }

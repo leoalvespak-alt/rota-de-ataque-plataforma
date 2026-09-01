@@ -4,18 +4,6 @@ x-postgres-env: &postgres-env
   DATABASE_URL: postgresql://${PROSPECTOR_DB_USER}:${PROSPECTOR_DB_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
 
 services:
-  editorial-redis:
-    image: redis:7.4-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - fase7_redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   prospector-migrate:
     image: prospector-platform-migrations:fase7
     build:
@@ -38,7 +26,6 @@ services:
     environment:
       <<: *postgres-env
       DATABASE_POOL_MAX: "10"
-      REDIS_URL: redis://editorial-redis:6379
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       NEXT_PUBLIC_BASE_PATH: /prospector
       APP_URL: http://localhost:8080/prospector
@@ -48,15 +35,13 @@ services:
       AUTH_OPERATOR_EMAILS: ${AUTH_OPERATOR_EMAILS}
       AUTH_PASSWORD: ${AUTH_PASSWORD}
       AUTH_BOOTSTRAP_VIEWER: "false"
-      EXPECTED_DB_MIGRATION: "0040_prospector_expurgo_legacy"
+      EXPECTED_DB_MIGRATION: "0041_postgres_runtime_state"
       NODE_ENV: production
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:
       prospector-migrate:
         condition: service_completed_successfully
-      editorial-redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/prospector/api/health/live >/dev/null"]
       interval: 15s
@@ -88,7 +73,6 @@ services:
       DATABASE_URL: postgresql://${DESIGN_DB_USER}:${DESIGN_DB_PASSWORD}@host.docker.internal:6432/rota_design?sslmode=require
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       PROSPECTOR_DATABASE_URL: postgresql://prospector_reader:${PROSPECTOR_READER_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
-      REDIS_URL: redis://editorial-redis:6379
       API_PORT: "3001"
       WEB_ORIGIN: http://localhost:8080
       API_SESSION_SECRET: ${DESIGN_API_SESSION_SECRET}
@@ -103,8 +87,6 @@ services:
     depends_on:
       design-migrate:
         condition: service_completed_successfully
-      editorial-redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/health"]
       interval: 15s
@@ -147,6 +129,5 @@ services:
       retries: 10
 
 volumes:
-  fase7_redis_data:
   fase7_caddy_data:
   fase7_caddy_config:
