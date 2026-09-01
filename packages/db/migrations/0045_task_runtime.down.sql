@@ -1,0 +1,4 @@
+BEGIN;
+DROP TABLE IF EXISTS task_schedules;
+DROP TABLE IF EXISTS task_runs;
+COMMIT;
