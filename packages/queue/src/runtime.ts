@@ -1,6 +1,6 @@
 import { createDatabase } from '@plataforma/db'
 import { EMBEDDING_DIM, logger, type QueueName } from '@plataforma/shared'
-import { createWorker, type WorkerJob, type WorkerResult } from '@plataforma/shared/worker'
+import { type WorkerJob, type WorkerResult } from '@plataforma/shared/worker'
 
 const DEFAULT_EXPECTED_MIGRATION = '0040_prospector_expurgo_legacy'
 

@@ -31,7 +31,7 @@ export const LiveBadge=({connected,lastUpdate,details}:{connected:boolean;lastUp
 }
 export const RunbookLink=({href,name}:{href:string;name:string})=><Link className="runbook" href={href} target="_blank" rel="noreferrer">▣ {name}</Link>
 export const RoleBadge=({role}:{role:'collector'|'actor'})=><span className={`role ${role}`}>{role==='collector'?'Coleta':'Ação'}</span>
-export type MultichannelName = 'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group'|'reddit'
+export type MultichannelName = 'instagram'|'threads'|'email'|'whatsapp_dm'|'whatsapp_group'
 export const ChannelBadge=({channel}:{channel:MultichannelName})=><span className={`channel-badge ${channel}`}>{channel.replace('_',' ')}</span>
 export const ContentItemCard=({title,status,channels=[]}:{title:string;status:string;channels?:MultichannelName[]})=><article className="card content-item-card"><small>{status}</small><h3>{title}</h3><div>{channels.map((channel)=><ChannelBadge key={channel} channel={channel}/>)}</div></article>
 export const VariantPreview=({channel,text,status='draft'}:{channel:MultichannelName;text:string;status?:string})=><article className="card variant-preview"><header><ChannelBadge channel={channel}/><small>{status}</small></header><p>{text}</p></article>

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 const runbooks: Record<string, { title: string; checks: string[]; recovery: string[] }> = {
-  'system-health': { title: 'Saúde do sistema', checks: ['Confirme o liveness do Prospector, Design, Caddy e Redis.', 'Verifique o ledger de migrations e a conexão via PgBouncer.', 'Preserve traceId e não registre credenciais.'], recovery: ['Corrija somente a dependência indicada.', 'Reinicie o serviço local afetado e aguarde o healthcheck.', 'Valide novamente a Rota separadamente antes de encerrar.'] },
+  'system-health': { title: 'Saúde do sistema', checks: ['Confirme o liveness do Prospector, Design e Caddy.', 'Verifique o ledger de migrations e a conexão via PgBouncer.', 'Preserve traceId e não registre credenciais.'], recovery: ['Corrija somente a dependência indicada.', 'Reinicie o serviço local afetado e aguarde o healthcheck.', 'Valide novamente a Rota separadamente antes de encerrar.'] },
   'editorial-core': { title: 'Núcleo editorial', checks: ['Confira Radar, teses, oportunidades e itens de conteúdo.', 'Verifique a fila humana e a ponte criativa.', 'Não acione integrações externas durante esta fase.'], recovery: ['Valide a migration atual sem reescrever o histórico.', 'Reprocesse somente entradas editoriais idempotentes.', 'Registre a decisão e o estado resultante no audit log.'] },
   web: { title: 'Interface web', checks: ['Copie o traceId exibido no erro.', 'Confira o status da API e do banco.', 'Tente novamente uma única vez para descartar falha transitória.'], recovery: ['Preserve o identificador e o horário.', 'Valide Caddy e o healthcheck do container.', 'Recarregue a rota e confirme que os dados permanecem estáveis.'] },
 }
