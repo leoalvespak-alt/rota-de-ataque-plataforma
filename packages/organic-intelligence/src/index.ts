@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
 export const platformSchema = z.enum(['web', 'instagram', 'threads', 'tiktok', 'youtube', 'reddit', 'x', 'google', 'news', 'forum', 'blog'])
-export const providerSchema = z.enum(['exa', 'apify', 'bright_data', 'meta', 'reddit_official', 'manual'])
+export const providerSchema = z.enum(['news_radar', 'manual'])
 export const observationSchema = z.object({
   provider: providerSchema,
   platform: platformSchema,

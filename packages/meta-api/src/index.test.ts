@@ -1,2 +1,0 @@
-import { describe,expect,it } from 'vitest'; import { createHmac } from 'node:crypto'; import { verifyWebhookChallenge,verifyWebhookSignature } from './index.js';
-describe('Meta webhook',()=>{it('checks handshake',()=>expect(verifyWebhookChallenge('subscribe','x','42','x')).toBe('42'));it('checks signature',()=>{const body=Buffer.from('{}');const sig='sha256='+createHmac('sha256','secret').update(body).digest('hex');expect(verifyWebhookSignature(body,sig,'secret')).toBe(true);expect(verifyWebhookSignature(body,sig,'wrong')).toBe(false)})})

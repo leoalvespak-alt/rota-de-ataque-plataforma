@@ -8,15 +8,14 @@ const sourceDirectory = path.dirname(fileURLToPath(import.meta.url))
 const appDirectory = path.join(sourceDirectory, 'app')
 
 describe('aliases legados da navegação', () => {
-  it('inclui as quatro entradas legadas que não pertencem mais ao mapa canônico', async () => {
+  it('mantém aliases editoriais fora do mapa canônico', async () => {
     expect(LEGACY_REDIRECTS['/desempenho']).toContain('/performance')
-    expect(LEGACY_REDIRECTS['/configuracoes']).toContain('/sistema')
     expect(LEGACY_REDIRECTS['/conteudo']).toContain('/planejamento')
-    expect(LEGACY_REDIRECTS['/relacionamento']).toContain('/publico')
+    expect(LEGACY_REDIRECTS['/review-inbox']).toContain('/decisoes')
+    expect(LEGACY_REDIRECTS['/content-items']).toContain('/planejamento')
 
-    for (const legacyPath of ['/desempenho', '/configuracoes', '/conteudo', '/relacionamento']) {
+    for (const legacyPath of ['/desempenho', '/conteudo', '/review-inbox', '/content-items']) {
       const directory = path.join(appDirectory, ...legacyPath.slice(1).split('/'))
-      await access(path.join(directory, 'page.tsx'))
       const source = await readFile(path.join(directory, 'page.tsx'), 'utf8')
       expect(source).toContain('permanentLegacyRedirect')
     }
@@ -27,5 +26,6 @@ describe('aliases legados da navegação', () => {
     for (const destination of NAVIGATION) expect(NAVIGATION.map((item) => item.id)).toContain(destination.id)
     expect(routeTabs).toContain('NavigationDestination')
     expect(routeTabs).not.toContain('destinationId: string')
+    await access(path.join(appDirectory, 'radar', 'page.tsx'))
   })
 })

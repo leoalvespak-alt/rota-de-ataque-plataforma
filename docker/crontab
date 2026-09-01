@@ -1,3 +1,0 @@
-15 2 * * * /scripts/backup-postgres.sh
-45 2 * * * /scripts/backup-redis.sh
-30 3 * * 0 /scripts/backup-profiles.sh

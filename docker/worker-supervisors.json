@@ -1,9 +1,0 @@
-{
-  "M0": ["alerts", "data-quality"],
-  "M1": ["news-radar", "reddit-intelligence", "adaptive-crawler", "discovery", "extraction", "meta-sync", "meta-webhook-consumer", "mention-monitor", "follower-mining", "search-mining", "live-monitor", "collab-discovery"],
-  "M2": ["competitive-intel", "classification", "scoring", "enrichment", "community-map", "audience-overlap", "nba-engine", "threads-adapter"],
-  "M3": ["content-opportunity", "content-item-orchestrator"],
-  "M4": ["publisher", "threads-publisher"],
-  "M5": ["email-flow-engine", "email-events-consumer", "whatsapp-inbound", "whatsapp-outbound", "conversation-agent", "dm-copilot", "private-reply", "engagement", "contact-policy-engine", "next-best-channel", "identity-resolver"],
-  "M6": ["source-roi", "conversion-tracking", "retention-tracker", "reciprocity-detector"]
-}

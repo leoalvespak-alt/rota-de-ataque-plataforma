@@ -30,10 +30,10 @@ describe('middleware — Location header', () => {
   it('redireciona para login sem duplicar basePath', async () => {
     const { default: middleware } = await import('./middleware')
     const { NextRequest } = await import('next/server')
-    const req = new NextRequest(new URL('https://design.rotadeataque.com.br/prospector/leads'))
+    const req = new NextRequest(new URL('https://design.rotadeataque.com.br/prospector/radar'))
     const response = await middleware(req)
     expect(response.headers.get('location')).toBe(
-      'https://design.rotadeataque.com.br/prospector/login?callbackUrl=%2Fprospector%2Fleads',
+      'https://design.rotadeataque.com.br/prospector/login?callbackUrl=%2Fprospector%2Fradar',
     )
   })
 
@@ -46,10 +46,9 @@ describe('middleware — Location header', () => {
   })
 
   it.each([
-    ['/prospector/api/meta/webhook', 'GET'],
-    ['/prospector/api/whatsapp/webhook', 'GET'],
-    ['/prospector/api/email/webhook/resend', 'POST'],
-    ['/prospector/api/email/confirm/token', 'GET'],
+    ['/prospector/api/health', 'GET'],
+    ['/prospector/api/health/live', 'GET'],
+    ['/prospector/api/health/ready', 'GET'],
   ])('libera rota pública %s para validação no handler', async (url, method) => {
     const { default: middleware } = await import('./middleware')
     const { NextRequest } = await import('next/server')
@@ -61,7 +60,7 @@ describe('middleware — Location header', () => {
   it('mantém rota administrativa em 401 sem sessão', async () => {
     const { default: middleware } = await import('./middleware')
     const { NextRequest } = await import('next/server')
-    const response = await middleware(new NextRequest(new URL('https://design.rotadeataque.com.br/prospector/api/admin/automations')))
+    const response = await middleware(new NextRequest(new URL('https://design.rotadeataque.com.br/prospector/api/theses')))
     expect(response.status).toBe(401)
   })
 
@@ -69,7 +68,7 @@ describe('middleware — Location header', () => {
     const { default: middleware } = await import('./middleware')
     const { NextRequest } = await import('next/server')
     const response = await middleware(new NextRequest(
-      new URL('https://design.rotadeataque.com.br/prospector/api/email/confirm/token'),
+      new URL('https://design.rotadeataque.com.br/prospector/api/health'),
       { method: 'POST' },
     ))
     expect(response.status).toBe(401)

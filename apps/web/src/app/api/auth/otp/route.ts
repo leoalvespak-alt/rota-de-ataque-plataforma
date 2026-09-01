@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Redis } from 'ioredis'
 import { z } from 'zod'
-import { ResendEmailChannel } from '@plataforma/notifications'
-import { otpFor } from '@/lib/otp'
 import { OTP_RATE_LIMIT_POLICY, checkOtpRateLimit, normalizeClientAddress, normalizeOtpIdentifier, otpMetric } from '@/lib/otp-rate-limit'
 
 const RequestSchema = z.object({ email: z.string().trim().email().max(254) }).strict()
@@ -41,15 +39,5 @@ export async function POST(request: Request) {
   }
   otpMetric('allowed')
 
-  try {
-    const code = otpFor(email, process.env.OTP_SECRET)
-    if (process.env.RESEND_API_KEY && process.env.RESEND_FROM) {
-      const channel = new ResendEmailChannel(process.env.RESEND_API_KEY, process.env.RESEND_FROM, [email])
-      await channel.send({ kind: 'Código de acesso', severity: 'info', campaign: 'Plataforma', message: `Seu código é ${code}. Expira em 5 minutos.`, dashboardUrl: process.env.APP_URL ?? 'http://localhost:3000', traceId })
-    }
-    return NextResponse.json({ ok: true, traceId })
-  } catch (error) {
-    console.error(JSON.stringify({ event: 'auth.otp.provider_error', traceId, error: error instanceof Error ? error.name : 'unknown' }))
-    return NextResponse.json({ ok: false, error: 'provider_error', traceId }, { status: 502 })
-  }
+  return NextResponse.json({ ok: false, error: 'otp_delivery_deferred_to_later_phase', traceId }, { status: 503 })
 }

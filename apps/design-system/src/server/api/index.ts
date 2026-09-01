@@ -20,7 +20,7 @@ import { publicationRoutes } from './routes/publications'
 import { aiRoutes } from './routes/ai'
 import { authRoutes } from './routes/auth'
 import { requireAuth } from './auth'
-import { db } from './db'
+import { db, pool, prospectorPool } from './db'
 import { getEditorialMetrics } from '@/server/editorial/metrics'
 import { getRedis } from '@/server/infra/redis'
 import {
@@ -87,7 +87,7 @@ const workers = [
 ]
 
 process.on('SIGTERM', () => {
-  Promise.all(workers.map(w => w.close())).then(() => process.exit(0)).catch(() => process.exit(1))
+  Promise.all([workers.map(w => w.close()), pool.end(), prospectorPool?.end()]).then(() => process.exit(0)).catch(() => process.exit(1))
 })
 
 const port = Number(process.env.API_PORT ?? 3001)

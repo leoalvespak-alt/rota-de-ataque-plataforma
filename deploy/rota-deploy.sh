@@ -4,7 +4,6 @@ set -euo pipefail
 PROJECT="${1:-}"
 ARGUMENT="${2:-}"
 GHCR="ghcr.io/leoalvespak-alt"
-DOKPLOY_API="http://127.0.0.1:3100/api"
 DEPLOY_CONFIG="${ROTA_DEPLOY_CONFIG:-/etc/rota-deploy.env}"
 LOCK_FILE="/run/lock/rota-deploy.lock"
 
@@ -53,26 +52,6 @@ cleanup_temporary_resources() {
 }
 trap cleanup_temporary_resources EXIT
 
-require_dokploy_key() {
-  [[ -n "${DOKPLOY_API_KEY:-}" ]] || fail "DOKPLOY_API_KEY is missing from $DEPLOY_CONFIG"
-}
-
-dokploy_post() {
-  local endpoint="$1"
-  local payload="$2"
-  local response_file http_code
-  require_dokploy_key
-  response_file="$(mktemp)"
-  http_code="$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
-    --output "$response_file" --write-out '%{http_code}' \
-    --request POST "$DOKPLOY_API/$endpoint" \
-    --header "x-api-key: $DOKPLOY_API_KEY" \
-    --header 'Content-Type: application/json' \
-    --data "$payload" || true)"
-  rm -f -- "$response_file"
-  [[ "$http_code" =~ ^2[0-9][0-9]$ ]] || fail "Dokploy API $endpoint returned HTTP ${http_code:-000}"
-}
-
 health_check() {
   local url="$1"
   local retries="${2:-15}"
@@ -101,13 +80,6 @@ cleanup_images() {
     tag="${tags[$index]}"
     docker image rm "$GHCR/$repo:$tag" >/dev/null 2>&1 || true
   done
-}
-
-find_prospector_compose_file() {
-  local compose_file
-  compose_file="$(find /etc/dokploy/compose -type f -path '*prospector*/code/docker/docker-compose.dokploy.yml' -print -quit 2>/dev/null || true)"
-  [[ -n "$compose_file" ]] || return 1
-  printf '%s\n' "$compose_file"
 }
 
 wait_for_image() {
@@ -182,70 +154,6 @@ deploy_design_api() {
   cleanup_images "rota-design-api"
 }
 
-deploy_prospector() {
-  local tag web_image worker_image expected_image expected_worker_image
-  local compose_file compose_dir web_container migration_container migration_image
-
-  tag="$(standard_image_tag)"
-  web_image="$GHCR/prospector-platform-web:$tag"
-  worker_image="$GHCR/prospector-platform-worker:$tag"
-
-  log "Deploying Prospector"
-  docker pull "$web_image"
-  docker pull "$worker_image"
-  if [[ "$tag" != "latest" ]]; then
-    docker tag "$web_image" "$GHCR/prospector-platform-web:latest"
-    docker tag "$worker_image" "$GHCR/prospector-platform-worker:latest"
-  fi
-  expected_image="$(docker image inspect --format '{{.Id}}' "$web_image")"
-  expected_worker_image="$(docker image inspect --format '{{.Id}}' "$worker_image")"
-  compose_file="$(find_prospector_compose_file)" || fail "Prospector Dokploy compose file not found under /etc/dokploy/compose"
-  compose_dir="$(dirname "$compose_file")"
-
-  log "Running Prospector migrations before web replacement"
-  migration_container="prospector-migrate-$(date +%s)-$$"
-  TEMP_CONTAINER="$migration_container"
-  (
-    cd "$compose_dir"
-    docker compose \
-      --project-name rotadeataque-prospector-czj6hb \
-      --file "$compose_file" \
-      --profile tools \
-      run --no-deps --pull never --env-from-file .env --name "$migration_container" migrate
-  )
-  migration_image="$(docker inspect --format '{{.Image}}' "$migration_container")"
-  [[ "$migration_image" == "$expected_worker_image" ]] \
-    || fail "Prospector migrations did not use the image built by this workflow"
-  docker rm "$migration_container" >/dev/null
-  TEMP_CONTAINER=""
-
-  dokploy_post "compose.deploy" '{"composeId":"PXQCDj9zwHR772nHRE-pu"}'
-  web_container="rotadeataque-prospector-czj6hb-web-1"
-  wait_for_image "$web_container" "$expected_image" 60 5 \
-    || fail "Prospector did not switch to the image built by this workflow"
-  health_check "https://design.rotadeataque.com.br/prospector/api/health" 30 5 \
-    || fail "Prospector health check failed"
-  (
-    cd "$compose_dir"
-    runtime_count=0
-    while IFS= read -r service; do
-      case "$service" in
-        scheduler|worker-*)
-          container_id="$(docker compose --project-name rotadeataque-prospector-czj6hb --file "$compose_file" ps -q "$service")"
-          [[ -n "$container_id" ]] || fail "Prospector runtime service $service is not running"
-          running_worker_image="$(docker inspect --format '{{.Image}}' "$container_id")"
-          [[ "$running_worker_image" == "$expected_worker_image" ]] \
-            || fail "Prospector runtime service $service still uses an older worker image"
-          runtime_count=$((runtime_count + 1))
-          ;;
-      esac
-    done < <(docker compose --project-name rotadeataque-prospector-czj6hb --file "$compose_file" config --services)
-    [[ "$runtime_count" -eq 8 ]] || fail "Prospector runtime expected scheduler plus 7 engine supervisors, found $runtime_count"
-  )
-  cleanup_images "prospector-platform-web"
-  cleanup_images "prospector-platform-worker"
-}
-
 deploy_plataforma_v2() {
   local tag="${1:-latest}"
   local image="$GHCR/plataforma-2.0:$tag"
@@ -306,37 +214,28 @@ case "$PROJECT" in
   design-api)
     deploy_design_api
     ;;
-  prospector)
-    deploy_prospector
-    ;;
-  design-prospector)
-    deploy_design_web
-    deploy_design_api
-    deploy_prospector
+  design-local)
+    log "Design System local deployment is managed by docker/docker-compose.phase7.yml"
     ;;
   plataforma-v2)
     deploy_plataforma_v2 "${ARGUMENT:-latest}"
     ;;
   gazeta)
-    log "Triggering Gazeta deploy in Dokploy"
-    dokploy_post "application.deploy" '{"applicationId":"AJcua9f7P4PYRWRkO-72W"}'
+    log "Gazeta deployment is managed outside this local editorial stack"
     health_check "https://gazeta.rotadeataque.com.br" 40 10 || fail "Gazeta health check failed"
     ;;
   plataforma)
-    log "Triggering legacy Plataforma 2.0 Dokploy application"
-    dokploy_post "application.deploy" '{"applicationId":"kiMKbGqJOo5cSXbMcruMv"}'
+    log "Legacy Plataforma 2.0 deployment is managed outside this local editorial stack"
     health_check "https://app.rotadeataque.com.br" 40 10 || fail "Plataforma health check failed"
     ;;
   all)
-    "$0" design-prospector
+    "$0" design-local
     "$0" gazeta
     "$0" plataforma-v2 latest
     ;;
   cleanup)
     cleanup_images "rota-design-web"
     cleanup_images "rota-design-api"
-    cleanup_images "prospector-platform-web"
-    cleanup_images "prospector-platform-worker"
     cleanup_images "plataforma-2.0"
     docker image prune --force >/dev/null
     ;;
@@ -346,7 +245,7 @@ case "$PROJECT" in
   *)
     printf '%s\n' \
       'Usage: deploy.sh <project> [argument]' \
-      'Projects: design-web, design-api, prospector, design-prospector,' \
+      'Projects: design-web, design-api, design-local,' \
       '          plataforma-v2 [tag], gazeta, plataforma, all, cleanup, status'
     exit 1
     ;;

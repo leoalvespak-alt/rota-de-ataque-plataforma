@@ -14,9 +14,6 @@ importers:
       '@plataforma/db':
         specifier: workspace:*
         version: link:packages/db
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:packages/meta-api
       tsx:
         specifier: 4.23.5
         version: 4.23.5
@@ -342,15 +339,6 @@ importers:
       '@plataforma/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@plataforma/email-provider':
-        specifier: workspace:*
-        version: link:../../packages/email-provider
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:../../packages/meta-api
-      '@plataforma/notifications':
-        specifier: workspace:*
-        version: link:../../packages/notifications
       '@plataforma/organic-intelligence':
         specifier: workspace:*
         version: link:../../packages/organic-intelligence
@@ -363,9 +351,6 @@ importers:
       '@plataforma/ui-bridge':
         specifier: workspace:*
         version: link:../../packages/ui-bridge
-      '@plataforma/whatsapp-cloud':
-        specifier: workspace:*
-        version: link:../../packages/whatsapp-cloud
       '@tanstack/react-table':
         specifier: 9.1.2
         version: 9.1.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -437,76 +422,6 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
 
-  packages/apify-api:
-    dependencies:
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/bright-data-api:
-    dependencies:
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/browser:
-    dependencies:
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-      playwright:
-        specifier: 1.62.1
-        version: 1.62.1
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/channel-router:
-    dependencies:
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
   packages/db:
     dependencies:
       '@plataforma/shared':
@@ -535,108 +450,6 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
 
-  packages/email-provider:
-    dependencies:
-      '@aws-sdk/client-sesv2':
-        specifier: 3.883.0
-        version: 3.883.0
-      resend:
-        specifier: 6.9.2
-        version: 6.9.2
-    devDependencies:
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/exa-api:
-    dependencies:
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/humanizer:
-    dependencies:
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../nlp
-    devDependencies:
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/meta-api:
-    dependencies:
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/nlp:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../db
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/notifications:
-    dependencies:
-      resend:
-        specifier: 6.1.2
-        version: 6.1.2
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
   packages/organic-intelligence:
     dependencies:
       zod:
@@ -661,15 +474,6 @@ importers:
       '@plataforma/shared':
         specifier: workspace:*
         version: link:../shared
-      bullmq:
-        specifier: 6.0.6
-        version: 6.0.6(ioredis@6.0.0)(pg@8.23.0)
-      cron-parser:
-        specifier: 5.7.0
-        version: 5.7.0
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
     devDependencies:
       '@types/node':
         specifier: 24.13.3
@@ -677,28 +481,9 @@ importers:
       tsx:
         specifier: 4.23.5
         version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
       vitest:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  packages/reddit-api:
-    dependencies:
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
 
   packages/shared:
     dependencies:
@@ -727,22 +512,6 @@ importers:
       '@types/pg':
         specifier: 8.20.3
         version: 8.20.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  packages/threads-api:
-    dependencies:
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -808,228 +577,6 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
 
-  packages/whatsapp-cloud:
-    dependencies:
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
-      '@types/node':
-        specifier: 24.13.3
-        version: 24.13.3
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11))
-
-  workers/adaptive-crawler:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/alerts:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/notifications':
-        specifier: workspace:*
-        version: link:../../packages/notifications
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      bullmq:
-        specifier: 6.0.6
-        version: 6.0.6(ioredis@6.0.0)(pg@8.23.0)
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/audience-overlap:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/classification:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/collab-discovery:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/community-map:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/competitive-intel:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:../../packages/meta-api
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      '@types/pg':
-        specifier: 8.20.3
-        version: 8.20.3
-      pg:
-        specifier: 8.22.0
-        version: 8.22.0
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/contact-policy-engine:
-    dependencies:
-      '@plataforma/channel-router':
-        specifier: workspace:*
-        version: link:../../packages/channel-router
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
   workers/content-item-orchestrator:
     dependencies:
       '@plataforma/db':
@@ -1041,9 +588,6 @@ importers:
       '@plataforma/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      bullmq:
-        specifier: 6.0.6
-        version: 6.0.6(ioredis@6.0.0)(pg@8.23.0)
     devDependencies:
       tsx:
         specifier: 4.23.5
@@ -1080,464 +624,6 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
 
-  workers/conversation-agent:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/humanizer':
-        specifier: workspace:*
-        version: link:../../packages/humanizer
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/conversion-tracking:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:../../packages/meta-api
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/data-quality:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/discovery:
-    dependencies:
-      '@plataforma/apify-api':
-        specifier: workspace:*
-        version: link:../../packages/apify-api
-      '@plataforma/bright-data-api':
-        specifier: workspace:*
-        version: link:../../packages/bright-data-api
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/exa-api':
-        specifier: workspace:*
-        version: link:../../packages/exa-api
-      '@plataforma/organic-intelligence':
-        specifier: workspace:*
-        version: link:../../packages/organic-intelligence
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/dm-copilot:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/humanizer':
-        specifier: workspace:*
-        version: link:../../packages/humanizer
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:../../packages/meta-api
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/email-events-consumer:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/email-provider':
-        specifier: workspace:*
-        version: link:../../packages/email-provider
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/email-flow-engine:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/email-provider':
-        specifier: workspace:*
-        version: link:../../packages/email-provider
-      '@plataforma/humanizer':
-        specifier: workspace:*
-        version: link:../../packages/humanizer
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/engagement:
-    dependencies:
-      '@plataforma/browser':
-        specifier: workspace:*
-        version: link:../../packages/browser
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/enrichment:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/extraction:
-    dependencies:
-      '@plataforma/browser':
-        specifier: workspace:*
-        version: link:../../packages/browser
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/follower-mining:
-    dependencies:
-      '@plataforma/browser':
-        specifier: workspace:*
-        version: link:../../packages/browser
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-      minio:
-        specifier: 8.0.7
-        version: 8.0.7
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/identity-resolver:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/live-monitor:
-    dependencies:
-      '@plataforma/browser':
-        specifier: workspace:*
-        version: link:../../packages/browser
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/mention-monitor:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/meta-sync:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:../../packages/meta-api
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/meta-webhook-consumer:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/nba-engine:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
   workers/news-radar:
     dependencies:
       '@plataforma/db':
@@ -1549,9 +635,6 @@ importers:
       '@plataforma/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
     devDependencies:
       '@types/pg':
         specifier: 8.20.3
@@ -1559,355 +642,6 @@ importers:
       pg:
         specifier: 8.22.0
         version: 8.22.0
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/next-best-channel:
-    dependencies:
-      '@plataforma/channel-router':
-        specifier: workspace:*
-        version: link:../../packages/channel-router
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/private-reply:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/humanizer':
-        specifier: workspace:*
-        version: link:../../packages/humanizer
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:../../packages/meta-api
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/publisher:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/meta-api':
-        specifier: workspace:*
-        version: link:../../packages/meta-api
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      minio:
-        specifier: 8.0.5
-        version: 8.0.5
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/reciprocity-detector:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/reddit-intelligence:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/reddit-api':
-        specifier: workspace:*
-        version: link:../../packages/reddit-api
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/retention-tracker:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/scoring:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      '@plataforma/worker-classification':
-        specifier: workspace:*
-        version: link:../classification
-      '@plataforma/worker-extraction':
-        specifier: workspace:*
-        version: link:../extraction
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/search-mining:
-    dependencies:
-      '@plataforma/browser':
-        specifier: workspace:*
-        version: link:../../packages/browser
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/source-roi:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/threads-adapter:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/humanizer':
-        specifier: workspace:*
-        version: link:../../packages/humanizer
-      '@plataforma/nlp':
-        specifier: workspace:*
-        version: link:../../packages/nlp
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      ioredis:
-        specifier: 6.0.0
-        version: 6.0.0
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/threads-publisher:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@plataforma/threads-api':
-        specifier: workspace:*
-        version: link:../../packages/threads-api
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/whatsapp-inbound:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@plataforma/whatsapp-cloud':
-        specifier: workspace:*
-        version: link:../../packages/whatsapp-cloud
-    devDependencies:
-      tsx:
-        specifier: 4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
-
-  workers/whatsapp-outbound:
-    dependencies:
-      '@plataforma/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@plataforma/humanizer':
-        specifier: workspace:*
-        version: link:../../packages/humanizer
-      '@plataforma/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
-      '@plataforma/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@plataforma/whatsapp-cloud':
-        specifier: workspace:*
-        version: link:../../packages/whatsapp-cloud
-    devDependencies:
       tsx:
         specifier: 4.23.5
         version: 4.23.5
@@ -1944,127 +678,6 @@ packages:
   '@asamuzakjp/dom-selector@8.3.2':
     resolution: {integrity: sha512-93Z1N+BQNXysodoicpOIyNh2drHfz/CTf9nnT0FEx72GJcIiwgydD7tGAr78j41LsYn3hlRn+LdGPuBLn1Bl8Q==}
     engines: {node: ^22.13.0 || >=24.0.0}
-
-  '@aws-crypto/sha256-browser@5.2.0':
-    resolution: {integrity: sha512-AXfN/lGotSQwu6HNcEsIASo7kWXZ5HYWvfOmSNKDsEqC4OashTp8alTmaz+F7TC2L083SFv5RdB+qU3Vs1kZqw==}
-
-  '@aws-crypto/sha256-js@5.2.0':
-    resolution: {integrity: sha512-FFQQyu7edu4ufvIZ+OadFpHHOt+eSTBaYaki44c+akjg7qZg9oOQeLlk77F6tSYqjDAFClrHJk9tMf0HdVyOvA==}
-    engines: {node: '>=16.0.0'}
-
-  '@aws-crypto/supports-web-crypto@5.2.0':
-    resolution: {integrity: sha512-iAvUotm021kM33eCdNfwIN//F77/IADDSs58i+MDaOqFrVjZo9bAal0NK7HurRuWLLpF1iLX7gbWrjHjeo+YFg==}
-
-  '@aws-crypto/util@5.2.0':
-    resolution: {integrity: sha512-4RkU9EsI6ZpBve5fseQlGNUWKMa1RLPQ1dnjnQoe07ldfIzcsGb5hC5W0Dm7u423KWzawlrpbjXBrXCEv9zazQ==}
-
-  '@aws-sdk/client-sesv2@3.883.0':
-    resolution: {integrity: sha512-3HVaYgOTk0WCGUKN26yb1OGMl7VIP5w+fjm5SKDupbP179KoFaG7UfzDspFrulYadIN+rOjAPIgNY9p128yAKQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/client-sso@3.883.0':
-    resolution: {integrity: sha512-Ybjw76yPceEBO7+VLjy5+/Gr0A1UNymSDHda5w8tfsS2iHZt/vuD6wrYpHdLoUx4H5la8ZhwcSfK/+kmE+QLPw==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/core@3.883.0':
-    resolution: {integrity: sha512-FmkqnqBLkXi4YsBPbF6vzPa0m4XKUuvgKDbamfw4DZX2CzfBZH6UU4IwmjNV3ZM38m0xraHarK8KIbGSadN3wg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-env@3.883.0':
-    resolution: {integrity: sha512-Z6tPBXPCodfhIF1rvQKoeRGMkwL6TK0xdl1UoMIA1x4AfBpPICAF77JkFBExk/pdiFYq1d04Qzddd/IiujSlLg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-http@3.883.0':
-    resolution: {integrity: sha512-P589ug1lMOOEYLTaQJjSP+Gee34za8Kk2LfteNQfO9SpByHFgGj++Sg8VyIe30eZL8Q+i4qTt24WDCz1c+dgYg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-ini@3.883.0':
-    resolution: {integrity: sha512-n6z9HTzuDEdugXvPiE/95VJXbF4/gBffdV/SRHDJKtDHaRuvp/gggbfmfVSTFouGVnlKPb2pQWQsW3Nr/Y3Lrw==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-node@3.883.0':
-    resolution: {integrity: sha512-QIUhsatsrwfB9ZsKpmi0EySSfexVP61wgN7hr493DOileh2QsKW4XATEfsWNmx0dj9323Vg1Mix7bXtRfl9cGg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-process@3.883.0':
-    resolution: {integrity: sha512-m1shbHY/Vppy4EdddG9r8x64TO/9FsCjokp5HbKcZvVoTOTgUJrdT8q2TAQJ89+zYIJDqsKbqfrmfwJ1zOdnGQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-sso@3.883.0':
-    resolution: {integrity: sha512-37ve9Tult08HLXrJFHJM/sGB/vO7wzI6v1RUUfeTiShqx8ZQ5fTzCTNY/duO96jCtCexmFNSycpQzh7lDIf0aA==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-web-identity@3.883.0':
-    resolution: {integrity: sha512-SL82K9Jb0vpuTadqTO4Fpdu7SKtebZ3Yo4LZvk/U0UauVMlJj5ZTos0mFx1QSMB9/4TpqifYrSZcdnxgYg8Eqw==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/middleware-host-header@3.873.0':
-    resolution: {integrity: sha512-KZ/W1uruWtMOs7D5j3KquOxzCnV79KQW9MjJFZM/M0l6KI8J6V3718MXxFHsTjUE4fpdV6SeCNLV1lwGygsjJA==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/middleware-logger@3.876.0':
-    resolution: {integrity: sha512-cpWJhOuMSyz9oV25Z/CMHCBTgafDCbv7fHR80nlRrPdPZ8ETNsahwRgltXP1QJJ8r3X/c1kwpOR7tc+RabVzNA==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/middleware-recursion-detection@3.873.0':
-    resolution: {integrity: sha512-OtgY8EXOzRdEWR//WfPkA/fXl0+WwE8hq0y9iw2caNyKPtca85dzrrZWnPqyBK/cpImosrpR1iKMYr41XshsCg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/middleware-sdk-s3@3.883.0':
-    resolution: {integrity: sha512-i4sGOj9xhSN6/LkYj3AJ2SRWENnpN9JySwNqIoRqO1Uon8gfyNLJd1yV+s43vXQsU5wbKWVXK8l9SRo+vNTQwg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/middleware-user-agent@3.883.0':
-    resolution: {integrity: sha512-q58uLYnGLg7hsnWpdj7Cd1Ulsq1/PUJOHvAfgcBuiDE/+Fwh0DZxZZyjrU+Cr+dbeowIdUaOO8BEDDJ0CUenJw==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/nested-clients@3.883.0':
-    resolution: {integrity: sha512-IhzDM+v0ga53GOOrZ9jmGNr7JU5OR6h6ZK9NgB7GXaa+gsDbqfUuXRwyKDYXldrTXf1sUR3vy1okWDXA7S2ejQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/region-config-resolver@3.873.0':
-    resolution: {integrity: sha512-q9sPoef+BBG6PJnc4x60vK/bfVwvRWsPgcoQyIra057S/QGjq5VkjvNk6H8xedf6vnKlXNBwq9BaANBXnldUJg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/signature-v4-multi-region@3.883.0':
-    resolution: {integrity: sha512-86PO7+xhuQ48cD3xlZgEpRxVP1lBarWAJy23sB6zZLHgZSbnYXYjRFuyxX4PlFzqllM3PDKJvq3WnXeqSXeNsg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/token-providers@3.883.0':
-    resolution: {integrity: sha512-tcj/Z5paGn9esxhmmkEW7gt39uNoIRbXG1UwJrfKu4zcTr89h86PDiIE2nxUO3CMQf1KgncPpr5WouPGzkh/QQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/types@3.862.0':
-    resolution: {integrity: sha512-Bei+RL0cDxxV+lW2UezLbCYYNeJm6Nzee0TpW0FfyTRBhH9C1XQh4+x+IClriXvgBnRquTMMYsmJfvx8iyLKrg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/util-arn-parser@3.873.0':
-    resolution: {integrity: sha512-qag+VTqnJWDn8zTAXX4wiVioa0hZDQMtbZcGRERVnLar4/3/VIKBhxX2XibNQXFu1ufgcRn4YntT/XEPecFWcg==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/util-endpoints@3.879.0':
-    resolution: {integrity: sha512-aVAJwGecYoEmbEFju3127TyJDF9qJsKDUUTRMDuS8tGn+QiWQFnfInmbt+el9GU1gEJupNTXV+E3e74y51fb7A==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/util-locate-window@3.965.8':
-    resolution: {integrity: sha512-uUbMs1cBZPafD0ohUj6EwNf0fPZ534NvBxHox4hjX+0Rxq5paSYUem7+hi833pYrzrcnBATKIYpR02MDXT5M9g==}
-    engines: {node: '>=20.0.0'}
-
-  '@aws-sdk/util-user-agent-browser@3.873.0':
-    resolution: {integrity: sha512-AcRdbK6o19yehEcywI43blIBhOCSo6UgyWcuOJX5CFF8k39xm1ILCjQlRRjchLAxWrm0lU0Q7XV90RiMMFMZtA==}
-
-  '@aws-sdk/util-user-agent-node@3.883.0':
-    resolution: {integrity: sha512-28cQZqC+wsKUHGpTBr+afoIdjS6IoEJkMqcZsmo2Ag8LzmTa6BUWQenFYB0/9BmDy4PZFPUn+uX+rJgWKB+jzA==}
-    engines: {node: '>=18.0.0'}
-    peerDependencies:
-      aws-crt: '>=1.0.0'
-    peerDependenciesMeta:
-      aws-crt:
-        optional: true
-
-  '@aws-sdk/xml-builder@3.873.0':
-    resolution: {integrity: sha512-kLO7k7cGJ6KaHiExSJWojZurF7SnGMDHXRuQunFnEoD0n1yB6Lqy/S/zHiQ7oJnBhPr9q0TW9qFkrsZb1Uc54w==}
-    engines: {node: '>=18.0.0'}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -4779,145 +3392,6 @@ packages:
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
 
-  '@smithy/config-resolver@4.6.16':
-    resolution: {integrity: sha512-XMDfb7LTrlUeI9PpfMa6xzRv+yMtYFsr1LqTsR3CGpSSaaPIR5ldlAiXyLjFYmbh1/DD5NxHmDybdh6lJjJM+Q==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/core@3.31.1':
-    resolution: {integrity: sha512-CyogUINxvi7C7LDsh8Syo6hVJOT9ckz4rG8dRZfTJ8r91HkMY59PnNooaj7WcHyxEkxPfBAmbgztZU+xTo76lg==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/credential-provider-imds@4.4.16':
-    resolution: {integrity: sha512-QfuLWAkLzptffFW980AFeHZFdqds2B64rpEd3uJ6lgs3xVn9QegGMUgUcj+4d7dRrAsya3r58ZKpku97WcFb4w==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/fetch-http-handler@5.6.13':
-    resolution: {integrity: sha512-4fW86pEUOMbrD5nkbyl/tTvPHHWJFbuB2odl6ps9lWfHoXf9HWh3Q/Smh59qH1g7+c/BSZghX6bbUk4gsiMs8A==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/hash-node@4.4.16':
-    resolution: {integrity: sha512-9NJHd8scrdVORvnaMHIHgPipGxLiTK3FMNUfWl0tHn2fwJIEk4rZ3OM793yIWV8L+WKu+AWQZBcVyd5qrVXy+A==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/invalid-dependency@4.4.16':
-    resolution: {integrity: sha512-fEXR2jKLnu1U9sL/Obdkxs8f3M1pLSDjM30cMmpz2L61oGnlUdx1Z9Wj+9+mID7kKldEVOUQfuXqHrK4RP90FA==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/is-array-buffer@2.2.0':
-    resolution: {integrity: sha512-GGP3O9QFD24uGeAXYUjwSTXARoqpZykHadOmA8G5vfJPK0/DC67qa//0qvqrJzL1xc8WQWX7/yc7fwudjPHPhA==}
-    engines: {node: '>=14.0.0'}
-
-  '@smithy/middleware-content-length@4.4.16':
-    resolution: {integrity: sha512-Q+J8iTUHr5qtoejFJCb9TTavDh7xQFVFRjy1n1edq5BFJq5b4mfziqrEqJlAscHHVdsqyFTNJXcV+b9i3oad9w==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/middleware-endpoint@4.6.16':
-    resolution: {integrity: sha512-nU2N3LY6Vn46rwga1+gZQJ1Zsu+3/Qj2X+d5gKb8gSvLmojZd0sg9XWYqMDH59VeadVKOGOhMrhyzUo7ln4lGw==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/middleware-retry@4.7.16':
-    resolution: {integrity: sha512-JOVvyFbNiXUuT8Id+uNIEzbkqi8IOa6zqEQgzpoQ1xYIQQFTFL/mXIiBRLlA129aoBB1EeiElkhmLZyok5axYA==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/middleware-serde@4.4.16':
-    resolution: {integrity: sha512-nwYV4tBUU5kBOYec2p8vKz5pzMVWVEcalVY4ZXguUdZZEOm9LQZhT0pKsnYSQhldvWegaFKWAR45Mi4XUfv5cQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/middleware-stack@4.4.16':
-    resolution: {integrity: sha512-IivXdOXykxp8Eq+qDL91mxEVd9CoR7wEIJqhJiwbHnmJVX6SZm2hxZt6uSDQOEh5tYHQdj6WuqmpNhV7P8C1Ww==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/node-config-provider@4.5.16':
-    resolution: {integrity: sha512-N4XTMCO77u8jXq9Ms1pbFM3M9zD+ScKnvB+M7//VyawM8L6xW3/mqAPp/uMOYprW+q/b1Qen6qUKVwxTb2ymiQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/node-http-handler@4.9.13':
-    resolution: {integrity: sha512-Nmd/Nl35zfYrd+a6OO2cDJb3GPh9bgTjIUhcM+JFfjpp8/osCgboDV5nCT1I01Pv6R13eSKDKLSoVa5ZB6Zsfw==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/property-provider@4.4.16':
-    resolution: {integrity: sha512-xsj0qoE3ya7Fu3YoyKPINtGWsY33IO2ypcOJpLAGMbzGYTNr0wqK0HnCroHRIoJTsHapnsFABUhzlNfHo/diwg==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/protocol-http@5.5.16':
-    resolution: {integrity: sha512-iPaxIe9mTyidyhM6WF2/gSLPezyCwSlZcqlDBj2KCoSS994iw4yf1se1xmZkWsY98ZpwjDR/ZMubOSVx+Nrokw==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/shared-ini-file-loader@4.6.16':
-    resolution: {integrity: sha512-apuIuit7x6ZM0nJxuKf24MCkflwnSyD6wePOPGkhntEl0gLaIYLlZTQtzCB+j3kWOTpqx0D1o6JZ15NTk4f8xQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/signature-v4@5.6.12':
-    resolution: {integrity: sha512-I6KLtq3H0qqSuV9vLglfi8puHqzygzWHOnI4z/Rdoo+q50vvo18vBRdPAvvEtcaKROz7Zn6qnPa14kRfPH6PcQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/smithy-client@4.14.16':
-    resolution: {integrity: sha512-UzWzH88hntrIn1wMPlmt/6vmQL+FS+pYgqvBsp4QQdgt/DUFZZD0S0xRO7kCfAfz9fqn9boVb+buFWU4LD9PJg==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/types@4.16.1':
-    resolution: {integrity: sha512-0JFs3V2y2M9tKW5na/qxe69Zv+uxLMO7QBbhxF/FHu/Gp2NFZAAL9tWl9PU02xxo07pb3G9FTyjNc6D5uZrJIg==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/url-parser@4.4.16':
-    resolution: {integrity: sha512-0VynNn3o4qSpRbgtG6RbT09wsN2HjsIkBvxHUX99p0t3sFj7hvqsOtPQBubawSNH4PWfwXgkD82vG166ROta7w==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-base64@4.5.16':
-    resolution: {integrity: sha512-80e25qWKD6hJh5BenAutni2Z6dj2AiZKmht21pcROmzWzQja8yl+KqsuDSia++hwk1Ne6RrDEBwP6I+A4R0XAg==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-body-length-browser@4.4.16':
-    resolution: {integrity: sha512-gTqO1MkKFsaKgJoGelxgWBdUlHqc9g1z6ItBVFsQU1yTO4W6BEIq/NZIDf/UTi6ueojTr2fJRetusBIbctA6KQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-body-length-node@4.4.16':
-    resolution: {integrity: sha512-BTwIXGhunFzjNYpKrRJJjgfEONT8m/wyBB0IL4BWB9WqJSQa/CEMh2cPHqbqMpKwnAljPuhhbGwF2Z0qm2C04A==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-buffer-from@2.2.0':
-    resolution: {integrity: sha512-IJdWBbTcMQ6DA0gdNhh/BwrLkDR+ADW5Kr1aZmd4k3DIF6ezMV4R2NIAmT08wQJ3yUK82thHWmC/TnK/wpMMIA==}
-    engines: {node: '>=14.0.0'}
-
-  '@smithy/util-config-provider@4.4.16':
-    resolution: {integrity: sha512-GB3CQ1o09Dc3aUOswcy3q3xbe5ib5tNyIDmvn8i8Nno01gogbqn1BNIHGawSHApEFVtL1OqjkoiQ9lMXpgY5ig==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-defaults-mode-browser@4.5.16':
-    resolution: {integrity: sha512-en8XtoFeELWwI0pwpmUbf63bJ9WRusVozGQ59mE9YuUuW+Q/FFRfdbd/EZIf/p1oZXHerbj30ITuer7vE47TbQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-defaults-mode-node@4.4.16':
-    resolution: {integrity: sha512-MAN0jEah3skK3+94QiikeLbuhnZ9GuW+JCjuIUpXGUvJG2U4N8sscypWDMUJUkKc6DYJ0UaGI5Xvb17crXwyiw==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-endpoints@3.6.16':
-    resolution: {integrity: sha512-7dFFv+DA2Ln8s60s+JIRHHfl/Fch8HZ3FY9VjnM6I3EtigDP+bUUexNQZuexVYJXUejpQ48/JIHSiSmugFDD/A==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-middleware@4.4.16':
-    resolution: {integrity: sha512-VuChjNaV9VteddlugHsGqFXgjQK8WIt9JxYAtdsi1i8A1PwrVAVC6DVVRqr9XbGeWnHvvWb0ywWLMjYUZwiHYg==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-retry@4.5.16':
-    resolution: {integrity: sha512-oM/8/5H9aG1omF2CzDxE7oxiJQhkonS2Vz1Kd6/76IhvPzCoroA3RVhr0EhAhZmyY6th3WfLK0OpRrphJ3YbgQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-stream@4.7.16':
-    resolution: {integrity: sha512-r/r4fqkU5fkJQaGpTrVssAHuPIwDSHrwz1KQ3rb1riYkL71OsYciHun1i0PWrJLLt+nPvroHXcaz39RdNW3XBw==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/util-utf8@2.3.0':
-    resolution: {integrity: sha512-R8Rdn8Hy72KKcebgLiv8jQcQkXoLMOGGv5uI1/k0l+snqkOzQ1R0ChUBCxWMlBsFMekWjq0wRudIweFs7sKT5A==}
-    engines: {node: '>=14.0.0'}
-
-  '@smithy/util-utf8@4.4.16':
-    resolution: {integrity: sha512-/gSbVMQlLRcneJ8D/JGbB1DNf0w4I7OpY2ldNUJ+myDmakPXEm9fy/X4swDlNYTOwBwsCKVJsogCfe7Txjnolg==}
-    engines: {node: '>=18.0.0'}
-
-  '@stablelib/base64@1.0.1':
-    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
-
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
@@ -5807,9 +4281,6 @@ packages:
     resolution: {integrity: sha512-3CT63BXqYh781nZhNVOktg71oM1496BZhBHDjP5aOZTDmsL2nLkldbLDJFatFJt00j94TFnsZu2pWNijL4Eorw==}
     engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=18.0.0'}
 
-  '@zxing/text-encoding@0.9.0':
-    resolution: {integrity: sha512-U/4aVJ2mxI0aDNI8Uq0wEhMgY+u4CNtEb0om3+y3+niDAsoTCOB33UF0sxpzqzdqXLqmvc+vZyAt4O8pPdfkwA==}
-
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
@@ -5946,9 +4417,6 @@ packages:
     resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
     engines: {node: '>=18'}
 
-  bowser@2.14.1:
-    resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
-
   brace-expansion@5.0.9:
     resolution: {integrity: sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==}
     engines: {node: 20 || >=22}
@@ -5974,24 +4442,6 @@ packages:
 
   buffer@6.0.3:
     resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
-
-  bullmq@6.0.6:
-    resolution: {integrity: sha512-28z+se5imVUpxDkqovcdPGoS6sBsUgynXfcDE8tKp4hHfDxFmapAS+iC63QJvaUJLpPIieMMP0YbYGYlXF6b9w==}
-    engines: {node: '>=14.17.0'}
-    peerDependencies:
-      bullmq-otel: '>=2.0.0'
-      ioredis: '>=5.0.0'
-      pg: '>=8.0.0'
-      redis: '>=5.0.0'
-    peerDependenciesMeta:
-      bullmq-otel:
-        optional: true
-      ioredis:
-        optional: true
-      pg:
-        optional: true
-      redis:
-        optional: true
 
   bullmq@6.0.9:
     resolution: {integrity: sha512-l7kNlirauwdZrqsViO6owHUAhSSN/aCDkrUwZQ2futIItlbJGAxgU+6IOQtTl5Re39GZJEPU6jelGuY1gQD28w==}
@@ -6815,25 +5265,14 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
-  fast-sha256@1.3.0:
-    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
-
   fast-uri@3.1.5:
     resolution: {integrity: sha512-gHwA1O9LDIcKunMKhObS/HimwtehO1nPUECKAu5TpKgaO19fcWEl4bliWe1jWxVFvIXztJjjQ4L8XQ1EU9f7Jw==}
 
   fast-xml-builder@1.3.0:
     resolution: {integrity: sha512-F74cZEdCvuw9P41GAC3rod4X04jjWGM1JPEv/GWSqFTWLsdyMSBMBMlm9Hk3GLBgLBbdBNY8yee0pQh2RBVESQ==}
 
-  fast-xml-parser@4.5.7:
-    resolution: {integrity: sha512-a6Qh1RMCNbSrU1+sAyAAZH3rTe+OaWJbNZIq0S+ifZciUUOQtlVxBJwoTUE2bYhysmG/RYyI5WJFIKdBahJdrQ==}
-    hasBin: true
-
   fast-xml-parser@5.10.1:
     resolution: {integrity: sha512-IEMIf7298kXuZSRFoGfMYrl7is8LpavODgbNz1cwIudv7KwVFnuU+UsMporfq6PD6aXSlawZlARiA3UywCTfMw==}
-    hasBin: true
-
-  fast-xml-parser@5.2.5:
-    resolution: {integrity: sha512-pfX9uG9Ki0yekDHx2SiuRIyFdyAr1kMIMitPvb0YBo8SUfKvia7w7FIyd/l6av85pFYRhZscS75MwMnbvY+hcQ==}
     hasBin: true
 
   fastq@1.20.1:
@@ -7708,10 +6147,6 @@ packages:
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
 
-  minio@8.0.5:
-    resolution: {integrity: sha512-/vAze1uyrK2R/DSkVutE4cjVoAowvIQ18RAwn7HrqnLecLlMazFnY0oNBqfuoAWvu7mZIGX75AzpuV05TJeoHg==}
-    engines: {node: ^16 || ^18 || >=20}
-
   minio@8.0.7:
     resolution: {integrity: sha512-E737MgufW8CeQAsTAtnEMrxZ9scMSf29kkhZoXzDTKj/Jszzo2SfeZUH9wbDQH2Rsq6TCtl/yQL0+XdVKZansQ==}
     engines: {node: ^16 || ^18 || >=20}
@@ -8154,9 +6589,6 @@ packages:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
 
-  postal-mime@2.7.3:
-    resolution: {integrity: sha512-MjhXadAJaWgYzevi46+3kLak8y6gbg0ku14O1gO/LNOuay8dO+1PtcSGvAdgDR0DoIsSaiIA8y/Ddw6MnrO0Tw==}
-
   postcss-selector-parser@7.1.5:
     resolution: {integrity: sha512-KvvtD7SrlBP7dlgkBghEE3r84CABm5SmV2aNcG4oCA+qDnJ/tvKonFVvwWAyyWUEwxuNawdfEAZKP9zM3oZ2Uw==}
     engines: {node: '>=4'}
@@ -8462,24 +6894,6 @@ packages:
     resolution: {integrity: sha512-QT7FVMXfWOYFbeRBF6nu+I6tr2Tf3u0q8RIEjNob/heKY/nh7drD/k7eeMFmSQgnTtCzLDcCu/XEnpW2wk4xCQ==}
     engines: {node: '>=9.3.0 || >=8.10.0 <9.0.0'}
 
-  resend@6.1.2:
-    resolution: {integrity: sha512-C9Q+YkRe57P8MQlkHG3yatSR/B6sqBGA06Ri2DveJfkz9Vm16182FC/iHB0K6IAfmqZ4yRrFebFw1EPuktLtSg==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@react-email/render': '*'
-    peerDependenciesMeta:
-      '@react-email/render':
-        optional: true
-
-  resend@6.9.2:
-    resolution: {integrity: sha512-uIM6CQ08tS+hTCRuKBFbOBvHIGaEhqZe8s4FOgqsVXSbQLAhmNWpmUhG3UAtRnmcwTWFUqnHa/+Vux8YGPyDBA==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      '@react-email/render': '*'
-    peerDependenciesMeta:
-      '@react-email/render':
-        optional: true
-
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
@@ -8695,9 +7109,6 @@ packages:
   standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
 
-  standardwebhooks@1.0.0:
-    resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
-
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
     engines: {node: '>= 0.8'}
@@ -8786,9 +7197,6 @@ packages:
     resolution: {integrity: sha512-SlyRoSkdh1dYP0PzclLE7r0M9sgbFKKMFXpFRUMNuKhQSbC6VQIGzq3E0qsfvGJaUFJPGv6Ws1NZ/haTAjfbMA==}
     engines: {node: '>=12'}
 
-  strnum@1.1.2:
-    resolution: {integrity: sha512-vrN+B7DBIoTTZjnPNewwhx6cBA/H+IS7rfW68n7XxC1y7uoiGQBxaKzqucGUgavX15dJgiGztLJ8vxuEzwqBdA==}
-
   strnum@2.4.1:
     resolution: {integrity: sha512-M9eUSMT2dCB2cTNPG7UYj6KuK7RJR2SN2+yCV/fTW3xzTCS6EaGZ5pSMgDIjB7r8zSfTGk+dvvn9rTjpVS9Mwg==}
 
@@ -8816,9 +7224,6 @@ packages:
   supports-preserve-symlinks-flag@1.0.0:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
-
-  svix@1.84.1:
-    resolution: {integrity: sha512-K8DPPSZaW/XqXiz1kEyzSHYgmGLnhB43nQCMeKjWGCUpLIpAMMM8kx3rVVOSm6Bo6EHyK1RQLPT4R06skM/MlQ==}
 
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
@@ -9123,11 +7528,6 @@ packages:
   utrie@1.0.2:
     resolution: {integrity: sha512-1MLa5ouZiOmQzUbjbu9VmjLzn1QLXBhwpUa7kdLUQK+KQ5KA9I1vk5U4YHe/X2Ch7PYnJfWuWT+VbuxbGwljhw==}
 
-  uuid@10.0.0:
-    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-    hasBin: true
-
   uuid@14.0.1:
     resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
     hasBin: true
@@ -9289,9 +7689,6 @@ packages:
   w3c-xmlserializer@5.0.0:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
-
-  web-encoding@1.1.5:
-    resolution: {integrity: sha512-HYLeVCdJ0+lBYV2FvNZmv3HJ2Nt0QYXqZojk3d9FJOLkwnuhzM9tmamh8d7HPM8QqjKH8DeHkFTx+CFlWpZZDA==}
 
   webidl-conversions@8.0.1:
     resolution: {integrity: sha512-BMhLD/Sw+GbJC21C/UgyaZX41nPt8bUTg+jWyDeg7e7YN4xOM05YPSIXceACnXVtqyEw/LMClUQMtMZ+PGGpqQ==}
@@ -9517,388 +7914,6 @@ snapshots:
       css-tree: 3.2.1
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.2
-
-  '@aws-crypto/sha256-browser@5.2.0':
-    dependencies:
-      '@aws-crypto/sha256-js': 5.2.0
-      '@aws-crypto/supports-web-crypto': 5.2.0
-      '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.862.0
-      '@aws-sdk/util-locate-window': 3.965.8
-      '@smithy/util-utf8': 2.3.0
-      tslib: 2.8.1
-
-  '@aws-crypto/sha256-js@5.2.0':
-    dependencies:
-      '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.862.0
-      tslib: 2.8.1
-
-  '@aws-crypto/supports-web-crypto@5.2.0':
-    dependencies:
-      tslib: 2.8.1
-
-  '@aws-crypto/util@5.2.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@smithy/util-utf8': 2.3.0
-      tslib: 2.8.1
-
-  '@aws-sdk/client-sesv2@3.883.0':
-    dependencies:
-      '@aws-crypto/sha256-browser': 5.2.0
-      '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/credential-provider-node': 3.883.0
-      '@aws-sdk/middleware-host-header': 3.873.0
-      '@aws-sdk/middleware-logger': 3.876.0
-      '@aws-sdk/middleware-recursion-detection': 3.873.0
-      '@aws-sdk/middleware-user-agent': 3.883.0
-      '@aws-sdk/region-config-resolver': 3.873.0
-      '@aws-sdk/signature-v4-multi-region': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@aws-sdk/util-endpoints': 3.879.0
-      '@aws-sdk/util-user-agent-browser': 3.873.0
-      '@aws-sdk/util-user-agent-node': 3.883.0
-      '@smithy/config-resolver': 4.6.16
-      '@smithy/core': 3.31.1
-      '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/hash-node': 4.4.16
-      '@smithy/invalid-dependency': 4.4.16
-      '@smithy/middleware-content-length': 4.4.16
-      '@smithy/middleware-endpoint': 4.6.16
-      '@smithy/middleware-retry': 4.7.16
-      '@smithy/middleware-serde': 4.4.16
-      '@smithy/middleware-stack': 4.4.16
-      '@smithy/node-config-provider': 4.5.16
-      '@smithy/node-http-handler': 4.9.13
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/smithy-client': 4.14.16
-      '@smithy/types': 4.16.1
-      '@smithy/url-parser': 4.4.16
-      '@smithy/util-base64': 4.5.16
-      '@smithy/util-body-length-browser': 4.4.16
-      '@smithy/util-body-length-node': 4.4.16
-      '@smithy/util-defaults-mode-browser': 4.5.16
-      '@smithy/util-defaults-mode-node': 4.4.16
-      '@smithy/util-endpoints': 3.6.16
-      '@smithy/util-middleware': 4.4.16
-      '@smithy/util-retry': 4.5.16
-      '@smithy/util-utf8': 4.4.16
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/client-sso@3.883.0':
-    dependencies:
-      '@aws-crypto/sha256-browser': 5.2.0
-      '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/middleware-host-header': 3.873.0
-      '@aws-sdk/middleware-logger': 3.876.0
-      '@aws-sdk/middleware-recursion-detection': 3.873.0
-      '@aws-sdk/middleware-user-agent': 3.883.0
-      '@aws-sdk/region-config-resolver': 3.873.0
-      '@aws-sdk/types': 3.862.0
-      '@aws-sdk/util-endpoints': 3.879.0
-      '@aws-sdk/util-user-agent-browser': 3.873.0
-      '@aws-sdk/util-user-agent-node': 3.883.0
-      '@smithy/config-resolver': 4.6.16
-      '@smithy/core': 3.31.1
-      '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/hash-node': 4.4.16
-      '@smithy/invalid-dependency': 4.4.16
-      '@smithy/middleware-content-length': 4.4.16
-      '@smithy/middleware-endpoint': 4.6.16
-      '@smithy/middleware-retry': 4.7.16
-      '@smithy/middleware-serde': 4.4.16
-      '@smithy/middleware-stack': 4.4.16
-      '@smithy/node-config-provider': 4.5.16
-      '@smithy/node-http-handler': 4.9.13
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/smithy-client': 4.14.16
-      '@smithy/types': 4.16.1
-      '@smithy/url-parser': 4.4.16
-      '@smithy/util-base64': 4.5.16
-      '@smithy/util-body-length-browser': 4.4.16
-      '@smithy/util-body-length-node': 4.4.16
-      '@smithy/util-defaults-mode-browser': 4.5.16
-      '@smithy/util-defaults-mode-node': 4.4.16
-      '@smithy/util-endpoints': 3.6.16
-      '@smithy/util-middleware': 4.4.16
-      '@smithy/util-retry': 4.5.16
-      '@smithy/util-utf8': 4.4.16
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/core@3.883.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@aws-sdk/xml-builder': 3.873.0
-      '@smithy/core': 3.31.1
-      '@smithy/node-config-provider': 4.5.16
-      '@smithy/property-provider': 4.4.16
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/signature-v4': 5.6.12
-      '@smithy/smithy-client': 4.14.16
-      '@smithy/types': 4.16.1
-      '@smithy/util-base64': 4.5.16
-      '@smithy/util-body-length-browser': 4.4.16
-      '@smithy/util-middleware': 4.4.16
-      '@smithy/util-utf8': 4.4.16
-      fast-xml-parser: 5.2.5
-      tslib: 2.8.1
-
-  '@aws-sdk/credential-provider-env@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/property-provider': 4.4.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/credential-provider-http@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
-      '@smithy/property-provider': 4.4.16
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/smithy-client': 4.14.16
-      '@smithy/types': 4.16.1
-      '@smithy/util-stream': 4.7.16
-      tslib: 2.8.1
-
-  '@aws-sdk/credential-provider-ini@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/credential-provider-env': 3.883.0
-      '@aws-sdk/credential-provider-http': 3.883.0
-      '@aws-sdk/credential-provider-process': 3.883.0
-      '@aws-sdk/credential-provider-sso': 3.883.0
-      '@aws-sdk/credential-provider-web-identity': 3.883.0
-      '@aws-sdk/nested-clients': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/credential-provider-imds': 4.4.16
-      '@smithy/property-provider': 4.4.16
-      '@smithy/shared-ini-file-loader': 4.6.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/credential-provider-node@3.883.0':
-    dependencies:
-      '@aws-sdk/credential-provider-env': 3.883.0
-      '@aws-sdk/credential-provider-http': 3.883.0
-      '@aws-sdk/credential-provider-ini': 3.883.0
-      '@aws-sdk/credential-provider-process': 3.883.0
-      '@aws-sdk/credential-provider-sso': 3.883.0
-      '@aws-sdk/credential-provider-web-identity': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/credential-provider-imds': 4.4.16
-      '@smithy/property-provider': 4.4.16
-      '@smithy/shared-ini-file-loader': 4.6.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/credential-provider-process@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/property-provider': 4.4.16
-      '@smithy/shared-ini-file-loader': 4.6.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/credential-provider-sso@3.883.0':
-    dependencies:
-      '@aws-sdk/client-sso': 3.883.0
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/token-providers': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/property-provider': 4.4.16
-      '@smithy/shared-ini-file-loader': 4.6.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/credential-provider-web-identity@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/nested-clients': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/property-provider': 4.4.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/middleware-host-header@3.873.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/middleware-logger@3.876.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/middleware-recursion-detection@3.873.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/middleware-sdk-s3@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@aws-sdk/util-arn-parser': 3.873.0
-      '@smithy/core': 3.31.1
-      '@smithy/node-config-provider': 4.5.16
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/signature-v4': 5.6.12
-      '@smithy/smithy-client': 4.14.16
-      '@smithy/types': 4.16.1
-      '@smithy/util-config-provider': 4.4.16
-      '@smithy/util-middleware': 4.4.16
-      '@smithy/util-stream': 4.7.16
-      '@smithy/util-utf8': 4.4.16
-      tslib: 2.8.1
-
-  '@aws-sdk/middleware-user-agent@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@aws-sdk/util-endpoints': 3.879.0
-      '@smithy/core': 3.31.1
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/nested-clients@3.883.0':
-    dependencies:
-      '@aws-crypto/sha256-browser': 5.2.0
-      '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/middleware-host-header': 3.873.0
-      '@aws-sdk/middleware-logger': 3.876.0
-      '@aws-sdk/middleware-recursion-detection': 3.873.0
-      '@aws-sdk/middleware-user-agent': 3.883.0
-      '@aws-sdk/region-config-resolver': 3.873.0
-      '@aws-sdk/types': 3.862.0
-      '@aws-sdk/util-endpoints': 3.879.0
-      '@aws-sdk/util-user-agent-browser': 3.873.0
-      '@aws-sdk/util-user-agent-node': 3.883.0
-      '@smithy/config-resolver': 4.6.16
-      '@smithy/core': 3.31.1
-      '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/hash-node': 4.4.16
-      '@smithy/invalid-dependency': 4.4.16
-      '@smithy/middleware-content-length': 4.4.16
-      '@smithy/middleware-endpoint': 4.6.16
-      '@smithy/middleware-retry': 4.7.16
-      '@smithy/middleware-serde': 4.4.16
-      '@smithy/middleware-stack': 4.4.16
-      '@smithy/node-config-provider': 4.5.16
-      '@smithy/node-http-handler': 4.9.13
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/smithy-client': 4.14.16
-      '@smithy/types': 4.16.1
-      '@smithy/url-parser': 4.4.16
-      '@smithy/util-base64': 4.5.16
-      '@smithy/util-body-length-browser': 4.4.16
-      '@smithy/util-body-length-node': 4.4.16
-      '@smithy/util-defaults-mode-browser': 4.5.16
-      '@smithy/util-defaults-mode-node': 4.4.16
-      '@smithy/util-endpoints': 3.6.16
-      '@smithy/util-middleware': 4.4.16
-      '@smithy/util-retry': 4.5.16
-      '@smithy/util-utf8': 4.4.16
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/region-config-resolver@3.873.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@smithy/node-config-provider': 4.5.16
-      '@smithy/types': 4.16.1
-      '@smithy/util-config-provider': 4.4.16
-      '@smithy/util-middleware': 4.4.16
-      tslib: 2.8.1
-
-  '@aws-sdk/signature-v4-multi-region@3.883.0':
-    dependencies:
-      '@aws-sdk/middleware-sdk-s3': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/protocol-http': 5.5.16
-      '@smithy/signature-v4': 5.6.12
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/token-providers@3.883.0':
-    dependencies:
-      '@aws-sdk/core': 3.883.0
-      '@aws-sdk/nested-clients': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/property-provider': 4.4.16
-      '@smithy/shared-ini-file-loader': 4.6.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/types@3.862.0':
-    dependencies:
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/util-arn-parser@3.873.0':
-    dependencies:
-      tslib: 2.8.1
-
-  '@aws-sdk/util-endpoints@3.879.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@smithy/types': 4.16.1
-      '@smithy/url-parser': 4.4.16
-      '@smithy/util-endpoints': 3.6.16
-      tslib: 2.8.1
-
-  '@aws-sdk/util-locate-window@3.965.8':
-    dependencies:
-      tslib: 2.8.1
-
-  '@aws-sdk/util-user-agent-browser@3.873.0':
-    dependencies:
-      '@aws-sdk/types': 3.862.0
-      '@smithy/types': 4.16.1
-      bowser: 2.14.1
-      tslib: 2.8.1
-
-  '@aws-sdk/util-user-agent-node@3.883.0':
-    dependencies:
-      '@aws-sdk/middleware-user-agent': 3.883.0
-      '@aws-sdk/types': 3.862.0
-      '@smithy/node-config-provider': 4.5.16
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@aws-sdk/xml-builder@3.873.0':
-    dependencies:
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -12507,181 +10522,6 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@smithy/config-resolver@4.6.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/core@3.31.1':
-    dependencies:
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@smithy/credential-provider-imds@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@smithy/fetch-http-handler@5.6.13':
-    dependencies:
-      '@smithy/core': 3.31.1
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@smithy/hash-node@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/invalid-dependency@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/is-array-buffer@2.2.0':
-    dependencies:
-      tslib: 2.8.1
-
-  '@smithy/middleware-content-length@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/middleware-endpoint@4.6.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/middleware-retry@4.7.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/middleware-serde@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/middleware-stack@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/node-config-provider@4.5.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/node-http-handler@4.9.13':
-    dependencies:
-      '@smithy/core': 3.31.1
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@smithy/property-provider@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/protocol-http@5.5.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/shared-ini-file-loader@4.6.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/signature-v4@5.6.12':
-    dependencies:
-      '@smithy/core': 3.31.1
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@smithy/smithy-client@4.14.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      '@smithy/types': 4.16.1
-      tslib: 2.8.1
-
-  '@smithy/types@4.16.1':
-    dependencies:
-      tslib: 2.8.1
-
-  '@smithy/url-parser@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-base64@4.5.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-body-length-browser@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-body-length-node@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-buffer-from@2.2.0':
-    dependencies:
-      '@smithy/is-array-buffer': 2.2.0
-      tslib: 2.8.1
-
-  '@smithy/util-config-provider@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-defaults-mode-browser@4.5.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-defaults-mode-node@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-endpoints@3.6.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-middleware@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-retry@4.5.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-stream@4.7.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@smithy/util-utf8@2.3.0':
-    dependencies:
-      '@smithy/util-buffer-from': 2.2.0
-      tslib: 2.8.1
-
-  '@smithy/util-utf8@4.4.16':
-    dependencies:
-      '@smithy/core': 3.31.1
-      tslib: 2.8.1
-
-  '@stablelib/base64@1.0.1': {}
-
   '@standard-schema/spec@1.1.0': {}
 
   '@standard-schema/utils@0.3.0': {}
@@ -13777,9 +11617,6 @@ snapshots:
 
   '@zip.js/zip.js@2.8.36': {}
 
-  '@zxing/text-encoding@0.9.0':
-    optional: true
-
   accepts@2.0.0:
     dependencies:
       mime-types: 3.0.2
@@ -13905,8 +11742,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  bowser@2.14.1: {}
-
   brace-expansion@5.0.9:
     dependencies:
       balanced-match: 4.0.4
@@ -13933,17 +11768,6 @@ snapshots:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
-
-  bullmq@6.0.6(ioredis@6.0.0)(pg@8.23.0):
-    dependencies:
-      cron-parser: 5.7.0
-      msgpackr: 2.0.5
-      node-abort-controller: 3.1.1
-      semver: 7.8.5
-      tslib: 2.8.1
-    optionalDependencies:
-      ioredis: 6.0.0
-      pg: 8.23.0
 
   bullmq@6.0.9(ioredis@6.0.0)(pg@8.23.0):
     dependencies:
@@ -14766,18 +12590,12 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
-  fast-sha256@1.3.0: {}
-
   fast-uri@3.1.5: {}
 
   fast-xml-builder@1.3.0:
     dependencies:
       path-expression-matcher: 1.6.2
       xml-naming: 0.3.0
-
-  fast-xml-parser@4.5.7:
-    dependencies:
-      strnum: 1.1.2
 
   fast-xml-parser@5.10.1:
     dependencies:
@@ -14787,10 +12605,6 @@ snapshots:
       path-expression-matcher: 1.6.2
       strnum: 2.4.1
       xml-naming: 0.3.0
-
-  fast-xml-parser@5.2.5:
-    dependencies:
-      strnum: 2.4.1
 
   fastq@1.20.1:
     dependencies:
@@ -15587,23 +13401,6 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  minio@8.0.5:
-    dependencies:
-      async: 3.2.6
-      block-stream2: 2.1.0
-      browser-or-node: 2.1.1
-      buffer-crc32: 1.0.0
-      eventemitter3: 5.0.4
-      fast-xml-parser: 4.5.7
-      ipaddr.js: 2.5.0
-      lodash: 4.18.1
-      mime-types: 2.1.35
-      query-string: 7.1.3
-      stream-json: 1.9.1
-      through2: 4.0.2
-      web-encoding: 1.1.5
-      xml2js: 0.6.2
-
   minio@8.0.7:
     dependencies:
       async: 3.2.6
@@ -16100,8 +13897,6 @@ snapshots:
 
   possible-typed-array-names@1.1.0: {}
 
-  postal-mime@2.7.3: {}
-
   postcss-selector-parser@7.1.5:
     dependencies:
       cssesc: 3.0.0
@@ -16518,13 +14313,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  resend@6.1.2: {}
-
-  resend@6.9.2:
-    dependencies:
-      postal-mime: 2.7.3
-      svix: 1.84.1
-
   resolve-from@4.0.0: {}
 
   resolve-pkg-maps@1.0.0: {}
@@ -16856,11 +14644,6 @@ snapshots:
 
   standard-as-callback@2.1.0: {}
 
-  standardwebhooks@1.0.0:
-    dependencies:
-      '@stablelib/base64': 1.0.1
-      fast-sha256: 1.3.0
-
   statuses@2.0.2: {}
 
   std-env@4.2.0: {}
@@ -16980,8 +14763,6 @@ snapshots:
 
   strip-indent@4.1.1: {}
 
-  strnum@1.1.2: {}
-
   strnum@2.4.1:
     dependencies:
       anynum: 1.0.1
@@ -17010,11 +14791,6 @@ snapshots:
   stylis@4.4.0: {}
 
   supports-preserve-symlinks-flag@1.0.0: {}
-
-  svix@1.84.1:
-    dependencies:
-      standardwebhooks: 1.0.0
-      uuid: 10.0.0
 
   symbol-tree@3.2.4: {}
 
@@ -17302,8 +15078,6 @@ snapshots:
     dependencies:
       base64-arraybuffer: 1.0.2
 
-  uuid@10.0.0: {}
-
   uuid@14.0.1: {}
 
   uuid@8.3.2: {}
@@ -17461,12 +15235,6 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
-
-  web-encoding@1.1.5:
-    dependencies:
-      util: 0.12.5
-    optionalDependencies:
-      '@zxing/text-encoding': 0.9.0
 
   webidl-conversions@8.0.1: {}
 

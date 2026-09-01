@@ -1,0 +1,17 @@
+:80 {
+  encode zstd gzip
+
+  @prospector path /prospector /prospector/*
+  handle @prospector {
+    reverse_proxy prospector-web:3000
+  }
+
+  @design-api path /api /api/*
+  handle @design-api {
+    reverse_proxy design-api:3001
+  }
+
+  handle {
+    reverse_proxy design-web:80
+  }
+}

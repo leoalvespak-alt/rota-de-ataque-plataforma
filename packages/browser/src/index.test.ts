@@ -1,2 +1,0 @@
-import { describe,expect,it } from 'vitest'; import { circuitState,humanDelay } from './index.js';
-describe('browser safety',()=>{it('opens breakers on risk',()=>{expect(circuitState({checkpoint:true,loggedOut:false,successRate:1,checkpointsCount:0})).toBe('CHECKPOINT');expect(circuitState({checkpoint:false,loggedOut:false,successRate:.8,checkpointsCount:0})).toBe('COOLDOWN')});it('uses bounded human jitter',()=>{expect(humanDelay(2,8)).toBeGreaterThanOrEqual(2);expect(humanDelay(2,8)).toBeLessThanOrEqual(8)})})

@@ -2,7 +2,7 @@ import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { contentItems, contentUsageLedger, editorialThesisArguments, editorialThesisEvidence, editorialThesisExamples, editorialThesisObjections, editorialThesisRelations, editorialThesisVersions, editorialTheses } from '@/db/editorial-schema'
 import { createThesisSchema, updateThesisSchema } from '@/domain/editorial/schemas'
-import { db } from '../db'
+import { db, prospectorPool } from '../db'
 import { body, notFound, slugify } from './helpers'
 
 export const thesesRoutes = new Hono()
@@ -19,7 +19,8 @@ thesesRoutes.post('/sync', async (c) => {
   const { prospector_thesis_id } = await c.req.json() as { prospector_thesis_id?: string }
   if (!prospector_thesis_id) return c.json({ error: 'Falta prospector_thesis_id' }, 400)
 
-  const prospectorResult = await db.execute(sql`SELECT * FROM theses WHERE id = ${prospector_thesis_id}`)
+  if (!prospectorPool) return c.json({ error: 'Integração com o Prospector não configurada' }, 503)
+  const prospectorResult = await prospectorPool.query('SELECT * FROM theses WHERE id = $1', [prospector_thesis_id])
   const pt = prospectorResult.rows[0] as Record<string, unknown> | undefined
   if (!pt) return c.json({ error: 'Tese não encontrada no Prospector' }, 404)
 

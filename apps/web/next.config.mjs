@@ -6,7 +6,7 @@ const config={
   ...(process.platform === 'win32' ? {} : { output: 'standalone' }),
   ...(process.env.NEXT_PUBLIC_BASE_PATH ? { basePath: process.env.NEXT_PUBLIC_BASE_PATH } : {}),
   outputFileTracingRoot:path.resolve(import.meta.dirname,'../..'),
-  serverExternalPackages:['bullmq','ioredis'],
+  serverExternalPackages:['ioredis'],
   webpack(webpackConfig) {
     webpackConfig.resolve.fallback = { ...webpackConfig.resolve.fallback, '@valkey/valkey-glide': false }
     return webpackConfig

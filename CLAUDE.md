@@ -19,15 +19,13 @@ Deploy automático: push para `main` → GitHub Actions builda imagens GHCR → 
 # Projeto específico
 .\deploy\deploy-all.ps1 -Only design       # Design System (web + API)
 .\deploy\deploy-all.ps1 -Only design-api   # Só a API
-.\deploy\deploy-all.ps1 -Only prospector   # Prospector
 .\deploy\deploy-all.ps1 -Only gazeta       # Gazeta
 .\deploy\deploy-all.ps1 -Only plataforma   # Plataforma 2.0
 
 # Sem commit/push (usa imagens já no GHCR)
 .\deploy\deploy-all.ps1 -Only design -SkipPush
 
-# Sem migrations
-.\deploy\deploy-all.ps1 -Only prospector -NoMigrate
+# Migrations locais do editorial/Design: docker/docker-compose.phase7.yml
 ```
 
 Ver `deploy/DEPLOY.md` para detalhes. Pré-requisitos: chave SSH em `~/.ssh/id_rsa` e `gh` CLI autenticado.

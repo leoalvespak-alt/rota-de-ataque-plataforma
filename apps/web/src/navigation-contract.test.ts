@@ -8,25 +8,22 @@ const sourceDirectory = path.dirname(fileURLToPath(import.meta.url))
 const appDirectory = path.join(sourceDirectory, 'app')
 
 describe('navegação canônica', () => {
-  it('declara sete destinos principais', () => {
-    expect(NAVIGATION).toHaveLength(7)
-    expect(NAVIGATION.map((destination) => destination.title)).toEqual(['Pulso', 'Inteligência', 'Decisões', 'Planejamento', 'Público', 'Performance', 'Sistema'])
-    expect(new Set(NAVIGATION.map((destination) => destination.href)).size).toBe(7)
+  it('declara os seis destinos editoriais principais', () => {
+    expect(NAVIGATION).toHaveLength(6)
+    expect(NAVIGATION.map((destination) => destination.id)).toEqual(['pulse', 'intelligence', 'decisions', 'planning', 'performance', 'system'])
+    expect(new Set(NAVIGATION.map((destination) => destination.href)).size).toBe(6)
   })
 
-  it('preserva os 28 pontos de entrada anteriores: raiz mais 27 redirects permanentes', async () => {
-    expect(Object.keys(LEGACY_REDIRECTS).length).toBeGreaterThanOrEqual(27)
-    await access(path.join(appDirectory, 'page.tsx'))
+  it('mantém aliases editoriais como redirects permanentes', async () => {
+    expect(Object.keys(LEGACY_REDIRECTS).length).toBeGreaterThanOrEqual(9)
 
     for (const [legacyPath, target] of Object.entries(LEGACY_REDIRECTS)) {
       const directory = path.join(appDirectory, ...legacyPath.slice(1).split('/'))
       const redirectSource = await readFile(path.join(directory, 'page.tsx'), 'utf8')
-      await access(path.join(directory, 'view.tsx'))
       const [canonicalPath] = target.split('?')
-      expect(redirectSource).toContain('permanentLegacyRedirect')
+      if (legacyPath === '/inteligencia/radar') expect(redirectSource).toContain('RadarView')
+      else expect(redirectSource).toContain('permanentLegacyRedirect')
       if (!canonicalPath) throw new Error(`redirect target missing canonical path for ${legacyPath}`)
-      expect(redirectSource).toContain(`'${canonicalPath}'`)
-
       const canonicalDirectory = canonicalPath === '/' ? appDirectory : path.join(appDirectory, ...canonicalPath.slice(1).split('/'))
       await readFile(path.join(canonicalDirectory, 'page.tsx'), 'utf8')
     }

@@ -1,1 +1,0 @@
-import{describe,expect,it}from'vitest';import{spec,processJob}from'./index.js';describe('data-quality',()=>it('declares and enforces its worker contract',async()=>{expect(spec.queue).toBe('data-quality');expect(typeof processJob).toBe('function')}));

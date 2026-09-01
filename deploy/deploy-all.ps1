@@ -4,7 +4,7 @@
 .DESCRIPTION
   Commits, pushes, waits for CI, and deploys to VPS via SSH + Dokploy.
 .PARAMETER Only
-  Deploy a specific project: design, prospector, gazeta, plataforma, design-api
+  Deploy a specific project: design, design-api, gazeta, plataforma
 .PARAMETER SkipPush
   Skip git add/commit/push (deploy existing images)
 .PARAMETER Message
@@ -17,7 +17,7 @@
   .\deploy\deploy-all.ps1  # deploys all
 #>
 param(
-  [ValidateSet('design','design-api','prospector','gazeta','plataforma','all')]
+  [ValidateSet('design','design-api','gazeta','plataforma','all')]
   [string]$Only = 'all',
   [switch]$SkipPush,
   [string]$Message = '',
@@ -134,13 +134,6 @@ switch ($Only) {
     }
     Invoke-VPSDeploy -Project 'design-api' -Migrate:$doMigrate
   }
-  'prospector' {
-    if (-not $SkipPush) {
-      Invoke-GitPush -RepoPath $plataformaRepo -CommitMsg $Message
-      Wait-CI -Repo 'leoalvespak-alt/rota-de-ataque-plataforma' -Branch 'main'
-    }
-    Invoke-VPSDeploy -Project 'prospector' -Migrate:$doMigrate
-  }
   'gazeta' {
     if (-not $SkipPush) {
       if (Test-Path $gazetaRepo) {
@@ -166,7 +159,6 @@ switch ($Only) {
     }
     Invoke-VPSDeploy -Project 'design-web'
     Invoke-VPSDeploy -Project 'design-api' -Migrate:$doMigrate
-    Invoke-VPSDeploy -Project 'prospector' -Migrate:$doMigrate
     Invoke-VPSDeploy -Project 'gazeta'
     if (-not $SkipPush -and (Test-Path $plataforma2Repo)) {
       Invoke-GitPush -RepoPath $plataforma2Repo -CommitMsg $Message

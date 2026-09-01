@@ -1,2 +1,5 @@
-import { permanentLegacyRedirect } from '@/lib/legacy-redirect'
-export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) { await permanentLegacyRedirect('/inteligencia', 'radar', searchParams) }
+import RadarView from './view'
+
+export default function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  return <RadarView searchParams={searchParams} />
+}

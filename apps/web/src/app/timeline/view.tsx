@@ -4,8 +4,8 @@ import { DATA_PAGE_SIZE, pageOffset, parseDataPageParams } from '@/lib/data-page
 import { TimelineClient, type TimelineRow } from './TimelineClient'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
-const query = `SELECT event.id,lead.username_current lead,event.channel,event.event_type "eventType",event.at::text, event.source,event.metadata->>'correlation_id' correlation,event.campaign_id::text campaign
-FROM timeline_events event LEFT JOIN leads lead ON lead.id=event.lead_id
+const query = `SELECT event.id,event.channel,event.event_type "eventType",event.at::text, event.source,event.metadata->>'correlation_id' correlation,event.campaign_id::text campaign
+FROM timeline_events event
 WHERE ($1::uuid IS NULL OR event.campaign_id=$1) AND ($2::date IS NULL OR event.at >= $2::date) AND ($3::date IS NULL OR event.at < ($3::date + interval '1 day'))
 ORDER BY event.at DESC,event.id DESC LIMIT $4 OFFSET $5`
 const countQuery = `SELECT count(*)::int total FROM timeline_events event WHERE ($1::uuid IS NULL OR event.campaign_id=$1) AND ($2::date IS NULL OR event.at >= $2::date) AND ($3::date IS NULL OR event.at < ($3::date + interval '1 day'))`

@@ -49,5 +49,6 @@ O `SessionProvider` na página de login **deve** receber `basePath={appPath('/ap
 O `NEXT_PUBLIC_BASE_PATH` é gravado no bundle em build time. Restart do container **não** aplica mudanças de basePath — é obrigatório um rebuild completo da imagem:
 
 ```bash
-pwsh -File deploy/deploy-all.ps1 -Only prospector
+docker compose --env-file docker/.env.phase7.local -f docker/docker-compose.phase7.yml build prospector-web
+docker compose --env-file docker/.env.phase7.local -f docker/docker-compose.phase7.yml up -d --force-recreate prospector-web
 ```

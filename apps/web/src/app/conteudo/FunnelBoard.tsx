@@ -50,7 +50,7 @@ export function FunnelBoard() {
   }
 
   if (loading && !data) return <section className="bridge-section" aria-busy="true">Carregando funil editorial…</section>
-  if (!data) return <section className="bridge-section"><ErrorState traceId={traceId} runbook="/docs/runbooks/automations" onRetry={() => void load().catch((error) => { setMessage(error instanceof Error ? error.message : 'Falha inesperada.'); setLoading(false) })} /><p className="bridge-inline-notice" role="status">{message || 'A API do funil está indisponível. Verifique a migração e tente novamente.'}</p></section>
+  if (!data) return <section className="bridge-section"><ErrorState traceId={traceId} runbook="/docs/runbooks/system-health" onRetry={() => void load().catch((error) => { setMessage(error instanceof Error ? error.message : 'Falha inesperada.'); setLoading(false) })} /><p className="bridge-inline-notice" role="status">{message || 'A API do funil está indisponível. Verifique a migração e tente novamente.'}</p></section>
 
   const stage = data.stages.find((item) => item.stage === selected) ?? data.stages[0]
   return <section className="bridge-section">

@@ -4,7 +4,7 @@ import { logicalEntityKey, opportunityScore, reconcileBudget, reserveBudget, rob
 describe('organic intelligence contracts', () => {
   it('deduplicates provider observations by platform and canonical URL', () => {
     const base = { platform: 'web' as const, externalId: '1', canonicalUrl: 'https://example.com/item?utm=x', observedAt: new Date().toISOString(), metrics: {}, rawSchemaVersion: 'v1' }
-    expect(logicalEntityKey({ ...base, provider: 'exa' })).toBe(logicalEntityKey({ ...base, provider: 'bright_data', externalId: '2', canonicalUrl: 'https://example.com/item/' }))
+    expect(logicalEntityKey({ ...base, provider: 'news_radar' })).toBe(logicalEntityKey({ ...base, provider: 'manual', externalId: '2', canonicalUrl: 'https://example.com/item/' }))
   })
   it('blocks budget before network and reconciles actual cost', () => {
     const reserved = reserveBudget({ limitUsd: 10, reservedUsd: 0, spentUsd: 2 }, 3)

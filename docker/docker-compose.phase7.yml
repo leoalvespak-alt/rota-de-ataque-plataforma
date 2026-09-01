@@ -1,0 +1,152 @@
+name: rota-editorial-fase7
+
+x-postgres-env: &postgres-env
+  DATABASE_URL: postgresql://${PROSPECTOR_DB_USER}:${PROSPECTOR_DB_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
+
+services:
+  editorial-redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - fase7_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  prospector-migrate:
+    image: prospector-platform-migrations:fase7
+    build:
+      context: ..
+      dockerfile: docker/prospector-migrations.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${PROSPECTOR_DB_USER}:${PROSPECTOR_DB_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: "no"
+
+  prospector-web:
+    image: prospector-platform-web:fase7
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_BASE_PATH: /prospector
+    environment:
+      <<: *postgres-env
+      DATABASE_POOL_MAX: "10"
+      REDIS_URL: redis://editorial-redis:6379
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      NEXT_PUBLIC_BASE_PATH: /prospector
+      APP_URL: http://localhost:8080/prospector
+      NEXTAUTH_URL: http://localhost:8080/prospector/api/auth
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_ADMIN_EMAILS: ${AUTH_ADMIN_EMAILS}
+      AUTH_OPERATOR_EMAILS: ${AUTH_OPERATOR_EMAILS}
+      AUTH_PASSWORD: ${AUTH_PASSWORD}
+      AUTH_BOOTSTRAP_VIEWER: "false"
+      EXPECTED_DB_MIGRATION: "0040_prospector_expurgo_legacy"
+      NODE_ENV: production
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      prospector-migrate:
+        condition: service_completed_successfully
+      editorial-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/prospector/api/health/live >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  design-migrate:
+    image: rota-design-api:fase7
+    build:
+      context: ..
+      dockerfile: apps/design-system/Dockerfile.api
+    environment:
+      DATABASE_URL: postgresql://${DESIGN_DB_USER}:${DESIGN_DB_PASSWORD}@host.docker.internal:6432/rota_design?sslmode=require
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      DESIGN_MIGRATION_BASELINE_EXISTING: "false"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    command: ["pnpm", "db:migrate"]
+    restart: "no"
+
+  design-api:
+    image: rota-design-api:fase7
+    build:
+      context: ..
+      dockerfile: apps/design-system/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${DESIGN_DB_USER}:${DESIGN_DB_PASSWORD}@host.docker.internal:6432/rota_design?sslmode=require
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      PROSPECTOR_DATABASE_URL: postgresql://prospector_reader:${PROSPECTOR_READER_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
+      REDIS_URL: redis://editorial-redis:6379
+      API_PORT: "3001"
+      WEB_ORIGIN: http://localhost:8080
+      API_SESSION_SECRET: ${DESIGN_API_SESSION_SECRET}
+      DESIGN_API_PASSWORD: ${DESIGN_API_PASSWORD}
+      API_AUTH_TOKEN: ${DESIGN_API_AUTH_TOKEN}
+      DEEPSEEK_MODEL: deepseek-v4-flash
+      RELEASE_ID: ${RELEASE_ID}
+      TRUST_PROXY: "false"
+      NODE_ENV: production
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      design-migrate:
+        condition: service_completed_successfully
+      editorial-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  design-web:
+    image: rota-design-web:fase7
+    build:
+      context: ..
+      dockerfile: apps/design-system/Dockerfile.web
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  editorial-caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./Caddyfile.phase7:/etc/caddy/Caddyfile:ro
+      - fase7_caddy_data:/data
+      - fase7_caddy_config:/config
+    depends_on:
+      prospector-web:
+        condition: service_healthy
+      design-api:
+        condition: service_healthy
+      design-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  fase7_redis_data:
+  fase7_caddy_data:
+  fase7_caddy_config:

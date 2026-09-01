@@ -1,16 +1,16 @@
 import { test, expect } from '@playwright/test'
 
 const routes = [
-  '/', '/leads', '/accounts', '/conversations', '/engagement-queue',
-  '/theses', '/content-opportunity',
-  '/content-items', '/creative-bridge', '/community', '/communities',
-  '/contact-policies', '/notifications', '/configs', 
-  '/competitive-intel', '/market-radar', '/timeline', '/radar',
-  '/system-health', '/source-roi', '/ai-settings'
+  '/', '/radar', '/decisoes', '/decisoes/revisao',
+  '/planejamento', '/planejamento/funil', '/planejamento/oportunidades',
+  '/planejamento/conteudos', '/planejamento/teses', '/planejamento/ativos',
+  '/planejamento/aprovacoes', '/creative-bridge', '/performance',
+  '/performance/conteudo', '/sistema', '/sistema/saude',
+  '/sistema/integracoes', '/sistema/avancado/runbooks',
 ]
 
 for (const route of routes) {
-  test(`${route} loads without errors`, async ({ page }) => {
+  test(`${route} loads without application errors`, async ({ page }) => {
     const errors: string[] = []
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()) })
     const res = await page.goto(route)

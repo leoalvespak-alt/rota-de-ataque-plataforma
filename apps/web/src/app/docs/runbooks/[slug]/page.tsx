@@ -1,9 +1,15 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-const runbooks:Record<string,{title:string;checks:string[];recovery:string[]}>= {
- 'system-health':{title:'Saúde do sistema',checks:['Confirme quais workers estão atrasados e o tamanho real do backlog.','Verifique canários com falha e integrações em estado parcial.','Consulte o incidente aberto antes de reprocessar qualquer item.'],recovery:['Ative o kill-switch se houver risco de envio externo indevido.','Corrija a dependência ou variável indicada pela tela.','Reative o sistema e acompanhe dois ciclos de heartbeat.']},
- automations:{title:'Automações',checks:['Confira o heartbeat, backlog e último erro do worker.','Confirme a configuração de habilitação e a dependência necessária.','Preserve o traceId sem registrar tokens ou dados pessoais.'],recovery:['Use tentar novamente para executar o reset do boundary.','Corrija a dependência e valide um canário antes de reativar.','Reprocesse somente após confirmar idempotência e o kill-switch.']},
- accounts:{title:'Contas Meta',checks:['Confirme o estado, a validade do token e o papel da conta.','Verifique checkpoint ou bloqueio no painel da Meta.','Não troque o papel de collector e actor durante uma fila em execução.'],recovery:['Renove o vínculo OAuth pela tela de Contas.','Execute uma sincronização e valide o novo heartbeat.','Libere a fila apenas quando a saúde voltar ao estado operacional.']},
- web:{title:'Interface web',checks:['Copie o identificador exibido no erro.','Confira Saúde do sistema e a campanha ativa.','Tente novamente uma única vez para descartar falha transitória.'],recovery:['Se persistir, preserve o identificador e o horário.','Valide banco, Redis e o container web.','Depois da correção, recarregue a rota e confirme que os dados permanecem estáveis.']}
+
+const runbooks: Record<string, { title: string; checks: string[]; recovery: string[] }> = {
+  'system-health': { title: 'Saúde do sistema', checks: ['Confirme o liveness do Prospector, Design, Caddy e Redis.', 'Verifique o ledger de migrations e a conexão via PgBouncer.', 'Preserve traceId e não registre credenciais.'], recovery: ['Corrija somente a dependência indicada.', 'Reinicie o serviço local afetado e aguarde o healthcheck.', 'Valide novamente a Rota separadamente antes de encerrar.'] },
+  'editorial-core': { title: 'Núcleo editorial', checks: ['Confira Radar, teses, oportunidades e itens de conteúdo.', 'Verifique a fila humana e a ponte criativa.', 'Não acione integrações externas durante esta fase.'], recovery: ['Valide a migration atual sem reescrever o histórico.', 'Reprocesse somente entradas editoriais idempotentes.', 'Registre a decisão e o estado resultante no audit log.'] },
+  web: { title: 'Interface web', checks: ['Copie o traceId exibido no erro.', 'Confira o status da API e do banco.', 'Tente novamente uma única vez para descartar falha transitória.'], recovery: ['Preserve o identificador e o horário.', 'Valide Caddy e o healthcheck do container.', 'Recarregue a rota e confirme que os dados permanecem estáveis.'] },
 }
-export default async function Runbook({params}:{params:Promise<{slug:string}>}){const{slug}=await params,item=runbooks[slug.replace(/\.md$/,'')];if(!item)notFound();return <main className="page"><p className="eyebrow">Runbook operacional</p><h1>{item.title}</h1><section className="card"><h2>Diagnóstico</h2><ol>{item.checks.map(step=><li key={step}>{step}</li>)}</ol></section><section className="card"><h2>Recuperação segura</h2><ol>{item.recovery.map(step=><li key={step}>{step}</li>)}</ol></section><Link href="/system-health">Voltar para Saúde do sistema</Link></main>}
+
+export default async function Runbook({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const item = runbooks[slug.replace(/\.md$/u, '')]
+  if (!item) notFound()
+  return <main className="page"><p className="eyebrow">Runbook operacional</p><h1>{item.title}</h1><section className="card"><h2>Diagnóstico</h2><ol>{item.checks.map((step) => <li key={step}>{step}</li>)}</ol></section><section className="card"><h2>Recuperação segura</h2><ol>{item.recovery.map((step) => <li key={step}>{step}</li>)}</ol></section><Link href="/sistema/avancado/runbooks">Voltar para Runbooks</Link></main>
+}

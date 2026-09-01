@@ -5,7 +5,7 @@ import { toast } from '@plataforma/ui-bridge'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { appPath } from '@/lib/base-path'
 import { useSearchParams } from 'next/navigation'
-import { ContentCopyFields, type ContentStructure } from '../publishing/ContentCopyFields'
+import { ContentCopyFields, type ContentStructure } from '@/components/ContentCopyFields'
 
 interface ReviewItem {
   id: string

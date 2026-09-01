@@ -6,10 +6,7 @@ import { describe, expect, it } from 'vitest'
 const apiDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../app/api')
 const routes = [
   'admin/radar-findings/[id]/action/route.ts',
-  'admin/competitor-insights/[id]/action/route.ts',
   'admin/content-suggestions/[id]/action/route.ts',
-  'admin/publishing/cancel/route.ts',
-  'admin/publishing/confirm-manual/route.ts',
 ]
 
 describe('organic action route contracts', () => {

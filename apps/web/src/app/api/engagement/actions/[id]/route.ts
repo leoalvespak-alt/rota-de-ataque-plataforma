@@ -1,7 +1,0 @@
-import { createDatabase } from '@plataforma/db'
-import { createQueueRegistry, enqueueOnce } from '@plataforma/queue'
-import { NextResponse } from 'next/server'
-import { z } from 'zod'
-import { requireRole } from '@/lib/permissions'
-const Input=z.object({decision:z.enum(['approve','reject','retry'])})
-export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){const user=await requireRole('operator'),{id}=await params,input=Input.parse(await request.json()),{pool}=createDatabase(process.env.DATABASE_URL!),registry=createQueueRegistry(process.env.REDIS_URL!);try{const status=input.decision==='approve'?'approved':input.decision==='reject'?'blocked':'pending';const row=(await pool.query(`UPDATE engagement_actions SET status=$2,approved_by=CASE WHEN $3='approve' THEN $4 ELSE approved_by END,reason_code=CASE WHEN $3='reject' THEN 'REJECTED_BY_HUMAN' WHEN $3='retry' THEN 'RETRY_REQUESTED' ELSE reason_code END WHERE id=$1 RETURNING id`,[id,status,input.decision,user.email??'unknown'])).rows[0];if(!row)return NextResponse.json({error:'not_found'},{status:404});await pool.query(`INSERT INTO audit_log(actor_id,action,target,after) VALUES($1,$2,$3,$4::jsonb)`,[user.email??'unknown',`engagement.${input.decision}`,id,JSON.stringify({status})]);if(input.decision!=='reject')await enqueueOnce(registry.queues.engagement,'engagement',['action',id,input.decision],{actionId:id,accountRole:'actor',synthetic:false});return NextResponse.json({ok:true,status})}finally{;await registry.connection.quit()}}

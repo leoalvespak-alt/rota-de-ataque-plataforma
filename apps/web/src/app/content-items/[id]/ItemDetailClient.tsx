@@ -6,19 +6,6 @@ import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { appPath } from '@/lib/base-path'
 
-function ScheduleVariant({ variant }: { variant: { id: string; channel: string; status: string } }) {
-  const [scheduledFor, setScheduledFor] = useState('')
-  const [mediaAssetRef, setMediaAssetRef] = useState('')
-  const [message, setMessage] = useState('')
-  async function schedule() {
-    if (!scheduledFor) return
-    const response = await fetch(appPath(`/api/content-variants/${variant.id}/schedule`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scheduledFor: new Date(scheduledFor).toISOString(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, mediaAssetRef: mediaAssetRef || undefined }) })
-    const body = await response.json() as { error?: string }
-    setMessage(response.ok ? 'Agendamento salvo.' : body.error ?? 'Falha ao agendar.')
-  }
-  return <article className="card"><strong>{variant.channel}</strong><p>Status: {variant.status}</p><label>Data e hora<input type="datetime-local" value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} /></label>{variant.channel === 'instagram' && <label>Referência do PNG no storage<input value={mediaAssetRef} onChange={(event) => setMediaAssetRef(event.target.value)} placeholder="approved/arte.png" /></label>}<button type="button" disabled={variant.status !== 'approved' || !scheduledFor} onClick={() => void schedule()}>Agendar variante aprovada</button><small aria-live="polite">{message}</small></article>
-}
-
 export function ItemDetailClient({ item, variants, assets, events }: { item: any, variants: any[], assets: any[], events: any[] }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -26,7 +13,7 @@ export function ItemDetailClient({ item, variants, assets, events }: { item: any
   const tab = searchParams.get('tab') || 'Briefing'
   const [isPending, startTransition] = useTransition()
 
-  const tabs = ['Briefing', 'Variations', 'Assets', 'Distribution', 'Performance', 'Lifecycle']
+  const tabs = ['Briefing', 'Variations', 'Assets', 'Performance', 'Lifecycle']
 
   function changeTab(nextTab: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -75,14 +62,6 @@ export function ItemDetailClient({ item, variants, assets, events }: { item: any
           </section>
         )}
         
-        {tab === 'Distribution' && (
-          <section>
-            <h2>Distribuição aprovada</h2>
-            <p>O agendamento exige variante aprovada, conta ator saudável e, para Instagram, o PNG exportado no storage.</p>
-            <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>{variants.map((variant) => <ScheduleVariant key={variant.id} variant={variant} />)}</div>
-          </section>
-        )}
-
         {tab === 'Performance' && (
           <section>
             <h2>Performance e ROI</h2>

@@ -1,4 +1,4 @@
-import { assertDmInbound, assertExternalAllowed, assertRole, createTraceId, EMBEDDING_DIM, preflight, toErrorEvent, type AccountRole, type ErrorEvent, type QueueName, type WorkerPreflight } from './index.js'
+import { assertDmInbound, assertExternalAllowed, createTraceId, EMBEDDING_DIM, preflight, toErrorEvent, type AccountRole, type ErrorEvent, type QueueName, type WorkerPreflight } from './index.js'
 
 export interface WorkerSpec { queue: QueueName; requiredRole?: AccountRole; outbound?: boolean; inboundDmOnly?: boolean; requiresMetaToken?: boolean }
 export interface WorkerJob<T extends object = Record<string, unknown>> { id: string; payload: T & { synthetic?: boolean; triggerKind?: string }; preflight: WorkerPreflight; attemptsMade?: number }
@@ -58,7 +58,6 @@ export function createWorker<T extends object = Record<string, unknown>>(spec: W
   return async function process(job: WorkerJob<T>): Promise<WorkerResult> {
     const traceId = createTraceId()
     preflight(spec.requiresMetaToken === false ? { ...job.preflight, tokenValid: true } : job.preflight, spec.requiredRole)
-    if (spec.requiredRole && job.preflight.accountRole) assertRole(job.preflight.accountRole, spec.queue === 'extraction' || spec.queue === 'discovery' || spec.queue === 'follower-mining' || spec.queue === 'search-mining' || spec.queue === 'live-monitor' ? 'scrape' : spec.queue === 'publisher' ? 'publish' : spec.queue === 'dm-copilot' ? 'dm' : 'follow')
     if (spec.inboundDmOnly) assertDmInbound(job.payload.triggerKind)
     if (spec.outbound) assertExternalAllowed(Boolean(job.payload.synthetic))
     return { ok: true, traceId, event: { kind: `${spec.queue}.processed`, payload: job.payload } }

@@ -1,1 +1,0 @@
-import{describe,expect,it}from'vitest';import{spec,processJob}from'./index.js';describe('mention-monitor',()=>it('declares and enforces its worker contract',async()=>{expect(spec.queue).toBe('mention-monitor');expect(typeof processJob).toBe('function')}));

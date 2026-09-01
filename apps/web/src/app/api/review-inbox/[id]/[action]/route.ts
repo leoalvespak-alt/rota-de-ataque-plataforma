@@ -1,5 +1,4 @@
 import { createDatabase } from '@plataforma/db'
-import { createQueueRegistry, enqueueOnce } from '@plataforma/queue'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiErrorResponse, conflictResponse, invalidRequestResponse } from '@/lib/api-errors'
@@ -111,22 +110,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   if (action.data !== 'approve') return NextResponse.json({ item })
-  try {
-    const registry = createQueueRegistry(process.env.REDIS_URL!)
-    try {
-      if (item.item_type === 'content_item') await enqueueOnce(registry.queues['content-item-orchestrator'], 'content-item-orchestrator', ['review', parsedId.data], { contentItemId: item.item_ref_id, channels: ['instagram', 'threads'] })
-      else if (item.item_type === 'private_reply') await enqueueOnce(registry.queues['private-reply'], 'private-reply', ['review', parsedId.data], { commentId: item.item_ref_id, approved: true, reviewId: parsedId.data, accountRole: 'actor', synthetic: false })
-      else if (item.item_type === 'whatsapp_message') await enqueueOnce(registry.queues['whatsapp-outbound'], 'whatsapp-outbound', ['review', parsedId.data], { messageId: item.item_ref_id, reviewId: parsedId.data, approvedBy: user.email, accountRole: 'actor', synthetic: false })
-      else if (['dm_draft', 'conversation_reply'].includes(String(item.item_type))) {
-        const { pool: readPool } = createDatabase(process.env.DATABASE_URL!)
-        try {
-          const draft = (await readPool.query(`SELECT lead_id,thread_id,created_at FROM dm_drafts WHERE id=$1`, [item.item_ref_id])).rows[0]
-          if (draft) await enqueueOnce(registry.queues['dm-copilot'], 'dm-copilot', ['review', parsedId.data], { threadId: draft.thread_id, leadId: draft.lead_id, triggerKind: 'inbound', inboundAt: new Date(draft.created_at).toISOString(), approved: true, reviewId: parsedId.data, accountRole: 'actor', synthetic: false })
-        } finally { await readPool.end() }
-      }
-    } finally { await registry.connection.quit() }
-    return NextResponse.json({ item })
-  } catch (error) {
-    return apiErrorResponse(error)
-  }
+  return NextResponse.json({
+    item,
+    orchestration: item.item_type === 'content_item'
+      ? 'deferred_to_post_queue_runtime'
+      : 'deferred_to_later_phase',
+  })
 }
