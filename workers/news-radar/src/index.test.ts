@@ -15,7 +15,7 @@ describe('news-radar', () => {
     disableSource: vi.fn().mockResolvedValue(undefined),
     getUnclassifiedItems: vi.fn().mockResolvedValue(items),
     markItemClassified: vi.fn().mockResolvedValue(undefined),
-    insertRadarFinding: vi.fn().mockResolvedValue('finding1'),
+    insertRadarFinding: vi.fn().mockResolvedValue({ id: 'finding1', isNew: true }),
   })
 
   it('classifies police-relevant items via keyword fallback', async () => {

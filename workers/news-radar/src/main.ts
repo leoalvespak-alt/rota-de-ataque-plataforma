@@ -16,6 +16,8 @@ const repo: Repository = {
   },
 
   async upsertNewsItem(item) {
+    const duplicate = await pool.query<{ id: string }>('SELECT id FROM news_items WHERE url_hash = $1 LIMIT 1', [item.url_hash])
+    if (duplicate.rows[0]) return { id: duplicate.rows[0].id, isNew: false }
     const result = await pool.query(
       `INSERT INTO news_items (source_id, external_id, url, url_hash, title, summary, content, published_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz)
@@ -68,36 +70,56 @@ const repo: Repository = {
 
   async insertRadarFinding(finding) {
     const result = await pool.query(
-      `INSERT INTO radar_findings (news_item_id, title, summary, source_url, source_name, concurso_alvo, estado, banca, fase_ciclo, relevance_score)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-      [finding.news_item_id, finding.title, finding.summary, finding.source_url, finding.source_name, finding.concurso_alvo, finding.estado, finding.banca, finding.fase_ciclo, finding.relevance_score]
+      `INSERT INTO radar_findings (news_item_id, title, summary, source_url, source_name, concurso_alvo, estado, banca, fase_ciclo, categoria, relevance_score, confidence, factuality_score, review_status, auto_content_allowed, fingerprint)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       ON CONFLICT (fingerprint) DO NOTHING RETURNING id`,
+      [finding.news_item_id, finding.title, finding.summary, finding.source_url, finding.source_name, finding.concurso_alvo, finding.estado, finding.banca, finding.fase_ciclo, finding.categoria, finding.relevance_score, finding.confidence, finding.factuality_score, finding.review_status, finding.auto_content_allowed, finding.fingerprint]
     )
-    return result.rows[0].id
+    return { id: result.rows[0]?.id ?? '', isNew: (result.rowCount ?? 0) > 0 }
+  },
+
+  async insertContentOpportunity(finding, classification) {
+    const campaign = await pool.query<{ id: string }>("SELECT id FROM campaigns WHERE name = 'Rota de Ataque' LIMIT 1")
+    await pool.query(
+      `INSERT INTO content_opportunities (campaign_id, thesis, angle, hook, evidence, opportunity_score, status, confidence, source_references)
+       SELECT $1, $2, $3, $4, $5::jsonb, $6, 'new', $7, $8::jsonb
+       WHERE NOT EXISTS (SELECT 1 FROM content_opportunities WHERE source_references @> $8::jsonb)`,
+      [campaign.rows[0]?.id ?? null, `${classification.categoria} — ${finding.title}`, classification.reason, `Atualização de concurso ${classification.categoria}`, JSON.stringify({ radar_finding_id: finding.fingerprint, source_url: finding.source_url, source_name: finding.source_name, factuality_score: classification.factuality_score }), classification.relevance_score, classification.confidence, JSON.stringify([{ fingerprint: finding.fingerprint, url: finding.source_url }])],
+    )
   },
 }
 
 let aiClassifier: AiClassifier | null = null
 
 async function initAi(): Promise<AiClassifier | null> {
+  if (process.env.RADAR_DEEPSEEK_ENABLED !== 'true') {
+    logger.info('DeepSeek radar classifier disabled; deterministic review gate is active')
+    return null
+  }
   try {
     const config = await loadLlmRuntimeConfig(pool)
     return {
       async classify(title, content) {
         const startedAt = Date.now()
-        const prompt = `Classify this news article about Brazilian civil service exams (concursos).
+        const prompt = `You are the safety classifier for a Brazilian public-security civil-service-exam radar. Classify only the supplied text; do not invent facts.
 Title: ${title}
 Content: ${(content ?? '').slice(0, 500)}
 
-Return JSON with:
-- concurso_alvo: PM, PP, PC, PF, PRF, GCM, or null
+Return ONLY a JSON object with:
+- concurso_alvo: PM, PP, PC, PF, PRF, GCM, or "outro"/null
+- categoria: PM, PP, PC, PF, PRF, GCM, BOMBEIROS, TRANSITO, SOCIOEDUCATIVO, or outro
 - estado: Brazilian state abbreviation or null
 - banca: exam board name or null
 - fase_ciclo: autorizacao, comissao, banca_definida, edital_publicado, retificacao, resultado, or null
 - relevance_score: 0.0 to 1.0 (how relevant for police exam candidates)
-- is_police_relevant: boolean`
+- confidence: 0.0 to 1.0 (confidence in the classification)
+- factuality_score: 0.0 to 1.0 (whether the claim is concrete and attributable)
+- is_police_relevant: boolean
+- is_duplicate: boolean
+- reason: short Portuguese explanation`
 
         const body: Record<string, unknown> = {
-          model: config.model,
+          model: process.env.RADAR_DEEPSEEK_MODEL?.trim() || config.model,
           messages: [{ role: 'user', content: prompt }],
           max_tokens: config.maxOutputTokens,
           temperature: 0,
@@ -129,10 +151,12 @@ Return JSON with:
           const text = config.provider === 'anthropic'
             ? data.content?.[0]?.text
             : data.choices?.[0]?.message?.content
-          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: config.model, input_tokens: data.usage?.prompt_tokens ?? data.usage?.input_tokens, output_tokens: data.usage?.completion_tokens ?? data.usage?.output_tokens, latency_ms: Date.now() - startedAt, success: true })
-          return JSON.parse(text)
+          const parsed = JSON.parse(text)
+          if (!parsed || typeof parsed !== 'object' || typeof parsed.is_police_relevant !== 'boolean') throw new Error('LLM returned an invalid radar classification')
+          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: process.env.RADAR_DEEPSEEK_MODEL?.trim() || config.model, input_tokens: data.usage?.prompt_tokens ?? data.usage?.input_tokens, output_tokens: data.usage?.completion_tokens ?? data.usage?.output_tokens, latency_ms: Date.now() - startedAt, success: true })
+          return parsed
         } catch (error) {
-          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: config.model, latency_ms: Date.now() - startedAt, success: false, error_code: error instanceof Error ? error.name : 'unknown' })
+          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: process.env.RADAR_DEEPSEEK_MODEL?.trim() || config.model, latency_ms: Date.now() - startedAt, success: false, error_code: error instanceof Error ? error.name : 'unknown' })
           throw error
         }
       },

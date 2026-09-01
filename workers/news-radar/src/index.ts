@@ -1,5 +1,6 @@
 import { createWorker, type WorkerSpec } from '@plataforma/shared/worker'
 import type { Pool } from 'pg'
+import { normalizeSourceEntry, parseFeed, parseHtml, type RadarSourceDefinition, type SourceEntry } from './sources.js'
 
 export const spec: WorkerSpec = {
   queue: 'news-radar',
@@ -16,7 +17,7 @@ export interface NewsSource {
   name: string
   url: string
   feed_url: string | null
-  source_type: 'rss' | 'scrape' | 'api'
+  source_type: 'rss' | 'atom' | 'html' | 'api'
   portal: string
   active: boolean
   etag: string | null
@@ -45,7 +46,13 @@ export interface RadarFinding {
   estado: string | null
   banca: string | null
   fase_ciclo: string | null
+  categoria: string
   relevance_score: number
+  confidence: number
+  factuality_score: number
+  review_status: 'approved' | 'review' | 'rejected'
+  auto_content_allowed: boolean
+  fingerprint: string
 }
 
 export interface Repository {
@@ -56,18 +63,26 @@ export interface Repository {
   disableSource(sourceId: string, reason: string): Promise<void>
   getUnclassifiedItems(limit: number): Promise<Array<{ id: string; title: string; summary: string | null; content: string | null; url: string; source_name: string }>>
   markItemClassified(itemId: string, classification: object): Promise<void>
-  insertRadarFinding(finding: RadarFinding): Promise<string>
+  insertRadarFinding(finding: RadarFinding): Promise<{ id: string; isNew: boolean }>
+  insertContentOpportunity?(finding: RadarFinding, classification: RadarClassification): Promise<void>
+}
+
+export interface RadarClassification {
+  concurso_alvo: string | null
+  categoria: string
+  estado: string | null
+  banca: string | null
+  fase_ciclo: string | null
+  relevance_score: number
+  confidence: number
+  factuality_score: number
+  is_police_relevant: boolean
+  is_duplicate: boolean
+  reason: string
 }
 
 export interface AiClassifier {
-  classify(title: string, content: string | null): Promise<{
-    concurso_alvo: string | null
-    estado: string | null
-    banca: string | null
-    fase_ciclo: string | null
-    relevance_score: number
-    is_police_relevant: boolean
-  }>
+  classify(title: string, content: string | null): Promise<RadarClassification>
 }
 
 function normalizeUrl(url: string): string {
@@ -162,12 +177,56 @@ function keywordClassify(title: string, content: string | null): { concurso_alvo
   return { concurso_alvo, estado, banca, fase_ciclo, relevance_score: Math.min(relevance_score, 1), is_police_relevant: true }
 }
 
+function foldForRadar(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+const RADAR_CATEGORY_RULES: Array<{ category: string; target: string | null; pattern: RegExp }> = [
+  { category: 'PF', target: 'PF', pattern: /policia federal|\bdpf\b|\bpf\b/ },
+  { category: 'PRF', target: 'PRF', pattern: /policia rodoviaria federal|\bprf\b/ },
+  { category: 'PP', target: 'PP', pattern: /policia penal|policia penitenciaria|agepen|seap|depen/ },
+  { category: 'PM', target: 'PM', pattern: /policia militar|\bpm\s?(?:ac|al|am|ap|ba|ce|df|es|go|ma|mg|ms|mt|pa|pb|pe|pi|pr|rj|rn|ro|rr|rs|sc|se|sp|to)\b/ },
+  { category: 'PC', target: 'PC', pattern: /policia civil|\bpc\s?(?:ac|al|am|ap|ba|ce|df|es|go|ma|mg|ms|mt|pa|pb|pe|pi|pr|rj|rn|ro|rr|rs|sc|se|sp|to)\b|delegad|investigador|escriv/ },
+  { category: 'BOMBEIROS', target: 'outro', pattern: /corpo de bombeiros|bombeiro militar|\bcbm\b/ },
+  { category: 'TRANSITO', target: 'outro', pattern: /transito|\bdetran\b|policia rodoviaria estadual|agente de transito/ },
+  { category: 'SOCIOEDUCATIVO', target: 'outro', pattern: /socioeducativo|agente socioeducativo|fundacao casa/ },
+  { category: 'GCM', target: 'GCM', pattern: /guarda municipal|guarda civil|\bgcm\b/ },
+]
+
+const RADAR_STATE_NAMES: Record<string, string> = { acre: 'AC', alagoas: 'AL', amapa: 'AP', amazonas: 'AM', bahia: 'BA', ceara: 'CE', 'distrito federal': 'DF', 'espirito santo': 'ES', goias: 'GO', maranhao: 'MA', 'mato grosso': 'MT', 'mato grosso do sul': 'MS', 'minas gerais': 'MG', para: 'PA', paraiba: 'PB', parana: 'PR', pernambuco: 'PE', piaui: 'PI', 'rio de janeiro': 'RJ', 'rio grande do norte': 'RN', 'rio grande do sul': 'RS', rondonia: 'RO', roraima: 'RR', 'santa catarina': 'SC', 'sao paulo': 'SP', sergipe: 'SE', tocantins: 'TO' }
+
+function enrichClassification(title: string, content: string | null, input: Partial<RadarClassification>): RadarClassification {
+  const text = foldForRadar(`${title} ${content ?? ''}`)
+  const rule = RADAR_CATEGORY_RULES.find(candidate => candidate.pattern.test(text))
+  const keyword = keywordClassify(title, content)
+  const category = rule?.category ?? keyword.concurso_alvo ?? (input.categoria ?? 'outro')
+  const target = rule?.target ?? input.concurso_alvo ?? keyword.concurso_alvo
+  const state = input.estado ?? keyword.estado ?? Object.entries(RADAR_STATE_NAMES).find(([name]) => text.includes(name))?.[1] ?? null
+  const relevance = Number.isFinite(Number(input.relevance_score)) ? Number(input.relevance_score) : (rule ? Math.max(keyword.relevance_score, 0.72) : 0.05)
+  const confidence = Math.min(1, Math.max(0, Number.isFinite(Number(input.confidence)) ? Number(input.confidence) : 0.82))
+  const factuality = Math.min(1, Math.max(0, Number.isFinite(Number(input.factuality_score)) ? Number(input.factuality_score) : 0.35))
+  const isRelevant = input.is_police_relevant ?? (Boolean(rule) || keyword.is_police_relevant)
+  return {
+    concurso_alvo: target,
+    categoria: category,
+    estado: state,
+    banca: input.banca ?? keyword.banca,
+    fase_ciclo: input.fase_ciclo ?? keyword.fase_ciclo,
+    relevance_score: Math.min(1, Math.max(0, relevance)),
+    confidence,
+    factuality_score: factuality,
+    is_police_relevant: isRelevant,
+    is_duplicate: input.is_duplicate === true,
+    reason: input.reason ?? (isRelevant ? 'classificação do radar; confirmação editorial necessária' : 'fora do escopo determinístico de segurança pública'),
+  }
+}
+
 export interface NewsRadarDeps {
   repo: Repository
   ai: AiClassifier | null
 }
 
-export async function fetchRssFeed(source: NewsSource): Promise<{ entries: RssEntry[]; etag: string | null; lastModified: string | null; notModified: boolean }> {
+export async function fetchRssFeed(source: NewsSource): Promise<{ entries: SourceEntry[]; etag: string | null; lastModified: string | null; notModified: boolean }> {
   const headers: Record<string, string> = { 'User-Agent': 'PlataformaNewsRadar/1.0' }
   if (source.etag) headers['If-None-Match'] = source.etag
   if (source.last_modified) headers['If-Modified-Since'] = source.last_modified
@@ -175,9 +234,18 @@ export async function fetchRssFeed(source: NewsSource): Promise<{ entries: RssEn
   const response = await fetch(source.feed_url ?? source.url, { headers, signal: AbortSignal.timeout(30_000) })
   if (response.status === 304) return { entries: [], etag: source.etag, lastModified: source.last_modified, notModified: true }
 
-  const xml = await response.text()
+  const body = await response.text()
+  const sourceDefinition: RadarSourceDefinition = {
+    id: source.portal,
+    name: source.name,
+    url: source.url,
+    feedUrl: source.feed_url,
+    sourceType: source.source_type === 'html' ? 'html' : source.source_type === 'atom' ? 'atom' : 'rss',
+    portal: source.portal,
+    rationale: 'runtime source registry',
+  }
   return {
-    entries: parseRssFeed(xml),
+    entries: (source.source_type === 'html' ? parseHtml(sourceDefinition, body) : parseFeed(body)).map(normalizeSourceEntry),
     etag: response.headers.get('etag'),
     lastModified: response.headers.get('last-modified'),
     notModified: false,
@@ -189,8 +257,8 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
   let fetched = 0, newItems = 0
 
   for (const source of sources) {
-    if (source.source_type !== 'rss' && mode === 'incremental') continue
-    if (!source.feed_url && source.source_type === 'rss') continue
+    if (source.source_type === 'api') continue
+    if (!source.feed_url && (source.source_type === 'rss' || source.source_type === 'atom')) continue
 
     try {
       const { entries, etag, lastModified, notModified } = await fetchRssFeed(source)
@@ -206,7 +274,7 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
           title: entry.title,
           summary: entry.description,
           content: null,
-          published_at: entry.pubDate,
+          published_at: entry.publishedAt,
         })
         if (result.isNew) newItems++
       }
@@ -225,23 +293,24 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
   let classified = 0, findings = 0
 
   for (const item of unclassified) {
-    let classification: ReturnType<typeof keywordClassify>
+    let classification: RadarClassification
 
     if (deps.ai) {
       try {
-        classification = await deps.ai.classify(item.title, item.content ?? item.summary)
+        classification = enrichClassification(item.title, item.content ?? item.summary, await deps.ai.classify(item.title, item.content ?? item.summary))
       } catch {
-        classification = keywordClassify(item.title, item.content ?? item.summary)
+        classification = enrichClassification(item.title, item.content ?? item.summary, keywordClassify(item.title, item.content ?? item.summary))
       }
     } else {
-      classification = keywordClassify(item.title, item.content ?? item.summary)
+      classification = enrichClassification(item.title, item.content ?? item.summary, keywordClassify(item.title, item.content ?? item.summary))
     }
 
     await deps.repo.markItemClassified(item.id, classification)
     classified++
 
-    if (classification.is_police_relevant && classification.relevance_score >= 0.4) {
-      await deps.repo.insertRadarFinding({
+    if (classification.is_police_relevant && classification.relevance_score >= 0.4 && !classification.is_duplicate) {
+      const safeForAutomaticEditorial = classification.confidence >= 0.85 && classification.factuality_score >= 0.85 && classification.relevance_score >= 0.75
+      const finding: RadarFinding = {
         news_item_id: item.id,
         title: item.title,
         summary: item.summary,
@@ -251,9 +320,19 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
         estado: classification.estado,
         banca: classification.banca,
         fase_ciclo: classification.fase_ciclo,
+        categoria: classification.categoria,
         relevance_score: classification.relevance_score,
-      })
-      findings++
+        confidence: classification.confidence,
+        factuality_score: classification.factuality_score,
+        review_status: safeForAutomaticEditorial ? 'approved' : 'review',
+        auto_content_allowed: safeForAutomaticEditorial,
+        fingerprint: await hashUrl(`${item.url}:${classification.categoria}`),
+      }
+      const result = await deps.repo.insertRadarFinding(finding)
+      if (result.isNew) {
+        findings++
+        if (safeForAutomaticEditorial) await deps.repo.insertContentOpportunity?.(finding, classification)
+      }
     }
   }
 
