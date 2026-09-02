@@ -28,6 +28,7 @@ export interface VectorSearchResult {
 
 export interface IVectorStore {
   upsert(input: VectorUpsertInput): Promise<void>
+  updateMetadata(input: Pick<VectorUpsertInput, 'chunkId' | 'modelName' | 'modelVersion' | 'metadata' | 'contentHash'>): Promise<void>
   search(input: VectorSearchInput): Promise<VectorSearchResult[]>
   deleteByDocument(documentId: string): Promise<void>
 }
@@ -70,6 +71,15 @@ export class PgVectorStore implements IVectorStore {
          content_hash = EXCLUDED.content_hash,
          updated_at = now()`,
       [input.chunkId, input.modelName, input.modelVersion, embedding, JSON.stringify(input.metadata), input.contentHash],
+    )
+  }
+
+  async updateMetadata(input: Pick<VectorUpsertInput, 'chunkId' | 'modelName' | 'modelVersion' | 'metadata' | 'contentHash'>): Promise<void> {
+    await this.client.query(
+      `UPDATE rag_embeddings
+          SET metadata = $1::jsonb, content_hash = $2, updated_at = now()
+        WHERE chunk_id = $3::uuid AND model_name = $4 AND model_version = $5`,
+      [JSON.stringify(input.metadata), input.contentHash, input.chunkId, input.modelName, input.modelVersion],
     )
   }
 
