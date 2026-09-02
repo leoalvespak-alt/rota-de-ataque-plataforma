@@ -23,6 +23,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_BASE_PATH: /prospector
+    restart: unless-stopped
     environment:
       <<: *postgres-env
       DATABASE_POOL_MAX: "10"
