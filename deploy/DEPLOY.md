@@ -12,7 +12,7 @@ compose versionado da Fase 7; a Rota de Ataque permanece fora deste expurgo.
 | Plataforma 2.0 | `rota-de-ataque-v2` | Docker build na VPS → GHCR | release versionada + PM2 |
 
 Push direto para `main` dispara o workflow dos produtos de produção. O stack
-editorial local não depende de Dokploy.
+editorial local usa somente o Compose canônico.
 
 ## Script canônico da VPS
 
@@ -56,7 +56,7 @@ container efêmero de migration. Não conceda ownership/DDL à conta da aplicaç
 
 ## Stack local editorial da Fase 7
 
-O compose canônico é `docker/docker-compose.phase7.yml` e não usa Dokploy.
+O compose canônico é `docker/docker-compose.phase7.yml`.
 Ele sobe Caddy, Prospector web, Design web/API e o runtime auxiliar do Design;
 as migrations são jobs one-shot com healthchecks e restart policies nos serviços
 persistentes. O Prospector usa apenas as filas editoriais preservadas nesta fase.

@@ -77,17 +77,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports: ["6379:6379"]
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     env:
       DATABASE_URL: postgresql://plataforma:plataforma@localhost:5432/plataforma_ci
-      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -104,6 +95,6 @@ jobs:
         env:
           DATABASE_URL: postgresql://plataforma:plataforma@localhost:5433/plataforma_sqlcheck
       - run: pnpm --filter @plataforma/db migrate
-      - run: pnpm --filter @plataforma/worker-meta-sync test:integration
+      - run: pnpm --filter @plataforma/db test
       - run: pnpm --filter @plataforma/db migrate:down
       - run: pnpm --filter @plataforma/db migrate

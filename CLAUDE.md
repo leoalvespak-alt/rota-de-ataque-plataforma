@@ -1,6 +1,6 @@
 # Plataforma Rota de Ataque
 
-Monorepo pnpm + Turborepo. `apps/design-system` permanece independente e não pode importar de `apps/web` nem de `workers`. Workers importam somente de `packages/*`. Consulte `../Docs/README.md` e o documento canônico do produto antes de mudanças estruturais.
+Monorepo pnpm + Turborepo. `apps/design-system` permanece independente e não pode importar de `apps/web` nem de `workers`. Workers importam somente de `packages/*`. Consulte `docs/ARQUITETURA_FINAL.md` e o documento canônico do produto antes de mudanças estruturais.
 
 ## ⚠️ REGRA CRÍTICA — Branch e commit
 

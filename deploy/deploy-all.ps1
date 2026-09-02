@@ -2,7 +2,7 @@
 .SYNOPSIS
   Unified deploy script for all Rota de Ataque projects.
 .DESCRIPTION
-  Commits, pushes, waits for CI, and deploys to VPS via SSH + Dokploy.
+  Commits, pushes, waits for CI, and deploys to VPS via the canonical release script over SSH.
 .PARAMETER Only
   Deploy a specific project: design, design-api, gazeta, plataforma
 .PARAMETER SkipPush

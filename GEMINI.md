@@ -27,9 +27,8 @@ plataforma/
 ## Documentação
 
 Consulte antes de tarefas grandes:
-- `Docs/README.md` — índice
-- `Docs/DESIGN-SYSTEM.md` — Design System
-- `Docs/DEPLOY-DOKPLOY.md` — infraestrutura e deploy
+- `docs/ARQUITETURA_FINAL.md` — arquitetura consolidada
+- `deploy/DEPLOY.md` — infraestrutura e deploy
 - `AGENTS.md` — regras completas para agentes
 
 Após alterações estruturais, atualize o documento canônico correspondente.

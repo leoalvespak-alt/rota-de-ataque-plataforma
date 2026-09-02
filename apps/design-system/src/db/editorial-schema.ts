@@ -39,10 +39,6 @@ export const knowledgeDocuments = pgTable('knowledge_documents', {
 export const knowledgeChunks = pgTable('knowledge_chunks', {
   id: uuid('id').primaryKey().defaultRandom(), documentId: uuid('document_id').references(() => knowledgeDocuments.id, { onDelete: 'cascade' }).notNull(), chunkIndex: integer('chunk_index').notNull(), title: varchar('title', { length: 500 }), content: text('content').notNull(), normalizedContent: text('normalized_content').notNull(), chunkType: varchar('chunk_type', { length: 20 }).notNull(), sectionPath: text('section_path'), pageOrSection: varchar('page_or_section', { length: 100 }), tags: text('tags').array().default([]), thesisId: uuid('thesis_id').references(() => editorialTheses.id, { onDelete: 'set null' }), language: varchar('language', { length: 20 }).default('pt-BR').notNull(), hash: varchar('hash', { length: 128 }).notNull(), tokenCount: integer('token_count').notNull(), version: integer('version').default(1).notNull(), createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [index('knowledge_chunks_document_idx').on(table.documentId), uniqueIndex('knowledge_chunks_document_position_idx').on(table.documentId, table.chunkIndex)])
-export const knowledgeEmbeddings = pgTable('knowledge_embeddings', {
-  id: uuid('id').primaryKey().defaultRandom(), chunkId: uuid('chunk_id').references(() => knowledgeChunks.id, { onDelete: 'cascade' }).notNull(), modelName: varchar('model_name', { length: 255 }).notNull(), modelVersion: varchar('model_version', { length: 255 }).notNull(), embedding: vector('embedding', 1536).notNull(), createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => [index('knowledge_embeddings_chunk_idx').on(table.chunkId)])
-
 export const ragEmbeddings = pgTable('rag_embeddings', {
   id: uuid('id').primaryKey().defaultRandom(),
   chunkId: uuid('chunk_id').references(() => knowledgeChunks.id, { onDelete: 'cascade' }).notNull(),

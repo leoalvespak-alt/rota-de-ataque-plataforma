@@ -43,9 +43,8 @@ Regra de importação: `apps/design-system` não pode importar de `apps/web` nem
 ## Documentação canônica
 
 Antes de qualquer tarefa grande, consulte:
-- `Docs/README.md` — índice de todos os documentos
-- `Docs/DESIGN-SYSTEM.md` — arquitetura do Design System
-- `Docs/DEPLOY-DOKPLOY.md` — detalhes de infraestrutura e deploy
+- `docs/ARQUITETURA_FINAL.md` — arquitetura consolidada
+- `deploy/DEPLOY.md` — detalhes de infraestrutura e deploy
 - `apps/design-system/CLAUDE.md` — instruções específicas do app
 
 Após mudanças que afetem arquitetura, HTTP, banco, auth, deploy ou flows de usuário, atualize o documento canônico correspondente no mesmo commit.

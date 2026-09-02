@@ -33,7 +33,7 @@ CodeGraph acompanha alterações enquanto a sessão do agente está ativa. Os co
 
 ## Contexto, RTK, Codegraph e documentação curta
 
-- Antes de tarefas grandes, consulte `../../../Docs/README.md` e o documento canônico do produto afetado.
+- Antes de tarefas grandes, consulte `../../../docs/ARQUITETURA_FINAL.md` e o documento canônico do produto afetado.
 - Use CodeGraph para confirmar dependências antes de refatorações ou alterações em múltiplos módulos.
 - Use RTK ou filtros equivalentes para reduzir a saída de logs, testes, lint, build e typecheck.
 - Execute `npm run context:check` antes de tarefas grandes e `npm run context:update` depois de mudanças estruturais, refatorações grandes ou alterações em vários módulos.
