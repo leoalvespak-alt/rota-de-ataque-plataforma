@@ -26,6 +26,8 @@ export const API_ROUTE_MANIFEST = [
   { path: '/api/creative-bridge/:id', auth: 'session', methods: ['PATCH'] as const },
   { path: '/api/creative-bridge/:id/return', auth: 'session', methods: ['POST'] as const },
   { path: '/api/dashboard/today', auth: 'session', methods: ['GET'] as const },
+  { path: '/api/editorial/batches', auth: 'session', methods: ['GET', 'POST'] as const },
+  { path: '/api/editorial/batches/:id/items/:itemId/action', auth: 'session', methods: ['POST'] as const },
   { path: '/api/health', auth: 'public', methods: ['GET'] as const },
   { path: '/api/health/live', auth: 'public', methods: ['GET'] as const },
   { path: '/api/health/operational', auth: 'public', methods: ['GET'] as const },

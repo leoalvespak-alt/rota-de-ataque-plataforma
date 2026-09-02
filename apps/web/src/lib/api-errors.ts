@@ -16,11 +16,11 @@ function codeFor(error: PublicError, fallback: string) {
   return publicCodes.has(candidate) ? candidate : fallback
 }
 const actionByCode: Record<string, { label: string; href: string }> = {
-  RUNTIME_UNAVAILABLE: { label: 'Verificar operaÃ§Ã£o', href: '/sistema/saude' },
-  PREREQUISITE_MISSING: { label: 'Abrir checklist de prontidÃ£o', href: '/sistema/motores' },
+  RUNTIME_UNAVAILABLE: { label: 'Verificar operação', href: '/sistema/saude' },
+  PREREQUISITE_MISSING: { label: 'Abrir checklist de prontidão', href: '/sistema/motores' },
   ACCOUNT_AUTH_REQUIRED: { label: 'Vincular conta', href: '/sistema/integracoes' },
   PROVIDER_NOT_CONFIGURED: { label: 'Configurar provedor', href: '/sistema/avancado/ia' },
-  HUMAN_APPROVAL_REQUIRED: { label: 'Abrir decisÃµes', href: '/decisoes' },
+  HUMAN_APPROVAL_REQUIRED: { label: 'Abrir decisões', href: '/decisoes' },
 }
 export function apiErrorResponse(error: unknown, fallback = 'internal_error') {
   const value: PublicError = error instanceof Error ? error as PublicError : Object.assign(new Error(String(error)), { code: fallback })
@@ -30,7 +30,7 @@ export function apiErrorResponse(error: unknown, fallback = 'internal_error') {
   const code = codeFor(value, fallback)
   const nextAction = actionByCode[code]
   if (status >= 500) console.error({ traceId, error: safeLogMessage, status, reasonCode: value.reasonCode }, 'API request failed')
-  return NextResponse.json({ error: code, code, message: status >= 500 ? 'A operaÃ§Ã£o nÃ£o pÃ´de ser concluÃ­da.' : value.message.slice(0, 500), nextAction, retryable: status >= 500 || code === 'RUNTIME_UNAVAILABLE', traceId }, { status })
+  return NextResponse.json({ error: code, code, message: status >= 500 ? 'A operação não pôde ser concluída.' : value.message.slice(0, 500), nextAction, retryable: status >= 500 || code === 'RUNTIME_UNAVAILABLE', traceId }, { status })
 }
 export function invalidRequestResponse(code = 'invalid_request') { return NextResponse.json({ error: code, traceId: crypto.randomUUID() }, { status: 400 }) }
 export function conflictResponse(code = 'conflict') { return NextResponse.json({ error: code, traceId: crypto.randomUUID() }, { status: 409 }) }
