@@ -93,3 +93,41 @@ jobs:
           echo '```bash' >> "$GITHUB_STEP_SUMMARY"
           echo "./deploy/deploy-editorial-production-local.sh ${{ steps.prep.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-production:
+    name: Deploy no WSL2 de produção
+    needs: build-and-push
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    env:
+      ROTA_EDITORIAL_ENV_FILE: /mnt/c/Users/Lenovo/Desktop/Rota de Ataque/Sistema de Design/plataforma/docker/.env.phase7.local
+      ROTA_EDITORIAL_PROJECT_NAME: rota-editorial-fase7
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate production host inputs
+        shell: bash
+        run: |
+          test -f "$ROTA_EDITORIAL_ENV_FILE"
+          docker version
+          docker compose version
+
+      - name: Pull, migrate and activate immutable release
+        shell: bash
+        run: |
+          bash ./deploy/deploy-editorial-production-local.sh "${{ needs.build-and-push.outputs.tag }}"
+
+      - name: Deployment summary
+        run: |
+          echo "Imagens publicadas e release ativado no host WSL2 com a tag ${{ needs.build-and-push.outputs.tag }}." >> "$GITHUB_STEP_SUMMARY"
