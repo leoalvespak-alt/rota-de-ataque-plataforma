@@ -1,0 +1,119 @@
+name: rota-editorial-production
+
+x-prospector-db-url: &prospector-db-url postgresql://${PROSPECTOR_DB_USER}:${PROSPECTOR_DB_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
+x-design-db-url: &design-db-url postgresql://${DESIGN_DB_USER}:${DESIGN_DB_PASSWORD}@host.docker.internal:6432/rota_design?sslmode=require
+
+services:
+  prospector-migrate:
+    image: ghcr.io/leoalvespak-alt/prospector-platform-migrations:${IMAGE_TAG:?IMAGE_TAG must be set}
+    environment:
+      DATABASE_URL: *prospector-db-url
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: "no"
+
+  prospector-web:
+    image: ghcr.io/leoalvespak-alt/prospector-platform-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: *prospector-db-url
+      DATABASE_POOL_MAX: "10"
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      NEXT_PUBLIC_BASE_PATH: /prospector
+      APP_URL: https://design.rotadeataque.com.br/prospector
+      NEXTAUTH_URL: https://design.rotadeataque.com.br/prospector/api/auth
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_ADMIN_EMAILS: ${AUTH_ADMIN_EMAILS}
+      AUTH_OPERATOR_EMAILS: ${AUTH_OPERATOR_EMAILS}
+      AUTH_PASSWORD: ${AUTH_PASSWORD}
+      AUTH_BOOTSTRAP_VIEWER: "false"
+      EXPECTED_DB_MIGRATION: "0041_postgres_runtime_state"
+      NODE_ENV: production
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      prospector-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/prospector/api/health/live >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  design-migrate:
+    image: ghcr.io/leoalvespak-alt/rota-design-api:${IMAGE_TAG:?IMAGE_TAG must be set}
+    environment:
+      DATABASE_URL: *design-db-url
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      DESIGN_MIGRATION_BASELINE_EXISTING: "false"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    command: ["pnpm", "db:migrate"]
+    restart: "no"
+
+  design-api:
+    image: ghcr.io/leoalvespak-alt/rota-design-api:${IMAGE_TAG:?IMAGE_TAG must be set}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: *design-db-url
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      PROSPECTOR_DATABASE_URL: postgresql://prospector_reader:${PROSPECTOR_READER_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
+      API_PORT: "3001"
+      WEB_ORIGIN: https://design.rotadeataque.com.br
+      API_SESSION_SECRET: ${DESIGN_API_SESSION_SECRET}
+      DESIGN_API_PASSWORD: ${DESIGN_API_PASSWORD}
+      API_AUTH_TOKEN: ${DESIGN_API_AUTH_TOKEN}
+      DEEPSEEK_MODEL: deepseek-v4-flash
+      RELEASE_ID: ${RELEASE_ID:-production}
+      TRUST_PROXY: "true"
+      NODE_ENV: production
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      design-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  design-web:
+    image: ghcr.io/leoalvespak-alt/rota-design-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  editorial-caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./Caddyfile.phase7:/etc/caddy/Caddyfile:ro
+      - production_caddy_data:/data
+      - production_caddy_config:/config
+    depends_on:
+      prospector-web:
+        condition: service_healthy
+      design-api:
+        condition: service_healthy
+      design-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  production_caddy_data:
+  production_caddy_config:

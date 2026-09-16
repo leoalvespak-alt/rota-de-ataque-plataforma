@@ -1,4 +1,4 @@
-name: CI/CD (Design System + Prospector)
+name: Build e publica imagens (Design System + Prospector)
 
 on:
   push:
@@ -11,13 +11,13 @@ env:
   IMAGE_OWNER: ${{ github.repository_owner }}
 
 concurrency:
-  group: production-design-prospector
+  group: build-editorial-production
   cancel-in-progress: false
 
 jobs:
   build-and-push:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: write
@@ -39,19 +39,22 @@ jobs:
 
       - name: Extract metadata
         id: prep
+        shell: bash
         run: |
-          TAG=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          OWNER=$(echo "${{ env.IMAGE_OWNER }}" | tr '[:upper:]' '[:lower:]')
-          echo "owner=$OWNER" >> $GITHUB_ENV
+          TAG="${GITHUB_SHA::7}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          OWNER="$(echo "${IMAGE_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "owner=$OWNER" >> "$GITHUB_ENV"
 
-      - name: Build and push Design Web (Vite SPA)
+      - name: Build and push Design Web
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./apps/design-system/Dockerfile.web
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-web:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/rota-design-web:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-web:${{ steps.prep.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-web:latest
 
       - name: Build and push Design API
         uses: docker/build-push-action@v6
@@ -59,7 +62,9 @@ jobs:
           context: .
           file: ./apps/design-system/Dockerfile.api
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-api:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/rota-design-api:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-api:${{ steps.prep.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.owner }}/rota-design-api:latest
 
       - name: Build and push Prospector Web
         uses: docker/build-push-action@v6
@@ -67,41 +72,24 @@ jobs:
           context: .
           file: ./apps/web/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-web:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-web:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-web:${{ steps.prep.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-web:latest
 
-      - name: Build and push Prospector Worker
+      - name: Build and push Prospector migrations
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./docker/worker.Dockerfile
+          file: ./docker/prospector-migrations.Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-worker:${{ steps.prep.outputs.tag }},${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-worker:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-migrations:${{ steps.prep.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-migrations:latest
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Deploy to VPS
-        env:
-          SSH_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
+      - name: Deployment summary
         run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -o ServerAliveCountMax=20 root@$VPS_HOST"
-
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            -o ServerAliveInterval=15 -o ServerAliveCountMax=20 \
-            deploy/rota-deploy.sh "root@$VPS_HOST:/opt/rota-deploy/deploy.sh.candidate"
-          $SSH 'bash -n /opt/rota-deploy/deploy.sh.candidate &&
-            cp -a /opt/rota-deploy/deploy.sh /opt/rota-deploy/deploy.sh.previous &&
-            install -o root -g root -m 755 /opt/rota-deploy/deploy.sh.candidate /opt/rota-deploy/deploy.sh &&
-            rm -f /opt/rota-deploy/deploy.sh.candidate'
-
-          $SSH "/opt/rota-deploy/deploy.sh design-prospector '${{ needs.build-and-push.outputs.tag }}'"
+          echo "Imagens publicadas com a tag ${{ steps.prep.outputs.tag }}." >> "$GITHUB_STEP_SUMMARY"
+          echo "No host de produção WSL2, execute:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "./deploy/deploy-editorial-production-local.sh ${{ steps.prep.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

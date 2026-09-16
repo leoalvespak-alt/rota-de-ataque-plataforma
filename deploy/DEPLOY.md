@@ -1,82 +1,87 @@
-# Deploy — Plataforma Rota de Ataque
+# Deploy — Design System + Prospector
 
-Deploy automático dos produtos de produção por GitHub Actions, GHCR e a VPS.
-O Prospector editorial e o Design System desta fase rodam localmente pelo
-compose versionado da Fase 7; a Rota de Ataque permanece fora deste expurgo.
+Este stack tem produção no host WSL2, com imagens construídas pelo GitHub
+Actions e publicadas no GHCR. O WSL2 é o host de produção, não uma cópia de
+desenvolvimento: o Cloudflare Tunnel publica o serviço sem expor PostgreSQL,
+Docker ou portas administrativas.
 
-## Fluxos automáticos
+## Fluxo de produção
 
-| Projeto | Repositório | Build | Ativação |
-|---|---|---|---|
-| Design System web/API | `rota-de-ataque-plataforma` | GitHub Actions → GHCR | nginx estático + systemd/Docker |
-| Plataforma 2.0 | `rota-de-ataque-v2` | Docker build na VPS → GHCR | release versionada + PM2 |
+1. Push para `main` dispara `.github/workflows/deploy.yml`.
+2. O workflow constrói e publica quatro imagens no GHCR, todas com a tag curta
+   do commit:
+   - `rota-design-web`;
+   - `rota-design-api`;
+   - `prospector-platform-web`;
+   - `prospector-platform-migrations`.
+3. No host WSL2, o script faz pull da tag SHA, executa migrations idempotentes,
+   sobe o Compose de produção e valida os healthchecks.
+4. O hostname `design.rotadeataque.com.br` deve estar configurado no túnel
+   Cloudflare ativo para `http://127.0.0.1:8080`.
 
-Push direto para `main` dispara o workflow dos produtos de produção. O stack
-editorial local usa somente o Compose canônico.
+O workflow não usa SSH para a VPS antiga, Dokploy, Redis, BullMQ, Qdrant ou
+workers legados. A Rota principal continua com o próprio fluxo e stack.
 
-## Script canônico da VPS
+## Primeiro setup do host
 
-O arquivo versionado é `deploy/rota-deploy.sh`; a instalação operacional fica em
-`/opt/rota-deploy/deploy.sh` com modo `755`. Todos os deploys usam o lock global
-`/run/lock/rota-deploy.lock`, inclusive o build longo da Plataforma 2.0.
-
-Antes da ativação, o próprio workflow envia o script versionado como `.candidate`,
-valida com `bash -n`, preserva `.previous` e instala em modo `755`. Isso evita
-drift e torna a correção de permissão parte do fluxo automático.
-
-```bash
-deploy.sh design-web
-deploy.sh design-api
-deploy.sh plataforma-v2 <tag>   # artefato GHCR imutável → release PM2
-deploy.sh status
-deploy.sh cleanup
-```
-
-O stack local editorial é iniciado com `docker/docker-compose.phase7.yml`, usando
-PostgreSQL e PgBouncer compartilhados por databases/roles separados.
-
-O arquivo root-only `/etc/rota-deploy.env` (modo `600`) contém somente os
-segredos operacionais necessários ao script. Nunca grave esses valores no Git,
-nos workflows ou nesta documentação.
-
-A API usa uma conta restrita no seu unit do systemd. O deploy usa separadamente
-`DESIGN_MIGRATION_DATABASE_URL`, com o owner do schema, apenas dentro do
-container efêmero de migration. Não conceda ownership/DDL à conta da aplicação.
-
-## Gates obrigatórios
-
-- Um lock global impede dois repositórios de alterarem a VPS ao mesmo tempo.
-- Migrations rodam antes da troca do serviço e qualquer erro encerra o workflow.
-- O loader remove defensivamente um BOM UTF-8 inicial, e a suíte proíbe novos
-  arquivos SQL com BOM.
-- O Design web é trocado de forma atômica e restaura os arquivos anteriores se
-  o health check falhar.
-- A Plataforma 2.0 valida `BUILD_ID`, release/PM2, workers, sidecar e HTTP pelo
-  `activate-release.sh` antes de concluir.
-
-## Stack local editorial da Fase 7
-
-O compose canônico é `docker/docker-compose.phase7.yml`.
-Ele sobe Caddy, Prospector web, Design web/API e o runtime auxiliar do Design;
-as migrations são jobs one-shot com healthchecks e restart policies nos serviços
-persistentes. O Prospector usa apenas as filas editoriais preservadas nesta fase.
-
-## Secrets exigidos no GitHub
-
-| Secret | Uso |
-|---|---|
-| `SSH_DEPLOY_KEY` | autenticação SSH da VPS, nos dois repositórios |
-| `VPS_HOST` | host da VPS, nos dois repositórios |
-
-O `GITHUB_TOKEN` efêmero é fornecido automaticamente pelo Actions. Na V2 ele usa
-um `DOCKER_CONFIG` temporário para não sobrescrever a autenticação GHCR persistente
-do usuário `root` na VPS.
-
-## Verificação manual
+O arquivo de ambiente é root-only e não é versionado. Pode ficar, por exemplo,
+em `/etc/rota-editorial/production.env`, ou continuar no caminho local legado
+`docker/.env.phase7.local` durante a transição.
 
 ```bash
-ssh root@187.127.249.22 '/opt/rota-deploy/deploy.sh status'
+chmod 600 /etc/rota-editorial/production.env
+export ROTA_EDITORIAL_ENV_FILE=/etc/rota-editorial/production.env
+docker login ghcr.io
 ```
 
-O comando deve retornar `200` para Design web/API, Gazeta e Plataforma 2.0,
-além de exit code zero. O stack local é validado pelo compose da Fase 7.
+O arquivo deve conter os segredos usados pelo Compose de produção: credenciais
+de PostgreSQL/PgBouncer, autenticação do Prospector e sessão/autorização da API
+do Design. Os nomes públicos e URLs são definidos no Compose de produção.
+
+## Deploy e rollback
+
+O resumo da execução do GitHub Actions informa a tag SHA. Promova-a no WSL2:
+
+```bash
+./deploy/deploy-editorial-production-local.sh <sha-curto>
+```
+
+O script:
+
+- valida o Compose sem iniciar nada;
+- faz pull das imagens imutáveis no GHCR;
+- executa as migrations do Prospector e do Design;
+- promove os serviços no mesmo projeto Compose da Fase 7, evitando dois stacks
+  disputando a porta `127.0.0.1:8080`;
+- confirma os endpoints locais `/prospector/api/health/live` e `/api/health`.
+
+Rollback é executar o mesmo comando com a tag SHA da release anterior.
+
+## Validação pública
+
+No host:
+
+```bash
+curl -fsS http://127.0.0.1:8080/prospector/api/health/live
+curl -fsS http://127.0.0.1:8080/api/health
+```
+
+Externamente, depois de configurar o hostname do túnel:
+
+```bash
+curl -fsS https://design.rotadeataque.com.br/prospector/api/health/live
+curl -fsS https://design.rotadeataque.com.br/api/health
+```
+
+Se o endereço público resolver para `187.127.249.22` e expirar, o problema é
+DNS/túnel externo ao repositório. O registro não deve apontar para a VPS antiga;
+deve usar o hostname público do túnel Cloudflare já ativo.
+
+## Segurança e operação
+
+- Nunca commitar `.env.*.local`, tokens GHCR, senhas, chaves SSH ou credenciais.
+- Não expor PostgreSQL, PgBouncer ou Docker na Internet.
+- Não apagar migrations históricas; o deploy só aplica migrations idempotentes.
+- O Compose de desenvolvimento continua em `docker/docker-compose.phase7.yml`.
+- O Compose de produção é `docker/docker-compose.production.yml` e nunca faz
+  build local.
