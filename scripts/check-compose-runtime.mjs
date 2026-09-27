@@ -21,6 +21,11 @@ if (compose.includes('editorial-redis') || compose.includes('REDIS_URL') || comp
 for (const marker of ['ghcr.io/leoalvespak-alt/prospector-platform-web:${IMAGE_TAG', 'ghcr.io/leoalvespak-alt/prospector-platform-migrations:${IMAGE_TAG', 'ghcr.io/leoalvespak-alt/rota-design-api:${IMAGE_TAG', 'ghcr.io/leoalvespak-alt/rota-design-web:${IMAGE_TAG', '127.0.0.1:8080:80']) {
   if (!productionCompose.includes(marker)) throw new Error(`Production compose is missing ${marker}`)
 }
+for (const [name, content] of [['phase7', compose], ['production', productionCompose]]) {
+  if (!content.includes('EXPECTED_DB_MIGRATION: "0045_task_runtime"')) {
+    throw new Error(`${name} compose must require the latest Prospector migration 0045_task_runtime`)
+  }
+}
 for (const forbidden of ['prospector-platform-worker', 'redis:', 'qdrant:', 'dokploy']) {
   if (productionCompose.includes(forbidden)) throw new Error(`Legacy production runtime marker remains: ${forbidden}`)
 }

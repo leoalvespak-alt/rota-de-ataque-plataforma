@@ -36,7 +36,7 @@ services:
       AUTH_OPERATOR_EMAILS: ${AUTH_OPERATOR_EMAILS}
       AUTH_PASSWORD: ${AUTH_PASSWORD}
       AUTH_BOOTSTRAP_VIEWER: "false"
-      EXPECTED_DB_MIGRATION: "0041_postgres_runtime_state"
+      EXPECTED_DB_MIGRATION: "0045_task_runtime"
       NODE_ENV: production
     extra_hosts:
       - host.docker.internal:host-gateway
