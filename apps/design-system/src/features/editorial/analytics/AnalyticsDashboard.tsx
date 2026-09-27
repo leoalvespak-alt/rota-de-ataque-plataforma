@@ -25,7 +25,6 @@ export function AnalyticsDashboard() {
 
   useEffect(() => {
     let active = true
-    setState('loading')
     apiFetch<Metrics>('/metrics')
       .then((result) => {
         if (!active) return
@@ -53,7 +52,7 @@ export function AnalyticsDashboard() {
     {state === 'error' && <div role="alert" className="mt-5 rounded-lg border border-red-800 bg-red-950/30 p-5 text-sm text-red-100">
       <p>Não foi possível carregar as métricas editoriais.</p>
       <p className="mt-1 text-red-200/80">Confira a conexão e tente novamente.</p>
-      <button type="button" className="mt-4 rounded-md border border-red-700 px-3 py-2" onClick={() => setRetry((value) => value + 1)}>Tentar novamente</button>
+      <button type="button" className="mt-4 rounded-md border border-red-700 px-3 py-2" onClick={() => { setState('loading'); setRetry((value) => value + 1) }}>Tentar novamente</button>
     </div>}
 
     {state === 'ready' && data && <>
