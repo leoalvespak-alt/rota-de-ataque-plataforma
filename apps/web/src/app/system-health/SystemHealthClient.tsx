@@ -45,6 +45,12 @@ interface WorkerState {
   active: number;
   failed: number;
 }
+interface TaskSchedule {
+  task_name: string;
+  destination: string;
+  cadence: string;
+  enabled: boolean;
+}
 function RunbookLink({ href, name }: { href: string; name: string }) {
     return <UiRunbookLink href={href} name={name} />;
 }
@@ -57,6 +63,7 @@ export function SystemHealthClient({
   capabilities,
   killSwitchEnabled,
   workers,
+  taskSchedules = [],
 }: {
   heartbeats: Heartbeat[];
   alerts: Alert[];
@@ -66,6 +73,7 @@ export function SystemHealthClient({
   capabilities: IntegrationCapability[];
   killSwitchEnabled: boolean;
   workers: WorkerState[];
+  taskSchedules?: TaskSchedule[];
 }) {
   const [confirming, setConfirming] = useState(false),
     [stopped, setStopped] = useState(killSwitchEnabled),
@@ -143,23 +151,25 @@ export function SystemHealthClient({
         />
       </section>
       <KpiRow>
-        <KpiCard label="Workers ativos" value={workers.filter((worker) => worker.desired).length - missing} />
+        <KpiCard label="Workers ativos" value={Math.max(0, workers.filter((worker) => worker.desired).length - missing)} />
         <KpiCard
-          label="Backlog real"
+          label="Tarefas pendentes"
           value={workers.reduce((sum, item) => sum + item.waiting + item.delayed + item.active, 0)}
         />
         <KpiCard
-          label="Falhas na janela"
-          value={heartbeats.reduce(
-            (sum, item) => sum + item.jobs_failed_window,
-            0,
-          )}
+          label="Tarefas com falha"
+          value={workers.reduce((sum, item) => sum + item.failed, 0)}
         />
         <KpiCard label="Alertas críticos" value={critical} />
       </KpiRow>
       <section className="card" style={{ marginTop: "var(--space-6)", marginBottom: "var(--space-6)" }}>
         <h2>Falhas operacionais recentes</h2>
         {alerts.length ? <ul>{alerts.slice(0, 10).map(alert => <li key={alert.id}><StatusBadge status={alert.severity} /> {alert.kind} · {new Date(alert.created_at).toLocaleString('pt-BR')}</li>)}</ul> : <p>Nenhuma falha persistida nas fontes de alerta.</p>}
+      </section>
+      <section className="card" style={{ marginBottom: "var(--space-6)" }}>
+        <h2>Agendas persistidas</h2>
+        <p>{taskSchedules.filter((item) => item.enabled).length} ativas · {taskSchedules.filter((item) => !item.enabled).length} pausadas</p>
+        {taskSchedules.length ? <ul>{taskSchedules.map((item) => <li key={item.task_name}><StatusBadge status={item.enabled ? "enabled" : "disabled"} /> {item.task_name} · {item.cadence} · destino {item.destination}</li>)}</ul> : <p>Nenhuma agenda registrada no banco.</p>}
       </section>
       <div className="feature-grid">
         <section className="card panel">

@@ -14,8 +14,7 @@ describe('news-radar', () => {
     incrementSourceFailure: vi.fn().mockResolvedValue(undefined),
     disableSource: vi.fn().mockResolvedValue(undefined),
     getUnclassifiedItems: vi.fn().mockResolvedValue(items),
-    markItemClassified: vi.fn().mockResolvedValue(undefined),
-    insertRadarFinding: vi.fn().mockResolvedValue({ id: 'finding1', isNew: true }),
+    persistClassification: vi.fn().mockResolvedValue({ id: 'finding1', isNew: true }),
   })
 
   it('classifies police-relevant items via keyword fallback', async () => {
@@ -27,7 +26,7 @@ describe('news-radar', () => {
 
     expect(result.classified).toBe(1)
     expect(result.findings).toBe(1)
-    expect(repo.insertRadarFinding).toHaveBeenCalledWith(expect.objectContaining({
+    expect(repo.persistClassification).toHaveBeenCalledWith('i1', expect.any(Object), expect.objectContaining({
       concurso_alvo: 'PM',
       estado: 'BA',
       fase_ciclo: 'edital_publicado',
@@ -55,7 +54,7 @@ describe('news-radar', () => {
 
     expect(ai.classify).toHaveBeenCalled()
     expect(result.findings).toBe(1)
-    expect(repo.insertRadarFinding).toHaveBeenCalledWith(expect.objectContaining({
+    expect(repo.persistClassification).toHaveBeenCalledWith('i3', expect.any(Object), expect.objectContaining({
       concurso_alvo: 'PC',
       estado: 'PE',
       fase_ciclo: 'banca_definida',

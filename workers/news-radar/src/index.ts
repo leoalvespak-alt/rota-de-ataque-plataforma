@@ -62,8 +62,7 @@ export interface Repository {
   incrementSourceFailure(sourceId: string, error: string): Promise<void>
   disableSource(sourceId: string, reason: string): Promise<void>
   getUnclassifiedItems(limit: number): Promise<Array<{ id: string; title: string; summary: string | null; content: string | null; url: string; source_name: string }>>
-  markItemClassified(itemId: string, classification: object): Promise<void>
-  insertRadarFinding(finding: RadarFinding): Promise<{ id: string; isNew: boolean }>
+  persistClassification(itemId: string, classification: RadarClassification, finding: RadarFinding | null): Promise<{ id: string; isNew: boolean }>
   insertContentOpportunity?(finding: RadarFinding, classification: RadarClassification): Promise<void>
 }
 
@@ -305,12 +304,11 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
       classification = enrichClassification(item.title, item.content ?? item.summary, keywordClassify(item.title, item.content ?? item.summary))
     }
 
-    await deps.repo.markItemClassified(item.id, classification)
-    classified++
-
+    let finding: RadarFinding | null = null
+    let safeForAutomaticEditorial = false
     if (classification.is_police_relevant && classification.relevance_score >= 0.4 && !classification.is_duplicate) {
-      const safeForAutomaticEditorial = classification.confidence >= 0.85 && classification.factuality_score >= 0.85 && classification.relevance_score >= 0.75
-      const finding: RadarFinding = {
+      safeForAutomaticEditorial = classification.confidence >= 0.85 && classification.factuality_score >= 0.85 && classification.relevance_score >= 0.75
+      finding = {
         news_item_id: item.id,
         title: item.title,
         summary: item.summary,
@@ -328,11 +326,13 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
         auto_content_allowed: safeForAutomaticEditorial,
         fingerprint: await hashUrl(`${item.url}:${classification.categoria}`),
       }
-      const result = await deps.repo.insertRadarFinding(finding)
-      if (result.isNew) {
-        findings++
-        if (safeForAutomaticEditorial) await deps.repo.insertContentOpportunity?.(finding, classification)
-      }
+    }
+
+    const result = await deps.repo.persistClassification(item.id, classification, finding)
+    classified++
+    if (finding && result.isNew) {
+      findings++
+      if (safeForAutomaticEditorial) await deps.repo.insertContentOpportunity?.(finding, classification)
     }
   }
 

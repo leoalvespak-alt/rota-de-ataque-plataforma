@@ -2,6 +2,7 @@ import { createDatabase, loadLlmRuntimeConfig } from '@plataforma/db'
 import { runWorker } from '@plataforma/queue/runtime'
 import { logger, reportIaUsage } from '@plataforma/shared'
 import { processNewsRadar, type Repository, type AiClassifier, type NewsSource } from './index.js'
+import { persistNewsClassification } from './persistence.js'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required')
@@ -61,21 +62,8 @@ const repo: Repository = {
     return result.rows
   },
 
-  async markItemClassified(itemId, classification) {
-    await pool.query(
-      'UPDATE news_items SET classified = true, classification = $2 WHERE id = $1',
-      [itemId, JSON.stringify(classification)]
-    )
-  },
-
-  async insertRadarFinding(finding) {
-    const result = await pool.query(
-      `INSERT INTO radar_findings (news_item_id, title, summary, source_url, source_name, concurso_alvo, estado, banca, fase_ciclo, categoria, relevance_score, confidence, factuality_score, review_status, auto_content_allowed, fingerprint)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-       ON CONFLICT (fingerprint) DO NOTHING RETURNING id`,
-      [finding.news_item_id, finding.title, finding.summary, finding.source_url, finding.source_name, finding.concurso_alvo, finding.estado, finding.banca, finding.fase_ciclo, finding.categoria, finding.relevance_score, finding.confidence, finding.factuality_score, finding.review_status, finding.auto_content_allowed, finding.fingerprint]
-    )
-    return { id: result.rows[0]?.id ?? '', isNew: (result.rowCount ?? 0) > 0 }
+  async persistClassification(itemId, classification, finding) {
+    return persistNewsClassification(pool, itemId, classification, finding)
   },
 
   async insertContentOpportunity(finding, classification) {

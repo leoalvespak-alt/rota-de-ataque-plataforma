@@ -13,10 +13,8 @@ const countQuery = `SELECT count(*)::int total FROM radar_findings rf WHERE ($1:
 export default async function RadarPage({ searchParams }: { searchParams: SearchParams }) {
   const params = parseDataPageParams(await searchParams)
   const { pool } = createDatabase(process.env.DATABASE_URL!)
-  try {
     const { selected } = await getCampaignContext(pool)
     const values = [selected?.id ?? null, params.from, params.to, DATA_PAGE_SIZE + 1, pageOffset(params.page)]
     const [result] = await Promise.all([pool.query<RadarRow>(query, values), pool.query<{ total: number }>(countQuery, values.slice(0, 3))])
     return <RadarClient data={result.rows.slice(0, DATA_PAGE_SIZE)} page={params.page} hasNext={result.rows.length > DATA_PAGE_SIZE} from={params.from} to={params.to} campaignName={selected?.name ?? null} />
-  } finally {}
 }

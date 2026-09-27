@@ -49,7 +49,5 @@ export async function GET() {
     })
   } catch (error) {
     return apiErrorResponse(error)
-  } finally {
-    await pool.end()
   }
 }

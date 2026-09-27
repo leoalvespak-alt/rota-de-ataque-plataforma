@@ -25,7 +25,5 @@ export async function OverviewReadiness() {
     return <section className="card" aria-label="Próximas ações" style={{ marginBottom: 'var(--space-4)' }}><header className="action-heading"><div><h2>Próximas ações</h2><p>Recomendações calculadas a partir da campanha ativa e do estado persistido.</p></div></header>{recommendations.length ? <div className="record-list">{recommendations.map((item) => <div key={item.key}><span><PriorityChip priority={item.priority} /></span><strong>{item.title}</strong><small>{item.detail}</small><Link href={item.href}>Abrir ação</Link></div>)}</div> : <EmptyState message="A campanha está pronta para operar. Acompanhe o Radar e o fluxo editorial." />}</section>
   } catch {
     return <EmptyState message="Não foi possível carregar o painel de próximas ações." />
-  } finally {
-    await pool.end()
   }
 }
