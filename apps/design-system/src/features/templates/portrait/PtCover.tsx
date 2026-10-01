@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline } from '../primitives'
+import { TEyebrow, TFooter, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -12,7 +12,6 @@ export interface PtCoverElements {
   eyebrow: Hideable<string>
   title: string
   subtitle: Hideable<string>
-  redline?: Hideable<boolean>
   bgImg?: string
 }
 
@@ -49,7 +48,6 @@ export function PtCoverRender({ elements: el, dark }: TemplateRenderProps<PtCove
           <EditableText path="title" value={el.title} />
         </TTitle>
       </div>
-      <TRedline className="relative z-[3]" />
       {el.subtitle !== false && (
         <div className="relative z-[3]">
           <TBody
@@ -61,6 +59,9 @@ export function PtCoverRender({ elements: el, dark }: TemplateRenderProps<PtCove
           </TBody>
         </div>
       )}
+      <div className="relative z-[3] mt-auto w-full">
+        <TFooter dark={dark || hasImg} />
+      </div>
     </div>
   )
 }

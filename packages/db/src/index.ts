@@ -3,6 +3,15 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import type { HeartbeatStore } from '@plataforma/shared/worker'
 
+const editorialSchema = process.env.EDITORIAL_SCHEMA ?? 'public'
+
+export function editorialTable(table: string): string {
+  if (!/^[a-z_][a-z0-9_]*$/u.test(editorialSchema) || !/^[a-z_][a-z0-9_]*$/u.test(table)) {
+    throw new Error('Nome de schema ou tabela editorial inválido.')
+  }
+  return `"${editorialSchema}"."${table}"`
+}
+
 const _pools = new Map<string, { pool: Pool; db: ReturnType<typeof drizzle> }>()
 
 export const createDatabase = (connectionString: string) => {

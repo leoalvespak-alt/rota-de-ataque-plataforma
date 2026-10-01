@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps } from '../types'
-import { TEyebrow, TRedline, TPageIndicator } from '../primitives'
+import { TEyebrow, TFooter } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { CrCoverControls, type CrCoverElements } from './CrCover'
 
@@ -46,7 +46,6 @@ export function CrCoverDarkRender({ elements: el }: TemplateRenderProps<CrCoverD
         >
           <EditableText path="title" value={el.title} />
         </div>
-        <TRedline />
         {el.subtitle !== false && (
           <div
             style={{
@@ -58,11 +57,9 @@ export function CrCoverDarkRender({ elements: el }: TemplateRenderProps<CrCoverD
             <EditableText path="subtitle" value={el.subtitle} />
           </div>
         )}
-      </div>
-      <div className="absolute right-[90px] bottom-[90px] z-5">
-        <TPageIndicator fontSize={28}>
-          <EditableText path="page" value={el.page} />
-        </TPageIndicator>
+        <div className="relative z-3 mt-auto">
+          <TFooter dark />
+        </div>
       </div>
     </>
   )

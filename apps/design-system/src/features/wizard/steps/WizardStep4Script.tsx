@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Eye, RefreshCw, Sparkles, X, Loader2 } from 'lucide-react'
 import { useWizardAI } from '@/features/wizard/hooks/useWizardAI'
 import { getTemplateContract } from '@/domain/templateContracts'
+import { getCanvasDimensions } from '@/features/templates/canvasDimensions'
 
 function CardPreviewModal({ card, templateId, profileId, onClose }: { card: ScriptCard; templateId: string; profileId: string | null; onClose: () => void }) {
   if (!templateId) return null
@@ -22,6 +23,7 @@ function CardPreviewModal({ card, templateId, profileId, onClose }: { card: Scri
   }
 
   const Render = tpl.Render
+  const dimensions = getCanvasDimensions(tpl.format)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
@@ -36,8 +38,8 @@ function CardPreviewModal({ card, templateId, profileId, onClose }: { card: Scri
           <div
             className="pointer-events-none origin-top-left"
             style={{
-              width: tpl.format === 'portrait' ? 1080 : 1080,
-              height: tpl.format === 'portrait' ? 1920 : 1080,
+              width: dimensions.width,
+              height: dimensions.height,
               transform: 'scale(0.35)',
               transformOrigin: 'top left',
             }}

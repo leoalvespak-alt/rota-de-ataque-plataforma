@@ -46,7 +46,7 @@ interface AIActions {
 }
 
 export const SAFE_DEFAULT_MODELS: AIModel[] = [
-  { id: 'deepseek-default', label: 'DeepSeek Chat', provider: 'deepseek', model: 'deepseek-chat', capabilities: ['text', 'json'], enabled: true, configured: false },
+  { id: 'deepseek-default', label: 'DeepSeek V4 Flash', provider: 'deepseek', model: 'deepseek-v4-flash', capabilities: ['text', 'json'], enabled: true, configured: false },
   { id: 'claude-default', label: 'Claude Sonnet', provider: 'claude', model: 'server-configured', capabilities: ['text', 'json'], enabled: true, configured: false },
   { id: 'fal-flux-schnell', label: 'FLUX Schnell', provider: 'fal', model: 'fal-ai/flux/schnell', capabilities: ['image'], enabled: true, configured: false },
 ]
@@ -60,7 +60,7 @@ const SAFE_DEFAULT_PROVIDERS: AIProvider[] = [
 export const useAIStore = create<AIState & AIActions>()(
   persist(
     (set, get) => ({
-      copyModel: 'claude-default',
+      copyModel: 'deepseek-default',
       imageModel: 'fal-flux-schnell',
       models: SAFE_DEFAULT_MODELS,
       providers: SAFE_DEFAULT_PROVIDERS,
@@ -96,12 +96,14 @@ export const useAIStore = create<AIState & AIActions>()(
     }),
     {
       name: 'rda_ai_preferences',
-      version: 2,
+      version: 3,
       partialize: (state) => ({ copyModel: state.copyModel, imageModel: state.imageModel }),
       migrate: (persisted) => {
         const state = persisted as { copyModel?: string; imageModel?: string } | undefined
         return {
-          copyModel: state?.copyModel === 'claude-sonnet-4-6' ? 'claude-default' : state?.copyModel ?? 'claude-default',
+          copyModel: !state?.copyModel || state.copyModel === 'claude-sonnet-4-6' || state.copyModel === 'claude-default'
+            ? 'deepseek-default'
+            : state.copyModel,
           imageModel: state?.imageModel === 'fal-dalle3' ? 'fal-flux-schnell' : state?.imageModel ?? 'fal-flux-schnell',
         }
       },

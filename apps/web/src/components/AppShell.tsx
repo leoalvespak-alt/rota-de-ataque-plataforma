@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { signOut } from 'next-auth/react'
 import { useKBar } from 'kbar'
-import { Bell, BrainCircuit, FileText, LayoutDashboard, ListChecks, Menu, Moon, PanelLeftClose, PanelLeftOpen, Settings, Shield, Sun, TrendingUp, Users, X } from 'lucide-react'
+import { Bell, BrainCircuit, FileText, LayoutDashboard, ListChecks, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Settings, Shield, Sun, TrendingUp, Users, X } from 'lucide-react'
 import { LiveBadge, Tooltip } from '@plataforma/ui-bridge'
 import { appPath, basePath } from '@/lib/base-path'
 import type { CampaignOption } from '@/lib/campaign-context'
@@ -149,6 +150,10 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
     } finally { setSwitching(false) }
   }
 
+  async function logout() {
+    await signOut({ callbackUrl: appPath('/login') })
+  }
+
   if (current === '/login') return <main id="main-content">{children}</main>
 
   const account = <div className="account-card">
@@ -177,6 +182,9 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
       {sidebarNav}
       <div className="sidebar-footer">
         <ThemeToggle />
+        <button className="sidebar-toggle" type="button" onClick={() => void logout()} aria-label="Sair da sessão">
+          <LogOut size={19} /><span className="label">Sair</span>
+        </button>
         <button className="sidebar-toggle" type="button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed}>
           {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}<span className="label">{collapsed ? 'Expandir' : 'Recolher'}</span>
         </button>
@@ -188,7 +196,7 @@ export function AppShell({ children, campaigns, selectedCampaignId }: { children
     <aside id="prospector-mobile-drawer" className="sidebar mobile-drawer" hidden={!mobileOpen} aria-hidden={!mobileOpen} aria-label="Menu móvel">
       <div className="mobile-drawer-header"><div className="brand"><span aria-hidden><Shield size={16} /></span>Rota de Ataque</div><button type="button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={19} /></button></div>
       <div className="mobile-drawer-content">{sidebarNav}</div>
-      <div className="sidebar-footer"><ThemeToggle />{account}</div>
+      <div className="sidebar-footer"><ThemeToggle /><button className="sidebar-toggle" type="button" onClick={() => void logout()} aria-label="Sair da sessão"><LogOut size={19} /><span className="label">Sair</span></button>{account}</div>
     </aside>
 
     <div className="content">

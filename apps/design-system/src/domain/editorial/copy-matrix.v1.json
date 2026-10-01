@@ -1,0 +1,52 @@
+{
+  "version": "copy-matrix.v1",
+  "origem": "plano-melhoria-criativos-skill-plugin.md (Fase 5) + regras operacionais Rota de Ataque",
+  "regras_globais": {
+    "proibido_travessao_duplo": true,
+    "cta_bio": "Faça parte da plataforma pelo link da BIO: plano de estudos, questões, teoria em PDF e muito mais.",
+    "canvas": "1080x1350",
+    "margens": "72-90px",
+    "rodape": "logo discreta + seta, sem paginação",
+    "paleta": ["#F4F1EB", "#111111", "#C1121F", "#8B0000"],
+    "pisos_px": { "titulo": 67, "corpo": 30, "nota": 24 },
+    "contraste_min": "#5f5f5f",
+    "proibido_faixa_lateral": true,
+    "brasao": "pequeno, do indice brasaos-index.json, cores autenticas"
+  },
+  "tipos": {
+    "noticia": {
+      "copy": "O que mudou, fonte e data, grau de confirmação e efeito prático para quem estuda",
+      "visual": ["data ou fato dominante", "linha do tempo", "comparação antes/depois"],
+      "formatos_permitidos": ["estatico", "carrossel"],
+      "slides_carrossel": ["cover-fato", "content-detalhe", "content-efeito-pratico", "cta"]
+    },
+    "prova_social": {
+      "copy": "Caso real autorizado, contexto, fonte e limites; sem depoimento, resultado ou métrica inventados",
+      "visual": ["depoimento legível", "evidência autêntica com identificação"],
+      "formatos_permitidos": ["estatico", "carrossel"],
+      "slides_carrossel": ["cover-caso", "content-contexto", "content-limites", "cta"]
+    },
+    "feature": {
+      "copy": "Recurso demonstrado, benefício específico e evidência real da interface",
+      "visual": ["captura autêntica", "demonstração focal"],
+      "formatos_permitidos": ["estatico", "carrossel", "story"],
+      "slides_carrossel": ["cover-recurso", "content-beneficio", "content-demonstracao", "cta"]
+    },
+    "educativo": {
+      "copy": "Critério, passo aplicável, exemplo e condição de uso",
+      "visual": ["exemplo anotado", "sequência", "comparação ou diagrama"],
+      "formatos_permitidos": ["carrossel", "estatico"],
+      "slides_carrossel": ["cover-promessa", "content-passo-1", "content-passo-2", "content-exemplo", "cta"]
+    }
+  },
+  "formatos": {
+    "estatico": { "ideia": "uma ideia completa por leitura", "slides": 1, "cta_proporcional": true },
+    "carrossel": { "slides_min": 3, "slides_max": 6, "uma_funcao_por_card": true, "sem_repeticao": true, "fechamento_coerente": true },
+    "story": { "telas_curtas": true, "acao_por_tela": true, "area_segura": true }
+  },
+  "templates": {
+    "estatico": ["SqCover"],
+    "carrossel": ["CrCover", "CrSlide", "CrFact", "CrList", "CrCta"],
+    "story": ["PtCover", "PtContent", "PtCta"]
+  }
+}

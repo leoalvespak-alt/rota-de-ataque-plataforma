@@ -21,4 +21,48 @@ describe('official social publishing', () => {
     const publisher = new MetaSocialPublisher({ accessToken: 'secret', apiVersion: 'v26.0', baseUrl: 'https://graph.example', threadsEnabled: false }, vi.fn())
     await expect(publisher.publish({ channel: 'threads', caption: 'Aprovado', approvedBy: 'operator@example.com' })).resolves.toMatchObject({ status: 'disabled' })
   })
+
+  it('marks an ambiguous Instagram publish response unknown and does not retry it', async () => {
+    const requester = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'container-1' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response('gateway error', { status: 503 }))
+    const publisher = new MetaSocialPublisher({ accessToken: 'secret', apiVersion: 'v26.0', baseUrl: 'https://graph.example', instagramAccountId: 'ig-1', threadsEnabled: false }, requester)
+
+    await expect(publisher.publish({ channel: 'instagram', caption: 'Aprovado', imageUrl: 'https://cdn.example/post.jpg', approvedBy: 'operator@example.com' })).resolves.toMatchObject({
+      status: 'unknown',
+      externalId: null,
+      reconciliationId: 'container-1',
+      attempts: 2,
+    })
+    expect(requester).toHaveBeenCalledTimes(2)
+  })
+
+  it('marks a lost Threads publish response unknown and does not retry it', async () => {
+    const requester = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'container-2' }), { status: 200 }))
+      .mockRejectedValueOnce(new Error('connection closed'))
+    const publisher = new MetaSocialPublisher({ accessToken: 'secret', apiVersion: 'v26.0', baseUrl: 'https://graph.example', threadsUserId: 'threads-1', threadsEnabled: true }, requester)
+
+    await expect(publisher.publish({ channel: 'threads', caption: 'Aprovado', approvedBy: 'operator@example.com' })).resolves.toMatchObject({
+      status: 'unknown',
+      externalId: null,
+      reconciliationId: 'container-2',
+      attempts: 2,
+    })
+    expect(requester).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns an explicit publish rejection as failed without retrying', async () => {
+    const requester = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'container-3' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'Invalid media' } }), { status: 400 }))
+    const publisher = new MetaSocialPublisher({ accessToken: 'secret', apiVersion: 'v26.0', baseUrl: 'https://graph.example', instagramAccountId: 'ig-1', threadsEnabled: false }, requester)
+
+    await expect(publisher.publish({ channel: 'instagram', caption: 'Aprovado', imageUrl: 'https://cdn.example/post.jpg', approvedBy: 'operator@example.com' })).resolves.toMatchObject({
+      status: 'failed',
+      externalId: null,
+      attempts: 2,
+    })
+    expect(requester).toHaveBeenCalledTimes(2)
+  })
 })

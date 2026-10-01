@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const canvasFormatSchema = z.enum(['square', 'portrait'])
+export const canvasFormatSchema = z.enum(['square', 'feed', 'portrait'])
 export const formatFilterSchema = z.enum(['square', 'portrait', 'carousel'])
 export const careerTagSchema = z.enum(['fiscal', 'policial', 'tribunal', 'motivacao'])
 

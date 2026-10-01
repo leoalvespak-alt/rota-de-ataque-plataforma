@@ -1,18 +1,28 @@
-import { describe, expect, it, vi } from 'vitest'
-import { cloudSchedulerPayload, cloudTaskPayload, makeTaskRequest, runLocalOnce, taskDefinition } from './index.js'
+import { describe, expect, it } from 'vitest'
+import { LANE_LIMITS } from './supervisor.js'
+import { makeTaskRequest, TASK_DEFINITIONS, taskDefinition } from './index.js'
 
 describe('task runtime', () => {
-  it('keeps editorial jobs non-resident and maps destinations', () => {
-    expect(taskDefinition('news-radar.daily')).toMatchObject({ destination: 'cloud-run', resident: false })
-    expect(cloudSchedulerPayload(makeTaskRequest('news-radar.daily', { date: '2026-09-01' })).target).toBe('cloud-run')
-    expect(cloudTaskPayload(makeTaskRequest('publication.due', { publicationId: 'p1' }, { scheduleTime: '2026-09-02T12:00:00Z' })).maxAttempts).toBe(3)
+  it('uses only the supervised local runtime and isolates throughput by lane', () => {
+    expect(TASK_DEFINITIONS.every(task => task.destination === 'local')).toBe(true)
+    expect(taskDefinition('news-radar.daily')).toMatchObject({ lane: 'heavy', priority: 30 })
+    expect(taskDefinition('publication.due')).toMatchObject({ lane: 'publishing', priority: 100 })
+    expect(taskDefinition('inbox.message')).toMatchObject({ lane: 'inbound', priority: 90 })
+    expect(taskDefinition('inbox.retention.cleanup')).toMatchObject({ cadence: 'daily', lane: 'default', priority: 5 })
+    expect(LANE_LIMITS).toMatchObject({ heavy: 1, publishing: 1, inbound: 2 })
   })
 
-  it('runs a local fallback exactly once by idempotency key', async () => {
-    const store = { start: vi.fn().mockResolvedValue({ accepted: true, runId: 'run-1' }), complete: vi.fn().mockResolvedValue(undefined), fail: vi.fn().mockResolvedValue(undefined) }
-    const handler = vi.fn().mockResolvedValue({ ok: true })
-    await expect(runLocalOnce(makeTaskRequest('editorial-batch.15day', { batchId: 'b1' }), store, handler)).resolves.toMatchObject({ accepted: true, runId: 'run-1', result: { ok: true } })
-    expect(handler).toHaveBeenCalledTimes(1)
-    expect(store.complete).toHaveBeenCalledWith('run-1', { ok: true })
+  it('creates distinct idempotency identities for simultaneous items and revisions', () => {
+    const scheduleTime = '2026-09-28T12:00:00.000Z'
+    const one = makeTaskRequest('publication.due', { publicationId: 'p1' }, { scheduleTime, accountId: 'a1', itemId: 'i1', revisionId: 'r1' })
+    const two = makeTaskRequest('publication.due', { publicationId: 'p2' }, { scheduleTime, accountId: 'a1', itemId: 'i2', revisionId: 'r1' })
+    const revised = makeTaskRequest('publication.due', { publicationId: 'p1' }, { scheduleTime, accountId: 'a1', itemId: 'i1', revisionId: 'r2' })
+    expect(new Set([one.idempotencyKey, two.idempotencyKey, revised.idempotencyKey]).size).toBe(3)
+    expect(() => makeTaskRequest('publication.due', { publicationId: 'p1' }, { scheduleTime })).toThrow(/requires accountId/u)
+  })
+
+  it('requires a stable key for non-item tasks instead of collapsing them into one "now" key', () => {
+    expect(() => makeTaskRequest('news-radar.daily', {})).toThrow(/stable occurrence key/u)
+    expect(makeTaskRequest('news-radar.daily', {}, { occurrenceKey: '2026-09-27' }).idempotencyKey).toBe('news-radar.daily:2026-09-27')
   })
 })

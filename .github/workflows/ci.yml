@@ -79,6 +79,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://plataforma:plataforma@localhost:5432/plataforma_ci
+      # Cutover migrations 0046-0048 need a Design transfer marker and an admin role.
+      MIGRATIONS_TO: 0045_task_runtime
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

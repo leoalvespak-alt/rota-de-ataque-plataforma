@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline, TPageIndicator } from '../primitives'
+import { TEyebrow, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -10,7 +10,6 @@ export interface CrSlideElements {
   eyebrow: Hideable<string>
   title: string
   body: string
-  page: string
 }
 
 /** Espelha renderCarouselSlide() do Gerador/index.html (linha 2291). */
@@ -25,15 +24,9 @@ export function CrSlideRender({ elements: el, dark }: TemplateRenderProps<CrSlid
       <TTitle fontSize={78} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline />
       <TBody fontSize={34} dark={dark} style={{ flex: 1, whiteSpace: 'pre-line' }}>
         <EditableText path="body" value={el.body} />
       </TBody>
-      <div className="flex justify-end">
-        <TPageIndicator fontSize={26}>
-          <EditableText path="page" value={el.page} />
-        </TPageIndicator>
-      </div>
     </div>
   )
 }

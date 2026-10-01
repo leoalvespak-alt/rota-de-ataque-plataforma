@@ -1,11 +1,11 @@
 # Data and jobs
 
-Drizzle table declarations live in `src/db/schema.ts` and `src/db/editorial-schema.ts`; SQL migrations are applied by `scripts/migrate.ts`. The current production Design database is `rota_design`; the Prospector database is separate and can be connected through `PROSPECTOR_DATABASE_URL`.
+Drizzle table declarations live in `src/db/schema.ts` and `src/db/editorial-schema.ts`; SQL migrations are applied by `scripts/migrate.ts`. Production Design and Prospector now share the `prospector` database, with Design data in schemas `design` and `editorial`. The old `rota_design` database is retained as the preserved migration source.
 
-The design API keeps its PostgreSQL pools for the process lifetime and closes them on `SIGTERM`. The editorial queue ledger is in the Prospector database. Its `task_runs` and `task_schedules` are the source for persisted task state, but the current production schedules are disabled and there is no verified resident editorial executor.
+The design API keeps its PostgreSQL pools for the process lifetime and closes them on `SIGTERM`. The editorial queue ledger is in the shared Prospector database. Migrations `0049_durable_task_executor`, `0050_meta_inbox_events` and `0051_task_runtime_permissions` are applied. The PostgreSQL store and supervised executor with leases, checkpoints, retries, lanes and transactional outbox run under systemd in Ubuntu/WSL2. The unit is active; all four production schedules remain disabled and `task_runs` is empty pending handler acceptance.
 
-The Prospector health code now reads the migration ledger, task-run states and schedule rows. The system-health view reads task counts and schedules from PostgreSQL rather than rendering hardcoded zeroes. These changes are local code and have not been deployed.
+The Prospector health code reads the migration ledger, task-run states and schedule rows. The system-health view includes recent task metadata and an admin-only retry action. These changes are deployed in local release `0a90325fc16c14f7e61a9c48`. See the [task runtime runbook](../../../../docs/runbooks/task-runtime.md) for operating commands and remaining gates.
 
 Editorial quality scores are JSONB. The metrics query averages only JSON numeric `overall` values in the inclusive 0–1 range and leaves the result null when no valid value exists. The dashboard shows loading, error/retry, and empty-quality states.
 
-The unification plan calls for explicit `editorial`, `design` and `gazeta` schemas in one database. That migration has not been executed; do not route both applications to one database before schema qualification, data mapping, grants and rollback have been validated.
+The shared `editorial` and `design` schemas are active in `prospector`; the `gazeta` schema and its data are not yet cut over. The Design source database remains intact for rollback and historical comparison.

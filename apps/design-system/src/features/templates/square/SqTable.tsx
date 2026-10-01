@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps } from '../types'
-import { TTitle, TRedline } from '../primitives'
+import { TTitle } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -32,7 +32,6 @@ export function SqTableRender({ elements: el, dark }: TemplateRenderProps<SqTabl
       <TTitle fontSize={68} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline />
       {/* Nota de fidelidade: a tabela em si é sempre light no original (renderTableSquare,
           linhas 2427-2431) — cores das células/linhas hardcoded sem regra de dark mode. */}
       <table className="w-full flex-1 border-collapse">

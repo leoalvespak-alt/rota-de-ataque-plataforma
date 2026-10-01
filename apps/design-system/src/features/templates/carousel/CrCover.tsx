@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline, TPageIndicator } from '../primitives'
+import { TEyebrow, TFooter, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -13,7 +13,6 @@ export interface CrCoverElements {
   eyebrow: Hideable<string>
   title: string
   subtitle: Hideable<string>
-  page: string
   bgImg?: string
 }
 
@@ -44,7 +43,6 @@ export function CrCoverRender({ elements: el, dark }: TemplateRenderProps<CrCove
             <EditableText path="title" value={el.title} />
           </TTitle>
         </div>
-        <TRedline className="relative z-3" />
         {el.subtitle !== false && (
           <div className="relative z-3">
             <TBody
@@ -56,11 +54,9 @@ export function CrCoverRender({ elements: el, dark }: TemplateRenderProps<CrCove
             </TBody>
           </div>
         )}
-      </div>
-      <div className="absolute right-[90px] bottom-[90px] z-5">
-        <TPageIndicator fontSize={28}>
-          <EditableText path="page" value={el.page} />
-        </TPageIndicator>
+        <div className="relative z-3 mt-auto">
+          <TFooter dark={dark || hasImg} />
+        </div>
       </div>
     </>
   )

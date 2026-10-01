@@ -49,7 +49,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             autoFocus
             type="password"
             autoComplete="current-password"
-            minLength={12}
+            minLength={8}
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}

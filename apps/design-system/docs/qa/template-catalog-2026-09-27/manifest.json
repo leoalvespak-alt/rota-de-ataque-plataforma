@@ -1,0 +1,1272 @@
+{
+  "renderedAt": "2026-09-28T01:47:54.856Z",
+  "count": 50,
+  "sheets": [
+    "contact-01.png",
+    "contact-02.png",
+    "contact-03.png",
+    "contact-04.png",
+    "contact-05.png",
+    "contact-06.png",
+    "contact-07.png",
+    "contact-08.png",
+    "contact-09.png",
+    "contact-10.png",
+    "contact-11.png",
+    "contact-12.png",
+    "contact-13.png"
+  ],
+  "blockedAssetHosts": [],
+  "templates": [
+    {
+      "id": "sq-cover",
+      "name": "Capa Principal",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 26,
+      "primaryHeadlinePx": 96,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-text-image",
+      "name": "Texto + Imagem",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": 72,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-content",
+      "name": "Card de Conteúdo",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": 80,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-quote",
+      "name": "Citação / Destaque",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 28,
+      "primaryHeadlinePx": null,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-tip",
+      "name": "Dica Rápida",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 20,
+      "primaryHeadlinePx": 72,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 8,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-two-images",
+      "name": "2 Imagens + Texto",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 70,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-steps",
+      "name": "Passo a Passo",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 68,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 10,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-stats",
+      "name": "Estatísticas / Prova Social",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 70,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 6,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-profile",
+      "name": "Testemunho / Depoimento",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": null,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-tweet",
+      "name": "Estilo Tweet",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": null,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-table",
+      "name": "Tabela Comparativa",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 26,
+      "primaryHeadlinePx": 68,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 11,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "sq-checklist",
+      "name": "Checklist de Revisão",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 70,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 6,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "pt-cover",
+      "name": "Story Capa",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 30,
+      "primaryHeadlinePx": 110,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "pt-content",
+      "name": "Story Conteúdo",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 30,
+      "primaryHeadlinePx": 100,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "pt-image",
+      "name": "Story com Imagem",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 28,
+      "primaryHeadlinePx": 90,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "pt-quote",
+      "name": "Story Citação",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 30,
+      "primaryHeadlinePx": null,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "pt-list",
+      "name": "Story Lista / Tópicos",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 30,
+      "primaryHeadlinePx": 96,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 10,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "pt-cta",
+      "name": "Story CTA / Link",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 28,
+      "primaryHeadlinePx": 100,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-cover",
+      "name": "Capa Carrossel",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": 86,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-cover-dark",
+      "name": "Capa Escura",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": 86,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-slide",
+      "name": "Slide Conteúdo",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": 78,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-text-image",
+      "name": "Slide Texto + Imagem",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 68,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-list",
+      "name": "Slide Passos / Lista",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 68,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 10,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-fact",
+      "name": "Slide Destaque / Fato",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 200,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-comparison",
+      "name": "Slide Antes vs Depois",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 22,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 15,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "cr-cta",
+      "name": "CTA Final",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 30,
+      "primaryHeadlinePx": 86,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-editorial-column",
+      "name": "Coluna editorial",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-proof-macro",
+      "name": "Prova em macro",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-method-map",
+      "name": "Mapa de método",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 32,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 9,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-decision-tree",
+      "name": "Árvore de decisão",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-side-by-side",
+      "name": "Comparação aberta",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 32,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-open-sequence",
+      "name": "Sequência contínua",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 24,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 12,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-exam-anatomy",
+      "name": "Anatomia de questão",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-date-line",
+      "name": "Linha do tempo",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 32,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 10,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-mistake-diagnosis",
+      "name": "Diagnóstico de erro",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-principle-rule",
+      "name": "Regra e condição",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-annotated-example",
+      "name": "Exemplo anotado",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "feed-single-cta",
+      "name": "Convite com respiro",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 32,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "story-entry-any-frame",
+      "name": "Story com referente",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "story-scenario-branch",
+      "name": "Story por cenário",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 32,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "story-step-rail",
+      "name": "Story de procedimento",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 32,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 9,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "story-source-focus",
+      "name": "Story com fonte em foco",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "story-answer-ladder",
+      "name": "Story de resposta progressiva",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "story-action-safe-zone",
+      "name": "Story com ação em área segura",
+      "format": "portrait",
+      "expected": {
+        "width": 1080,
+        "height": 1920
+      },
+      "png": {
+        "width": 1080,
+        "height": 1920
+      },
+      "width": 1080,
+      "height": 1920,
+      "scrollWidth": 1080,
+      "scrollHeight": 1920,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 32,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 3,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "carousel-case-walkthrough",
+      "name": "Caso hipotético explicado",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "carousel-evidence-led",
+      "name": "Carrossel guiado por prova",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 4,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "carousel-decision-path",
+      "name": "Percurso de decisão",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 10,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "carousel-misconception-check",
+      "name": "Checagem de equívoco",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 6,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "carousel-comparison-matrix",
+      "name": "Matriz comparativa",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 12,
+      "jsErrors": 0,
+      "status": "rendered"
+    },
+    {
+      "id": "carousel-application-lab",
+      "name": "Aplicação guiada",
+      "format": "feed",
+      "expected": {
+        "width": 1080,
+        "height": 1350
+      },
+      "png": {
+        "width": 1080,
+        "height": 1350
+      },
+      "width": 1080,
+      "height": 1350,
+      "scrollWidth": 1080,
+      "scrollHeight": 1350,
+      "background": "rgb(245, 245, 240)",
+      "minVisibleFontPx": 23,
+      "primaryHeadlinePx": 76,
+      "emDashCount": 0,
+      "logoCount": 0,
+      "visibleTextCount": 5,
+      "jsErrors": 0,
+      "status": "rendered"
+    }
+  ]
+}

@@ -12,7 +12,7 @@ import {
 } from '../auth'
 import { ApiError, body } from './helpers'
 
-const loginSchema = z.object({ password: z.string().min(12).max(512) })
+const loginSchema = z.object({ password: z.string().min(8).max(512) })
 
 export const authRoutes = new Hono()
   .post('/login', async (c) => {

@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TRedline, TBody, TTitle } from '../primitives'
+import { TBody, TTitle } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -43,7 +43,6 @@ export function SqQuoteRender({ elements: el, dark }: TemplateRenderProps<SqQuot
       </TTitle>
       {el.author !== false && (
         <div className="flex flex-col items-center gap-2.5">
-          <TRedline />
           <TBody fontSize={28} dark={dark} style={{ fontWeight: 600 }}>
             <EditableText path="author" value={el.author} />
           </TBody>

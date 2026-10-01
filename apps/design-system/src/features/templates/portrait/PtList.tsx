@@ -1,5 +1,5 @@
 import type { TemplateRenderProps } from '../types'
-import { TEyebrow, TTitle, TRedline, TBody } from '../primitives'
+import { TEyebrow, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { TipControls } from '../shared/TipControls'
 
@@ -22,7 +22,6 @@ export function PtListRender({ elements: el, dark }: TemplateRenderProps<PtListE
       <TTitle fontSize={96} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline width={70} height={6} />
       <div className="flex flex-1 flex-col justify-center">
         {items.map((item, i) => (
           <div

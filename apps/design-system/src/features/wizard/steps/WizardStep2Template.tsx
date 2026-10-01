@@ -4,6 +4,7 @@ import { TEMPLATES, getTemplateById } from '@/features/templates/registry'
 import { CAROUSEL_PRESETS } from '@/features/templates/carouselPresets'
 import { cn } from '@/lib/utils'
 import { Check } from 'lucide-react'
+import { getCanvasDimensions } from '@/features/templates/canvasDimensions'
 
 export function WizardStep2Template() {
   const templateId = useWizardStore((s) => s.templateId)
@@ -61,17 +62,18 @@ export function WizardStep2Template() {
                 <div className="flex flex-wrap gap-2">
                   {preset.slots.map((slot, i) => {
                     const slotTpl = getTemplateById(slot.templateId)
+                    const dimensions = getCanvasDimensions(slotTpl?.format ?? 'feed')
                     return (
                       <div key={i} className="flex w-[108px] flex-col items-center gap-1">
                         <div
                           className="relative overflow-hidden rounded-md bg-ui-panel2"
-                          style={{ width: 108, height: 108 }}
+                          style={{ width: 108, height: dimensions.height / 10 }}
                         >
                           <div
                             className="pointer-events-none absolute left-0 top-0 origin-top-left"
                             style={{
-                              width: 1080,
-                              height: 1080,
+                              width: dimensions.width,
+                              height: dimensions.height,
                               transform: 'scale(0.1)',
                             }}
                           >
@@ -127,6 +129,8 @@ export function WizardStep2Template() {
             {templates.map((tpl) => {
               const selected = templateId === tpl.id
               const Render = tpl.Render
+              const dimensions = getCanvasDimensions(tpl.format)
+              const scale = tpl.format === 'portrait' ? 0.12 : 0.18
               return (
                 <button
                   key={tpl.id}
@@ -141,16 +145,16 @@ export function WizardStep2Template() {
                   <div
                     className="relative overflow-hidden rounded-lg bg-ui-panel2"
                     style={{
-                      width: tpl.format === 'portrait' ? 1080 * 0.12 : 1080 * 0.18,
-                      height: tpl.format === 'portrait' ? 1920 * 0.12 : 1080 * 0.18,
+                      width: dimensions.width * scale,
+                      height: dimensions.height * scale,
                     }}
                   >
                     <div
                       className="pointer-events-none absolute left-0 top-0 origin-top-left"
                       style={{
-                        width: 1080,
-                        height: tpl.format === 'portrait' ? 1920 : 1080,
-                        transform: `scale(${tpl.format === 'portrait' ? 0.12 : 0.18})`,
+                        width: dimensions.width,
+                        height: dimensions.height,
+                        transform: `scale(${scale})`,
                       }}
                     >
                       <Render

@@ -1,171 +1,26 @@
-import { createDatabase, loadLlmRuntimeConfig } from '@plataforma/db'
+import { createDatabase } from '@plataforma/db'
 import { runWorker } from '@plataforma/queue/runtime'
-import { logger, reportIaUsage } from '@plataforma/shared'
-import { processNewsRadar, type Repository, type AiClassifier, type NewsSource } from './index.js'
-import { persistNewsClassification } from './persistence.js'
+import { logger } from '@plataforma/shared'
+import { makeTaskRequest } from '@plataforma/task-runtime'
+import { createNewsRadarTaskHandler } from './runtime.js'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required')
 const { pool } = createDatabase(databaseUrl)
-
-const repo: Repository = {
-  async getActiveSources() {
-    const result = await pool.query<NewsSource>(
-      'SELECT id, name, url, feed_url, source_type, portal, active, etag, last_modified, failure_count FROM news_sources WHERE active = true ORDER BY last_fetched_at ASC NULLS FIRST'
-    )
-    return result.rows
-  },
-
-  async upsertNewsItem(item) {
-    const duplicate = await pool.query<{ id: string }>('SELECT id FROM news_items WHERE url_hash = $1 LIMIT 1', [item.url_hash])
-    if (duplicate.rows[0]) return { id: duplicate.rows[0].id, isNew: false }
-    const result = await pool.query(
-      `INSERT INTO news_items (source_id, external_id, url, url_hash, title, summary, content, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz)
-       ON CONFLICT (source_id, external_id) DO NOTHING
-       RETURNING id`,
-      [item.source_id, item.external_id, item.url, item.url_hash, item.title, item.summary, item.content, item.published_at]
-    )
-    return { id: result.rows[0]?.id ?? '', isNew: (result.rowCount ?? 0) > 0 }
-  },
-
-  async markSourceFetched(sourceId, etag, lastModified) {
-    await pool.query(
-      'UPDATE news_sources SET last_fetched_at = now(), etag = COALESCE($2, etag), last_modified = COALESCE($3, last_modified), failure_count = 0, updated_at = now() WHERE id = $1',
-      [sourceId, etag, lastModified]
-    )
-  },
-
-  async incrementSourceFailure(sourceId, error) {
-    await pool.query(
-      'UPDATE news_sources SET failure_count = failure_count + 1, last_failure_at = now(), updated_at = now() WHERE id = $1',
-      [sourceId]
-    )
-    logger.warn({ sourceId, error }, 'news source fetch failed')
-  },
-
-  async disableSource(sourceId, reason) {
-    await pool.query(
-      'UPDATE news_sources SET active = false, disabled_reason = $2, updated_at = now() WHERE id = $1',
-      [sourceId, reason]
-    )
-    logger.error({ sourceId, reason }, 'news source auto-disabled')
-  },
-
-  async getUnclassifiedItems(limit) {
-    const result = await pool.query(
-      `SELECT ni.id, ni.title, ni.summary, ni.content, ni.url, ns.name AS source_name
-       FROM news_items ni JOIN news_sources ns ON ns.id = ni.source_id
-       WHERE ni.classified = false ORDER BY ni.fetched_at ASC LIMIT $1`,
-      [limit]
-    )
-    return result.rows
-  },
-
-  async persistClassification(itemId, classification, finding) {
-    return persistNewsClassification(pool, itemId, classification, finding)
-  },
-
-  async insertContentOpportunity(finding, classification) {
-    const campaign = await pool.query<{ id: string }>("SELECT id FROM campaigns WHERE name = 'Rota de Ataque' LIMIT 1")
-    await pool.query(
-      `INSERT INTO content_opportunities (campaign_id, thesis, angle, hook, evidence, opportunity_score, status, confidence, source_references)
-       SELECT $1, $2, $3, $4, $5::jsonb, $6, 'new', $7, $8::jsonb
-       WHERE NOT EXISTS (SELECT 1 FROM content_opportunities WHERE source_references @> $8::jsonb)`,
-      [campaign.rows[0]?.id ?? null, `${classification.categoria} — ${finding.title}`, classification.reason, `Atualização de concurso ${classification.categoria}`, JSON.stringify({ radar_finding_id: finding.fingerprint, source_url: finding.source_url, source_name: finding.source_name, factuality_score: classification.factuality_score }), classification.relevance_score, classification.confidence, JSON.stringify([{ fingerprint: finding.fingerprint, url: finding.source_url }])],
-    )
-  },
-}
-
-let aiClassifier: AiClassifier | null = null
-
-async function initAi(): Promise<AiClassifier | null> {
-  if (process.env.RADAR_DEEPSEEK_ENABLED !== 'true') {
-    logger.info('DeepSeek radar classifier disabled; deterministic review gate is active')
-    return null
-  }
-  try {
-    const config = await loadLlmRuntimeConfig(pool)
-    return {
-      async classify(title, content) {
-        const startedAt = Date.now()
-        const prompt = `You are the safety classifier for a Brazilian public-security civil-service-exam radar. Classify only the supplied text; do not invent facts.
-Title: ${title}
-Content: ${(content ?? '').slice(0, 500)}
-
-Return ONLY a JSON object with:
-- concurso_alvo: PM, PP, PC, PF, PRF, GCM, or "outro"/null
-- categoria: PM, PP, PC, PF, PRF, GCM, BOMBEIROS, TRANSITO, SOCIOEDUCATIVO, or outro
-- estado: Brazilian state abbreviation or null
-- banca: exam board name or null
-- fase_ciclo: autorizacao, comissao, banca_definida, edital_publicado, retificacao, resultado, or null
-- relevance_score: 0.0 to 1.0 (how relevant for police exam candidates)
-- confidence: 0.0 to 1.0 (confidence in the classification)
-- factuality_score: 0.0 to 1.0 (whether the claim is concrete and attributable)
-- is_police_relevant: boolean
-- is_duplicate: boolean
-- reason: short Portuguese explanation`
-
-        const body: Record<string, unknown> = {
-          model: process.env.RADAR_DEEPSEEK_MODEL?.trim() || config.model,
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: config.maxOutputTokens,
-          temperature: 0,
-          response_format: { type: 'json_object' },
-        }
-
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (config.apiKey) headers['Authorization'] = `Bearer ${config.apiKey}`
-
-        const endpoint = config.provider === 'anthropic'
-          ? 'https://api.anthropic.com/v1/messages'
-          : `${config.endpoint}/chat/completions`
-
-        if (config.provider === 'anthropic') {
-          headers['x-api-key'] = config.apiKey ?? ''
-          headers['anthropic-version'] = '2023-06-01'
-          body.max_tokens = config.maxOutputTokens
-        }
-
-        try {
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(30_000),
-          })
-          if (!response.ok) throw new Error(`LLM error ${response.status}`)
-          const data = await response.json()
-          const text = config.provider === 'anthropic'
-            ? data.content?.[0]?.text
-            : data.choices?.[0]?.message?.content
-          const parsed = JSON.parse(text)
-          if (!parsed || typeof parsed !== 'object' || typeof parsed.is_police_relevant !== 'boolean') throw new Error('LLM returned an invalid radar classification')
-          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: process.env.RADAR_DEEPSEEK_MODEL?.trim() || config.model, input_tokens: data.usage?.prompt_tokens ?? data.usage?.input_tokens, output_tokens: data.usage?.completion_tokens ?? data.usage?.output_tokens, latency_ms: Date.now() - startedAt, success: true })
-          return parsed
-        } catch (error) {
-          reportIaUsage({ feature: 'prospector_news_radar', provider: config.provider, model: process.env.RADAR_DEEPSEEK_MODEL?.trim() || config.model, latency_ms: Date.now() - startedAt, success: false, error_code: error instanceof Error ? error.name : 'unknown' })
-          throw error
-        }
-      },
-    }
-  } catch {
-    logger.info('AI classifier not available, using keyword fallback')
-    return null
-  }
-}
+const handleNewsRadar = createNewsRadarTaskHandler(pool)
 
 runWorker('news-radar', async (job) => {
-  if (!aiClassifier) aiClassifier = await initAi()
-
-  const mode = (job.payload as { mode?: string }).mode === 'full' ? 'full' : 'incremental'
-  const result = await processNewsRadar({ repo, ai: aiClassifier }, mode as 'incremental' | 'full')
-
-  logger.info({ ...result, mode }, 'news-radar run complete')
-
+  const request = makeTaskRequest('news-radar.daily', job.payload, { occurrenceKey: job.id })
+  const execution = await handleNewsRadar(request, {
+    runId: job.id,
+    attempt: job.attemptsMade ?? 0,
+    checkpoint: null,
+    signal: new AbortController().signal,
+    saveCheckpoint: async (checkpoint) => logger.info({ job_id: job.id, checkpoint }, 'news-radar checkpoint'),
+  })
   return {
     ok: true,
     traceId: job.id,
-    event: { kind: 'news-radar.completed', payload: result },
+    event: { kind: 'news-radar.completed', payload: execution.result },
   }
 })

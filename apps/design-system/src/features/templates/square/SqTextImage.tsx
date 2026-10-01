@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline, TSlot } from '../primitives'
+import { TEyebrow, TTitle, TBody, TSlot } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -13,7 +13,6 @@ export interface SqTextImageElements {
   eyebrow: Hideable<string>
   title: string
   body: string
-  redline: Hideable<boolean>
   main?: string
 }
 
@@ -37,7 +36,6 @@ export function SqTextImageRender({
         <TTitle fontSize={72} dark={dark}>
           <EditableText path="title" value={el.title} />
         </TTitle>
-        {el.redline !== false && <TRedline />}
         <TBody fontSize={32} dark={dark}>
           <EditableText path="body" value={el.body} />
         </TBody>
@@ -57,12 +55,9 @@ export function SqTextImageRender({
 
 /**
  * Espelha buildTextImageControls() do Gerador/index.html (linha 2736).
- * Reusado também por pt-image — nota de fidelidade: pt-image não tem campo `redline`
- * (renderImagePortrait sempre mostra a linha vermelha, sem condicional), mas o toggle
- * "Mostrar Linha Vermelha" aparece de qualquer forma no painel original, sem efeito —
- * replicado fielmente via genérico em vez de bifurcar o componente.
+ * Reusado também por pt-image, que compartilha os controles de imagem e eyebrow.
  */
-export function SqTextImageControls<E extends { eyebrow?: unknown; redline?: unknown }>({
+export function SqTextImageControls<E extends { eyebrow?: unknown }>({
   elements: el,
 }: TemplateControlsProps<E>) {
   const toggleElementVisibility = useEditorStore((s) => s.toggleElementVisibility)
@@ -80,11 +75,6 @@ export function SqTextImageControls<E extends { eyebrow?: unknown; redline?: unk
           label="Mostrar Eyebrow Tag"
           checked={el.eyebrow !== false}
           onCheckedChange={() => toggleElementVisibility('eyebrow')}
-        />
-        <ControlToggle
-          label="Mostrar Linha Vermelha"
-          checked={el.redline !== false}
-          onCheckedChange={() => toggleElementVisibility('redline')}
         />
       </ControlSection>
       <ControlSection title="Tema">

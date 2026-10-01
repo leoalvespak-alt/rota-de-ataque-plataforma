@@ -1,0 +1,131 @@
+x-shared-editorial-db-url: &shared-editorial-db-url postgresql://${PROSPECTOR_DB_USER}:${PROSPECTOR_DB_PASSWORD}@host.docker.internal:6432/prospector?sslmode=verify-full&sslrootcert=/run/pgbouncer/server.crt
+
+x-pgbouncer-ca-mount: &pgbouncer-ca-mount
+  - /etc/pgbouncer/tls/server.crt:/run/pgbouncer/server.crt:ro
+
+services:
+  prospector-migrate:
+    volumes: *pgbouncer-ca-mount
+    environment:
+      DATABASE_URL: *shared-editorial-db-url
+      MIGRATIONS_TO: 0057_pauta_registry
+
+  prospector-web:
+    volumes: *pgbouncer-ca-mount
+    environment:
+      DATABASE_URL: *shared-editorial-db-url
+      EDITORIAL_SCHEMA: editorial
+      EXPECTED_DB_MIGRATION: 0057_pauta_registry
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai-compatible}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-v4-flash}
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-https://api.deepseek.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-${DEEPSEEK_API_KEY_DESIGN_SYSTEM:?DeepSeek credential required}}
+      DESIGN_WEB_ORIGIN: ${DESIGN_WEB_ORIGIN:-https://design.rotadeataque.com.br}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_SOCIAL_ACCESS_TOKEN: ${META_SOCIAL_ACCESS_TOKEN:-}
+      META_PAGE_ACCESS_TOKEN: ${META_PAGE_ACCESS_TOKEN:-}
+      META_BUSINESS_ACCOUNT_ID: ${META_BUSINESS_ACCOUNT_ID:-}
+      META_INSTAGRAM_ACCOUNT_ID: ${META_INSTAGRAM_ACCOUNT_ID:-}
+      META_INSTAGRAM_ACCESS_TOKEN: ${META_INSTAGRAM_ACCESS_TOKEN:-}
+      META_FACEBOOK_PAGE_ID: ${META_FACEBOOK_PAGE_ID:-}
+      META_API_VERSION: ${META_API_VERSION:-}
+      META_GRAPH_BASE_URL: ${META_GRAPH_BASE_URL:-}
+      THREADS_ACCESS_TOKEN: ${THREADS_ACCESS_TOKEN:-}
+      THREADS_USER_ID: ${THREADS_USER_ID:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
+
+  design-migrate:
+    volumes: *pgbouncer-ca-mount
+    environment:
+      DATABASE_URL: *shared-editorial-db-url
+      DESIGN_MIGRATION_SCHEMA: design
+
+  design-api:
+    volumes: *pgbouncer-ca-mount
+    environment:
+      DATABASE_URL: *shared-editorial-db-url
+      DESIGN_SCHEMA: design
+      EDITORIAL_SCHEMA: editorial
+      EDITORIAL_THESIS_TABLE: theses
+      PROSPECTOR_DATABASE_URL: ""
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
+
+  editorial-executor:
+    volumes: *pgbouncer-ca-mount
+    profiles: ["editorial-runtime"]
+    image: ghcr.io/leoalvespak-alt/rota-editorial-executor:${IMAGE_TAG:?IMAGE_TAG must be set}
+    build:
+      context: ..
+      dockerfile: workers/editorial-executor/Dockerfile
+    restart: "no"
+    environment:
+      DATABASE_URL: *shared-editorial-db-url
+      DATABASE_POOL_MAX: "5"
+      EXPECTED_DB_MIGRATION: "0057_pauta_registry"
+      EDITORIAL_EXECUTOR_ENABLED: ${EDITORIAL_EXECUTOR_ENABLED:-false}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      DEEPSEEK_API_KEY_DESIGN_SYSTEM: ${DEEPSEEK_API_KEY_DESIGN_SYSTEM:?DeepSeek credential required}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai-compatible}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-v4-flash}
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-https://api.deepseek.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-${DEEPSEEK_API_KEY_DESIGN_SYSTEM:?DeepSeek credential required}}
+      RADAR_DEEPSEEK_ENABLED: ${RADAR_DEEPSEEK_ENABLED:-true}
+      RADAR_DEEPSEEK_MODEL: ${RADAR_DEEPSEEK_MODEL:-deepseek-v4-flash}
+      RADAR_AUTO_CONTENT_ENABLED: ${RADAR_AUTO_CONTENT_ENABLED:-true}
+      RADAR_AUTO_MIN_RELEVANCE: ${RADAR_AUTO_MIN_RELEVANCE:-0.8}
+      RADAR_AUTO_MIN_CONFIDENCE: ${RADAR_AUTO_MIN_CONFIDENCE:-0.8}
+      RADAR_AUTO_MIN_FACTUALITY: ${RADAR_AUTO_MIN_FACTUALITY:-0.8}
+      RADAR_AUTO_MIN_PRESERVED: ${RADAR_AUTO_MIN_PRESERVED:-0.8}
+      RADAR_AUTO_TRUSTED_SOURCES: ${RADAR_AUTO_TRUSTED_SOURCES:-pci concursos,folha dirigida,ache concursos}
+      RADAR_JEV_MODEL: ${RADAR_JEV_MODEL:-~typesafe/jev-latest}
+      DESIGN_WEB_ORIGIN: ${DESIGN_WEB_ORIGIN:-https://design.rotadeataque.com.br}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_SOCIAL_ACCESS_TOKEN: ${META_SOCIAL_ACCESS_TOKEN:-}
+      META_PAGE_ACCESS_TOKEN: ${META_PAGE_ACCESS_TOKEN:-}
+      META_BUSINESS_ACCOUNT_ID: ${META_BUSINESS_ACCOUNT_ID:-}
+      META_INSTAGRAM_ACCOUNT_ID: ${META_INSTAGRAM_ACCOUNT_ID:-}
+      META_INSTAGRAM_ACCESS_TOKEN: ${META_INSTAGRAM_ACCESS_TOKEN:-}
+      META_FACEBOOK_PAGE_ID: ${META_FACEBOOK_PAGE_ID:-}
+      META_API_VERSION: ${META_API_VERSION:-}
+      META_GRAPH_BASE_URL: ${META_GRAPH_BASE_URL:-}
+      THREADS_ACCESS_TOKEN: ${THREADS_ACCESS_TOKEN:-}
+      THREADS_USER_ID: ${THREADS_USER_ID:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
+      NODE_ENV: production
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      prospector-migrate:
+        condition: service_completed_successfully

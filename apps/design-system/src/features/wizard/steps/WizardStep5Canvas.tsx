@@ -4,6 +4,7 @@ import { useEditorStore } from '@/stores/useEditorStore'
 import { useUiStore } from '@/stores/useUiStore'
 import { TEMPLATES, getTemplateById } from '@/features/templates/registry'
 import { ProfileCanvasWrapper } from '@/features/templates/ProfileCanvasWrapper'
+import { getCanvasDimensions } from '@/features/templates/canvasDimensions'
 import { cn } from '@/lib/utils'
 import {
   ArrowLeftRight,
@@ -66,6 +67,7 @@ export function WizardStep5Canvas() {
 
   const activeCard = scriptCards[activeCardIndex]
   const isDark = cardDarkMode[activeCardIndex] ?? false
+  const dimensions = getCanvasDimensions(tpl?.format ?? 'feed')
 
   const elements = useMemo(() => {
     if (!tpl || !activeCard) return {}
@@ -133,8 +135,8 @@ export function WizardStep5Canvas() {
             <div
               className="pointer-events-none"
               style={{
-                width: tpl.format === 'portrait' ? 1080 : 1080,
-                height: tpl.format === 'portrait' ? 1920 : 1080,
+                width: dimensions.width,
+                height: dimensions.height,
                 transform: 'scale(0.4)',
                 transformOrigin: 'top left',
               }}

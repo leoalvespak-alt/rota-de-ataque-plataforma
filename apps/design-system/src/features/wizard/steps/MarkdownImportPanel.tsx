@@ -11,13 +11,14 @@ import { cn } from '@/lib/utils'
 import { Download, Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 export function MarkdownImportPanel() {
-  const aspectRatio = useWizardStore((s) => s.aspectRatio)
+  const getResolvedFormat = useWizardStore((s) => s.getResolvedFormat)
   const cardCount = useWizardStore((s) => s.cardCount)
   const creativeType = useWizardStore((s) => s.creativeType)
   const setScriptCards = useWizardStore((s) => s.setScriptCards)
 
   const effectiveCardCount = creativeType === 'carousel' ? cardCount : 1
-  const canDownload = !!aspectRatio && effectiveCardCount >= 1
+  const format = getResolvedFormat()
+  const canDownload = Boolean(creativeType) && effectiveCardCount >= 1
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -29,10 +30,10 @@ export function MarkdownImportPanel() {
   const handleDownload = () => {
     if (!canDownload) return
     const content = generateMarkdownTemplate({
-      aspectRatio: aspectRatio!,
+      aspectRatio: format,
       cardCount: effectiveCardCount,
     })
-    const ratioLabel = aspectRatio === 'portrait' ? 'retrato' : 'quadrado'
+    const ratioLabel = format === 'portrait' ? 'story' : 'feed'
     downloadMarkdownTemplate(content, `roteiro_${ratioLabel}_${effectiveCardCount}cards.md`)
   }
 

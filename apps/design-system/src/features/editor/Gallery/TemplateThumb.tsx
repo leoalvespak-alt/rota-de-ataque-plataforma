@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { CanvasFrame } from '@/features/templates/primitives'
 import type { TemplateDefinition } from '@/features/templates/types'
 import { CardLayoutProvider } from '@/features/editor/layout/cardLayout'
+import { getCanvasAspectRatio } from '@/features/templates/canvasDimensions'
 
 interface TemplateThumbProps {
   template: TemplateDefinition<never>
@@ -46,7 +47,7 @@ export function TemplateThumb({ template, elements, dark = false }: TemplateThum
     <div
       ref={containerRef}
       className="relative overflow-hidden"
-      style={{ width: '100%', aspectRatio: format === 'portrait' ? '9 / 16' : '1 / 1' }}
+      style={{ width: '100%', aspectRatio: getCanvasAspectRatio(format) }}
     >
       <div
         style={{

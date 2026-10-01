@@ -6,43 +6,43 @@ import type { PtListElements } from './PtList'
 import type { PtCtaElements } from './PtCta'
 
 export const ptCoverDefaults: PtCoverElements = {
-  eyebrow: 'MISSÃO HOJE',
-  title: 'EXECUTE O PLANO',
-  subtitle: 'Sem desculpas. A aprovação é sua.',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'PREPARE A PRÓXIMA ETAPA',
+  subtitle: 'Defina o tópico e o critério de conclusão.',
 }
 
 export const ptContentDefaults: PtContentElements = {
-  eyebrow: 'CONTEÚDO',
-  title: 'DIREITO ADMINISTRATIVO',
-  body: 'Os atos administrativos são a base de qualquer prova de carreira fiscal. Domine este tópico e avance com confiança.',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'CONFIRA UMA REGRA',
+  body: 'Localize a regra no material indicado. Registre a condição de aplicação e confira se há exceção na mesma fonte.',
 }
 
 export const ptImageDefaults: PtImageElements = {
-  eyebrow: 'CONCURSO',
-  title: 'RECEITA FEDERAL 2025',
-  body: 'Vagas abertas. Salário inicial de R$ 21.029. Inscrições abertas até 15/08.',
+  eyebrow: 'CAMPO COM FONTE',
+  title: '[Tema confirmado]',
+  body: '[Inclua informação vigente somente com fonte e data de consulta.]',
 }
 
 export const ptQuoteDefaults: PtQuoteElements = {
-  quote: '"A procrastinação não é falta de tempo. É falta de decisão."',
-  author: 'Rota de Ataque',
-  sub: 'Execute o plano hoje.',
+  quote: '[Citação autorizada para esta peça]',
+  author: '[Fonte confirmada]',
+  sub: '[Contexto necessário para interpretar a citação]',
 }
 
 export const ptListDefaults: PtListElements = {
-  tag: 'HOJE',
-  title: 'MISSÃO DO DIA',
+  tag: 'EXEMPLO DIDÁTICO',
+  title: 'ORGANIZE UMA REVISÃO',
   items: [
-    'Estudar Direito Constitucional: 2h',
-    'Resolver 50 questões de Português',
-    'Revisar anotações de Matemática',
-    'Assistir videoaula de Raciocínio Lógico',
+    'Escolha um tópico delimitado',
+    'Separe o material de referência',
+    'Registre os pontos que precisa conferir',
+    'Confira suas anotações na fonte',
   ],
 }
 
 export const ptCtaDefaults: PtCtaElements = {
-  eyebrow: 'ACESSE AGORA',
-  title: 'SEU CRONOGRAMA PRONTO',
-  body: 'Pare de estudar sem método. Acesse a plataforma e receba seu plano personalizado em minutos.',
-  cta: 'COMEÇAR AGORA',
+  eyebrow: 'PRÓXIMA AÇÃO',
+  title: 'CONSULTE A REFERÊNCIA',
+  body: 'Abra a fonte indicada e confira os pontos usados nesta explicação.',
+  cta: 'CONFERIR A FONTE',
 }

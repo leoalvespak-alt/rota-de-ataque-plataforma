@@ -16,7 +16,6 @@ export function WizardView() {
   const step = useWizardStore((s) => s.step)
   const active = useWizardStore((s) => s.active)
   const creativeType = useWizardStore((s) => s.creativeType)
-  const aspectRatio = useWizardStore((s) => s.aspectRatio)
   const templateId = useWizardStore((s) => s.templateId)
   const freeText = useWizardStore((s) => s.freeText)
   const thesisId = useWizardStore((s) => s.thesisId)
@@ -31,7 +30,6 @@ export function WizardView() {
     switch (step) {
       case 1:
         if (!creativeType) return false
-        if (creativeType !== 'story' && !aspectRatio) return false
         return true
       case 2:
         return !!templateId
@@ -46,7 +44,7 @@ export function WizardView() {
       default:
         return false
     }
-  }, [step, creativeType, aspectRatio, templateId, freeText, thesisId, cardCount, scriptCards])
+  }, [step, creativeType, templateId, freeText, thesisId, cardCount, scriptCards])
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const { generate, cancelGeneration, isGenerating } = useWizardAI({

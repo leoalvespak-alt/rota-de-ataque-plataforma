@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline } from '../primitives'
+import { TEyebrow, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -26,7 +26,6 @@ export function PtContentRender({ elements: el, dark }: TemplateRenderProps<PtCo
       <TTitle fontSize={100} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline width={80} height={6} />
       <TBody fontSize={44} dark={dark}>
         <EditableText path="body" value={el.body} />
       </TBody>

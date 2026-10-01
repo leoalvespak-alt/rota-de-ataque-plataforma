@@ -5,7 +5,7 @@
  * - `Hideable<T>` = mesma semântica do `!== false` usado no HTML pra ocultar campo.
  */
 
-export type CanvasFormat = 'square' | 'portrait'
+export type CanvasFormat = 'square' | 'feed' | 'portrait'
 export type FormatFilter = 'square' | 'portrait' | 'carousel'
 export type CareerTag = 'fiscal' | 'policial' | 'tribunal' | 'motivacao'
 
@@ -21,6 +21,7 @@ export interface TemplateRenderProps<E> {
 
 export interface TemplateControlsProps<E> {
   elements: E
+  setElementField?: (path: (string | number)[], value: unknown) => void
 }
 
 /** Metadados declarativos usados pelos recursos avançados sem alterar o render atual. */

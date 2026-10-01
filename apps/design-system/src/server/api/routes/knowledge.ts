@@ -1,6 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { knowledgeChunks, knowledgeDocuments } from '@/db/editorial-schema'
+import { editorialTable } from '@/db/schema-names'
 import { createDocumentSchema } from '@/domain/editorial/schemas'
 import { chunkDocument, contentHash, normalizeText, wordCount } from '@/server/editorial/ingest'
 import { createRagEmbeddingService } from '@/server/editorial/embedding'
@@ -19,8 +20,8 @@ async function indexDocument(document: { id: string; title: string; type: string
   try {
     const existing = await client.query<{ chunk_id: string; chunk_index: number; chunk_hash: string; embedding_hash: string | null }>(
       `SELECT c.id AS chunk_id, c.chunk_index, c.hash AS chunk_hash, e.content_hash AS embedding_hash
-         FROM knowledge_chunks c
-         LEFT JOIN rag_embeddings e ON e.chunk_id = c.id AND e.model_name = $2 AND e.model_version = $3
+         FROM ${editorialTable('knowledge_chunks')} c
+         LEFT JOIN ${editorialTable('rag_embeddings')} e ON e.chunk_id = c.id AND e.model_name = $2 AND e.model_version = $3
         WHERE c.document_id = $1::uuid`,
       [document.id, modelName, modelVersion],
     )
@@ -36,9 +37,9 @@ async function indexDocument(document: { id: string; title: string; type: string
     await client.query('BEGIN')
     for (const chunk of chunks) {
       const row = (await client.query<{ id: string }>(
-        `INSERT INTO knowledge_chunks(document_id,chunk_index,title,content,normalized_content,chunk_type,section_path,tags,thesis_id,language,hash,token_count,version)
+        `INSERT INTO ${editorialTable('knowledge_chunks')} AS current_chunk(document_id,chunk_index,title,content,normalized_content,chunk_type,section_path,tags,thesis_id,language,hash,token_count,version)
          VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8::text[],$9::uuid,$10,$11,$12,1)
-         ON CONFLICT(document_id,chunk_index) DO UPDATE SET title=EXCLUDED.title,content=EXCLUDED.content,normalized_content=EXCLUDED.normalized_content,chunk_type=EXCLUDED.chunk_type,section_path=EXCLUDED.section_path,tags=EXCLUDED.tags,thesis_id=EXCLUDED.thesis_id,language=EXCLUDED.language,hash=EXCLUDED.hash,token_count=EXCLUDED.token_count,version=knowledge_chunks.version+1
+         ON CONFLICT(document_id,chunk_index) DO UPDATE SET title=EXCLUDED.title,content=EXCLUDED.content,normalized_content=EXCLUDED.normalized_content,chunk_type=EXCLUDED.chunk_type,section_path=EXCLUDED.section_path,tags=EXCLUDED.tags,thesis_id=EXCLUDED.thesis_id,language=EXCLUDED.language,hash=EXCLUDED.hash,token_count=EXCLUDED.token_count,version=current_chunk.version+1
          RETURNING id`,
         [document.id, chunk.chunkIndex, chunk.title, chunk.content, normalizeText(chunk.content).toLowerCase(), chunk.chunkType, chunk.sectionPath, document.tags ?? [], document.thesisId, document.language, chunk.hash, chunk.tokenCount],
       )).rows[0]
@@ -47,8 +48,8 @@ async function indexDocument(document: { id: string; title: string; type: string
       if (embedding) await vectorStore.upsert({ chunkId: row.id, modelName, modelVersion, embedding, metadata: metadata(chunk), contentHash: chunk.hash })
       else await vectorStore.updateMetadata({ chunkId: row.id, modelName, modelVersion, metadata: metadata(chunk), contentHash: chunk.hash })
     }
-    await client.query(`DELETE FROM knowledge_chunks WHERE document_id = $1::uuid AND chunk_index >= $2`, [document.id, chunks.length])
-    await client.query(`UPDATE knowledge_documents SET status='indexed', updated_at=now() WHERE id=$1::uuid`, [document.id])
+    await client.query(`DELETE FROM ${editorialTable('knowledge_chunks')} WHERE document_id = $1::uuid AND chunk_index >= $2`, [document.id, chunks.length])
+    await client.query(`UPDATE ${editorialTable('knowledge_documents')} SET status='indexed', updated_at=now() WHERE id=$1::uuid`, [document.id])
     await client.query('COMMIT')
     return chunks.length
   } catch (error) {

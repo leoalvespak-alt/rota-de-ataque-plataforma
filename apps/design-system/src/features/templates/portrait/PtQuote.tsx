@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps } from '../types'
-import { TRedline, TBody } from '../primitives'
+import { TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { SimpleControls } from '../shared/SimpleControls'
 
@@ -44,7 +44,6 @@ export function PtQuoteRender({ elements: el, dark }: TemplateRenderProps<PtQuot
         <EditableText path="quote" value={el.quote} />
       </div>
       <div className="flex flex-col items-center gap-3.5">
-        <TRedline width={70} height={5} />
         <TBody fontSize={36} dark={dark} style={{ fontWeight: 600 }}>
           <EditableText path="author" value={el.author} />
         </TBody>

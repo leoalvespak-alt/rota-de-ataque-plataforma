@@ -8,67 +8,54 @@ import type { CrComparisonElements } from './CrComparison'
 import type { CrCtaElements } from './CrCta'
 
 export const crCoverDefaults: CrCoverElements = {
-  eyebrow: 'GUIA COMPLETO',
-  title: '5 TÉCNICAS PARA ESTUDAR MAIS EM MENOS TEMPO',
-  subtitle: 'Deslize para ver cada técnica →',
-  page: '01 / 05',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'COMO REVISAR UM TÓPICO',
+  subtitle: 'Uma sequência para organizar a conferência da matéria.',
 }
 
 export const crCoverDarkDefaults: CrCoverDarkElements = {
-  eyebrow: 'SÉRIE APROVADOS',
-  title: 'COMO PASSAR NA RECEITA FEDERAL',
-  subtitle: 'O caminho real — sem atalhos',
-  page: '01 / 06',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'ORGANIZE SUA PRÓXIMA REVISÃO',
+  subtitle: 'Escolha o conteúdo e registre as dúvidas.',
 }
 
 export const crSlideDefaults: CrSlideElements = {
-  eyebrow: 'TÉCNICA 01',
-  title: 'BLOCO POMODORO',
-  body: 'Estude por 25 minutos ininterruptos e descanse 5 minutos. Após 4 blocos, tire uma pausa longa de 20 minutos.\n\nSeu cérebro vai absorver mais com menos cansaço.',
-  page: '02 / 05',
+  eyebrow: 'ETAPA DE REVISÃO',
+  title: 'REGISTRE O QUE LEMBRA',
+  body: 'Feche o material e anote os pontos centrais do tópico. Depois, consulte a fonte e marque o que precisa ser revisto.',
 }
 
 export const crTextImageDefaults: CrTextImageElements = {
-  eyebrow: 'MÉTODO 02',
-  title: 'REVISÃO ATIVA',
-  body: 'Feche o material após estudar e escreva tudo que lembrar. Esse método triplica a retenção em relação à releitura passiva.',
-  page: '03 / 05',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'COMPARE COM A FONTE',
+  body: 'Localize no material os trechos que confirmam, corrigem ou completam suas anotações.',
 }
 
 export const crListDefaults: CrListElements = {
-  eyebrow: 'ROTINA VENCEDORA',
-  title: '4 AÇÕES DIÁRIAS',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'ETAPAS DE CONFERÊNCIA',
   steps: [
-    'Estudar em blocos sem celular',
-    'Resolver questões comentadas',
-    'Fazer revisão ativa noturna',
-    'Registrar erros e revisar no dia seguinte',
+    'Delimite o tópico',
+    'Identifique a fonte',
+    'Registre uma explicação',
+    'Confira cada ponto',
   ],
-  page: '04 / 05',
 }
 
 export const crFactDefaults: CrFactElements = {
-  tag: 'DADO IMPORTANTE',
-  big: '70%',
-  label: 'das questões de concurso fiscal repetem tópicos de edições anteriores',
-  page: '03 / 06',
+  tag: 'CAMPO COM FONTE',
+  big: '[DADO]',
+  label: '[Insira informação confirmada e cite a fonte.]',
 }
 
 export const crComparisonDefaults: CrComparisonElements = {
-  title: 'ANTES vs DEPOIS',
-  left: ['Estuda sem foco', 'Pula matérias difíceis', 'Sem revisão programada', '0 aprovações'],
-  right: [
-    'Plano diário definido',
-    'Ataca os pontos cegos',
-    'Revisão ativa agendada',
-    '10.482 aprovados',
-  ],
-  page: '02 / 06',
+  title: 'EXEMPLO DIDÁTICO: DOIS REGISTROS',
+  left: ['Tópico amplo', 'Fonte ausente', 'Dúvida não anotada'],
+  right: ['Tópico delimitado', 'Fonte identificada', 'Dúvida registrada'],
 }
 
 export const crCtaDefaults: CrCtaElements = {
-  title: 'COMECE AGORA',
-  body: 'Acesse a plataforma Rota de Ataque e receba seu cronograma personalizado hoje mesmo.',
-  cta: 'ACESSAR AGORA',
-  page: '05 / 05',
+  title: 'RETOME A REFERÊNCIA',
+  body: 'Confira a fonte antes de fechar a explicação.',
+  cta: 'CONFERIR A FONTE',
 }

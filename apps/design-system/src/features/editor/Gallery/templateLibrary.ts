@@ -28,7 +28,7 @@ const CTA_TEMPLATE_IDS = new Set(['pt-cta', 'cr-cta'])
 
 export const FORMAT_OPTIONS: { id: 'all' | FormatFilter; label: string }[] = [
   { id: 'all', label: 'Todos os formatos' },
-  { id: 'square', label: 'Quadrado' },
+  { id: 'square', label: 'Feed 4:5' },
   { id: 'portrait', label: 'Story' },
   { id: 'carousel', label: 'Carrossel' },
 ]

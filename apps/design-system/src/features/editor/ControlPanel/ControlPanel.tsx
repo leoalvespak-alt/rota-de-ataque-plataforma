@@ -16,6 +16,7 @@ import { ContentFitControls } from './ContentFitControls'
 export function ControlPanel() {
   const activeTemplateId = useEditorStore((s) => s.activeTemplateId)
   const elements = useEditorStore((s) => s.elements)
+  const setElementField = useEditorStore((s) => s.setElementField)
 
   const tpl = activeTemplateId ? getTemplateById(activeTemplateId) : undefined
 
@@ -42,7 +43,7 @@ export function ControlPanel() {
         </p>
       </div>
       <ContentFitControls />
-      <tpl.Controls elements={elements as never} />
+      <tpl.Controls elements={elements as never} setElementField={setElementField} />
       <AICopyControls />
       <AIImageControls />
       <QualityControls />

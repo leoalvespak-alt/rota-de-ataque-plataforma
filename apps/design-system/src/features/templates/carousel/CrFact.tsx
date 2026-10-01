@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, Hideable } from '../types'
-import { TTag, TRedline, TBody, TPageIndicator } from '../primitives'
+import { TTag, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { CrSlideControls } from './CrSlide'
 
@@ -7,7 +7,6 @@ export interface CrFactElements {
   tag: Hideable<string>
   big: string
   label: string
-  page: string
 }
 
 /** Espelha renderCarouselFact() do Gerador/index.html (linha 2584). */
@@ -25,15 +24,9 @@ export function CrFactRender({ elements: el, dark }: TemplateRenderProps<CrFactE
       >
         <EditableText path="big" value={el.big} />
       </div>
-      <TRedline width={80} />
       <TBody fontSize={38} dark={dark}>
         <EditableText path="label" value={el.label} />
       </TBody>
-      <div className="absolute right-22.5 bottom-22.5">
-        <TPageIndicator fontSize={26}>
-          <EditableText path="page" value={el.page} />
-        </TPageIndicator>
-      </div>
     </div>
   )
 }

@@ -1,6 +1,12 @@
-import { pgTable, text, timestamp, uuid, jsonb, integer, boolean, varchar, numeric, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { pgSchema, pgTable, text, timestamp, uuid, jsonb, integer, boolean, varchar, numeric, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
-export const users = pgTable('users', {
+const designSchemaName = process.env.DESIGN_SCHEMA || 'public'
+// drizzle rejeita pgSchema('public'); o mapeamento correto do schema default é pgTable.
+const designPgSchema = designSchemaName === 'public' ? undefined : pgSchema(designSchemaName)
+const designTable = (designPgSchema ? designPgSchema.table.bind(designPgSchema) : pgTable) as typeof pgTable
+const designSchema = { table: designTable }
+
+export const users = designSchema.table('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: varchar('email', { length: 255 }).unique().notNull(),
   name: varchar('name', { length: 255 }),
@@ -9,7 +15,7 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const brands = pgTable('brands', {
+export const brands = designSchema.table('brands', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).unique().notNull(),
@@ -18,7 +24,7 @@ export const brands = pgTable('brands', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const brandTokens = pgTable('brand_tokens', {
+export const brandTokens = designSchema.table('brand_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
   brandId: uuid('brand_id').references(() => brands.id).notNull(),
   category: varchar('category', { length: 100 }).notNull(),
@@ -27,7 +33,7 @@ export const brandTokens = pgTable('brand_tokens', {
   version: integer('version').default(1),
 })
 
-export const templates = pgTable('templates', {
+export const templates = designSchema.table('templates', {
   id: uuid('id').primaryKey().defaultRandom(),
   templateId: varchar('template_id', { length: 100 }).unique().notNull(),
   name: varchar('name', { length: 255 }).notNull(),
@@ -39,7 +45,7 @@ export const templates = pgTable('templates', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const templateVersions = pgTable('template_versions', {
+export const templateVersions = designSchema.table('template_versions', {
   id: uuid('id').primaryKey().defaultRandom(),
   templateId: uuid('template_id').references(() => templates.id).notNull(),
   version: integer('version').notNull(),
@@ -47,7 +53,7 @@ export const templateVersions = pgTable('template_versions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const creatives = pgTable('creatives', {
+export const creatives = designSchema.table('creatives', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   brandId: uuid('brand_id').references(() => brands.id),
@@ -60,7 +66,7 @@ export const creatives = pgTable('creatives', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const creativeVersions = pgTable('creative_versions', {
+export const creativeVersions = designSchema.table('creative_versions', {
   id: uuid('id').primaryKey().defaultRandom(),
   creativeId: uuid('creative_id').references(() => creatives.id).notNull(),
   version: integer('version').notNull(),
@@ -68,7 +74,7 @@ export const creativeVersions = pgTable('creative_versions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const decks = pgTable('decks', {
+export const decks = designSchema.table('decks', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   title: varchar('title', { length: 500 }).notNull(),
@@ -78,7 +84,7 @@ export const decks = pgTable('decks', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const slides = pgTable('slides', {
+export const slides = designSchema.table('slides', {
   id: uuid('id').primaryKey().defaultRandom(),
   deckId: uuid('deck_id').references(() => decks.id).notNull(),
   position: integer('position').notNull(),
@@ -87,7 +93,7 @@ export const slides = pgTable('slides', {
   notes: text('notes'),
 })
 
-export const documents = pgTable('documents', {
+export const documents = designSchema.table('documents', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   type: varchar('type', { length: 50 }).notNull(),
@@ -98,14 +104,14 @@ export const documents = pgTable('documents', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const documentPages = pgTable('document_pages', {
+export const documentPages = designSchema.table('document_pages', {
   id: uuid('id').primaryKey().defaultRandom(),
   documentId: uuid('document_id').references(() => documents.id).notNull(),
   position: integer('position').notNull(),
   blocks: jsonb('blocks').$type<Array<Record<string, unknown>>>().notNull(),
 })
 
-export const assets = pgTable('assets', {
+export const assets = designSchema.table('assets', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   filename: varchar('filename', { length: 500 }).notNull(),
@@ -116,7 +122,7 @@ export const assets = pgTable('assets', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const assetVariants = pgTable('asset_variants', {
+export const assetVariants = designSchema.table('asset_variants', {
   id: uuid('id').primaryKey().defaultRandom(),
   assetId: uuid('asset_id').references(() => assets.id).notNull(),
   variant: varchar('variant', { length: 100 }).notNull(),
@@ -125,7 +131,7 @@ export const assetVariants = pgTable('asset_variants', {
   height: integer('height'),
 })
 
-export const renders = pgTable('renders', {
+export const renders = designSchema.table('renders', {
   id: uuid('id').primaryKey().defaultRandom(),
   creativeId: uuid('creative_id').references(() => creatives.id),
   format: varchar('format', { length: 20 }).notNull(),
@@ -137,7 +143,7 @@ export const renders = pgTable('renders', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const exports = pgTable('exports', {
+export const exports = designSchema.table('exports', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   format: varchar('format', { length: 20 }).notNull(),
@@ -148,7 +154,7 @@ export const exports = pgTable('exports', {
   completedAt: timestamp('completed_at'),
 })
 
-export const aiProviders = pgTable('ai_providers', {
+export const aiProviders = designSchema.table('ai_providers', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 255 }).notNull(),
   type: varchar('type', { length: 50 }).notNull(),
@@ -157,7 +163,7 @@ export const aiProviders = pgTable('ai_providers', {
   active: boolean('active').default(true),
 })
 
-export const aiGenerations = pgTable('ai_generations', {
+export const aiGenerations = designSchema.table('ai_generations', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   providerId: uuid('provider_id').references(() => aiProviders.id),
@@ -170,7 +176,7 @@ export const aiGenerations = pgTable('ai_generations', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const settings = pgTable('settings', {
+export const settings = designSchema.table('settings', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   key: varchar('key', { length: 255 }).notNull(),
@@ -179,7 +185,7 @@ export const settings = pgTable('settings', {
 
 export type CreativeProjectStatus = 'nao_iniciado' | 'em_andamento' | 'finalizado'
 
-export const creativeProjects = pgTable('creative_projects', {
+export const creativeProjects = designSchema.table('creative_projects', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   brandId: uuid('brand_id').references(() => brands.id),
@@ -200,7 +206,7 @@ export const creativeProjects = pgTable('creative_projects', {
   completedAt: timestamp('completed_at'),
 })
 
-export const aiTokenLogs = pgTable('ai_token_logs', {
+export const aiTokenLogs = designSchema.table('ai_token_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   model: varchar('model', { length: 255 }).notNull(),
@@ -214,7 +220,7 @@ export const aiTokenLogs = pgTable('ai_token_logs', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const aiJobs = pgTable('ai_jobs', {
+export const aiJobs = designSchema.table('ai_jobs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   provider: varchar('provider', { length: 100 }).notNull(),
@@ -233,7 +239,7 @@ export const aiJobs = pgTable('ai_jobs', {
   index('ai_jobs_user_created_idx').on(table.userId, table.createdAt),
 ])
 
-export const apiIdempotency = pgTable('api_idempotency', {
+export const apiIdempotency = designSchema.table('api_idempotency', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   scope: varchar('scope', { length: 100 }).notNull(),
@@ -248,7 +254,7 @@ export const apiIdempotency = pgTable('api_idempotency', {
   index('api_idempotency_expires_idx').on(table.expiresAt),
 ])
 
-export const auditLogs = pgTable('audit_logs', {
+export const auditLogs = designSchema.table('audit_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   action: varchar('action', { length: 255 }).notNull(),
@@ -258,7 +264,7 @@ export const auditLogs = pgTable('audit_logs', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-export const brandProfiles = pgTable('brand_profiles', {
+export const brandProfiles = designSchema.table('brand_profiles', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   name: varchar('name', { length: 255 }).notNull(),

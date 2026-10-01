@@ -1,4 +1,5 @@
 import type { QueryResult, QueryResultRow } from 'pg'
+import { editorialTable } from '@/db/schema-names'
 
 export const RAG_EMBEDDING_DIMENSIONS = 768
 
@@ -63,7 +64,7 @@ export class PgVectorStore implements IVectorStore {
   async upsert(input: VectorUpsertInput): Promise<void> {
     const embedding = vectorLiteral(input.embedding)
     await this.client.query(
-      `INSERT INTO rag_embeddings (chunk_id, model_name, model_version, embedding, metadata, content_hash)
+      `INSERT INTO ${editorialTable('rag_embeddings')} (chunk_id, model_name, model_version, embedding, metadata, content_hash)
        VALUES ($1::uuid, $2, $3, $4::vector, $5::jsonb, $6)
        ON CONFLICT (chunk_id, model_name, model_version) DO UPDATE SET
          embedding = EXCLUDED.embedding,
@@ -76,7 +77,7 @@ export class PgVectorStore implements IVectorStore {
 
   async updateMetadata(input: Pick<VectorUpsertInput, 'chunkId' | 'modelName' | 'modelVersion' | 'metadata' | 'contentHash'>): Promise<void> {
     await this.client.query(
-      `UPDATE rag_embeddings
+      `UPDATE ${editorialTable('rag_embeddings')}
           SET metadata = $1::jsonb, content_hash = $2, updated_at = now()
         WHERE chunk_id = $3::uuid AND model_name = $4 AND model_version = $5`,
       [JSON.stringify(input.metadata), input.contentHash, input.chunkId, input.modelName, input.modelVersion],
@@ -97,7 +98,7 @@ export class PgVectorStore implements IVectorStore {
     }>(
       `SELECT e.chunk_id, e.model_name, e.model_version, e.metadata, e.content_hash,
               1 - (e.embedding <=> $1::vector) AS similarity
-         FROM rag_embeddings e
+         FROM ${editorialTable('rag_embeddings')} e
         WHERE e.metadata @> $2::jsonb
         ORDER BY e.embedding <=> $1::vector
         LIMIT $3`,
@@ -115,8 +116,8 @@ export class PgVectorStore implements IVectorStore {
 
   async deleteByDocument(documentId: string): Promise<void> {
     await this.client.query(
-      `DELETE FROM rag_embeddings e
-        USING knowledge_chunks c
+      `DELETE FROM ${editorialTable('rag_embeddings')} e
+        USING ${editorialTable('knowledge_chunks')} c
         WHERE e.chunk_id = c.id AND c.document_id = $1::uuid`,
       [documentId],
     )

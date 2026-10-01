@@ -7,6 +7,9 @@ export * from "./theses.js";
 export * from "./multichannel-scoring.js";
 export * from "./timeline.js";
 export * from "./creative-job-schema.js";
+export * from "./slot-pipeline.js";
+export * from "./pauta-key.js";
+export * from "./copy-matrix.js";
 export * from "./budget-gate.js";
 export * from "./queue-names.js";
 

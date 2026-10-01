@@ -12,102 +12,96 @@ import type { SqTableElements } from './SqTable'
 import type { SqChecklistElements } from './SqChecklist'
 
 export const sqCoverDefaults: SqCoverElements = {
-  eyebrow: 'CARREIRAS FISCAIS',
-  title: 'CONQUISTE SUA APROVAÇÃO',
-  subtitle: 'O plano está pronto. Agora é hora de executar.',
-  redline: true,
+  eyebrow: 'ESTUDO',
+  title: 'ORGANIZE A PRÓXIMA REVISÃO',
+  subtitle: 'Escolha um tópico e defina o que você quer conferir.',
 }
 
 export const sqTextImageDefaults: SqTextImageElements = {
-  eyebrow: 'METODOLOGIA',
-  title: 'ESTUDE COM ESTRATÉGIA',
-  body: 'Cada hora de estudo deve ter um objetivo claro. Sem foco, não há aprovação. Defina sua meta diária e cumpra.',
-  redline: true,
+  eyebrow: 'META DE ESTUDO',
+  title: 'DEFINA UM CRITÉRIO',
+  body: 'Antes de abrir o material, registre o que pretende compreender. Ao terminar, confira se consegue explicar esse ponto.',
 }
 
 export const sqContentDefaults: SqContentElements = {
-  eyebrow: 'DICA',
-  title: 'TÉCNICA ATIVA DE REVISÃO',
-  body: 'Após estudar cada tópico, feche o material e escreva tudo que você lembra. Esse simples exercício aumenta a retenção em até 70%.\n\nFaça isso todos os dias. Sem exceção.',
-  redline: true,
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'REVISE EM ETAPAS',
+  body: 'Feche o material, registre o que você lembra e consulte a fonte para localizar pontos que ficaram de fora.\n\nAnote o que precisa ser retomado.',
 }
 
 export const sqQuoteDefaults: SqQuoteElements = {
-  quote: '"A aprovação não é sorte. É a soma de cada sessão de estudo que você não pulou."',
-  author: 'Rota de Ataque',
+  quote: '[Citação autorizada para esta peça]',
+  author: '[Fonte confirmada]',
 }
 
 export const sqTipDefaults: SqTipElements = {
-  tag: 'DICA 01',
-  title: 'CRONOGRAMA SEMANAL',
+  tag: 'EXEMPLO DIDÁTICO',
+  title: 'ORGANIZE UMA SESSÃO',
   items: [
-    'Distribua as matérias por blocos de 2h',
-    'Reserve sempre 1h para revisão ativa',
-    'Simule provas nos finais de semana',
+    'Escolha um tópico delimitado',
+    'Defina o material de referência',
+    'Registre o que precisa conferir',
   ],
 }
 
 export const sqTwoImagesDefaults: SqTwoImagesElements = {
-  eyebrow: 'COMPARATIVO',
-  title: 'ANTES vs DEPOIS',
-  body: 'Veja a diferença entre estudar sem método e estudar com a Rota de Ataque.',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'FONTE E ANOTAÇÃO',
+  body: 'Compare um trecho do material original com a explicação escrita durante o estudo.',
 }
 
 export const sqStepsDefaults: SqStepsElements = {
-  eyebrow: 'PASSO A PASSO',
-  title: 'DOMINE O CRONOGRAMA',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'PLANEJE UMA REVISÃO',
   steps: [
-    'Defina as matérias prioritárias da semana',
-    'Divida em blocos de estudo de 2h',
-    'Revise ativamente ao final de cada dia',
-    'Execute a prova simulada no fim de semana',
+    'Escolha o tópico que será estudado',
+    'Separe a fonte que será consultada',
+    'Registre dúvidas durante a leitura',
+    'Confira cada anotação na fonte',
   ],
 }
 
 export const sqStatsDefaults: SqStatsElements = {
-  eyebrow: 'RESULTADOS',
-  title: 'APROVADOS EM 2024',
+  eyebrow: 'CAMPO COM FONTE',
+  title: 'DADO A CONFERIR',
   stats: [
-    { num: '94%', label: 'taxa de aprovação' },
-    { num: '38 dias', label: 'tempo médio' },
-    { num: '10.482', label: 'alunos ativos' },
-    { num: '24/7', label: 'suporte ativo' },
+    { num: '[DADO]', label: '[afirmação com fonte]' },
+    { num: '[PERÍODO]', label: '[recorte da medição]' },
   ],
 }
 
 export const sqProfileDefaults: SqProfileElements = {
-  name: 'CARLOS AUGUSTO',
-  role: 'Aprovado — Receita Federal 2024',
-  quote:
-    '"Em 5 meses com a Rota de Ataque eu saí de zero e passei em 1º lugar. O método é cirúrgico."',
+  name: '[Nome autorizado]',
+  role: '[Contexto confirmado]',
+  quote: '[Depoimento autorizado, reproduzido com fidelidade e fonte]',
 }
 
 export const sqTweetDefaults: SqTweetElements = {
-  name: 'João Silva',
-  handle: '@joaosilva_rf',
-  body: 'O segredo da aprovação não é estudar 12h por dia. É estudar 4h todos os dias sem falta. Constância vence a intensidade.',
-  time: '10:45 AM · 15 Ago 2024',
-  metrics: '1.204 Retweets   4.892 Curtidas',
+  name: '[Pessoa autorizada]',
+  handle: '[Perfil confirmado]',
+  body: '[Texto aprovado para publicação]',
+  time: '[Data confirmada]',
+  metrics: '[Métricas documentadas, se pertinentes]',
 }
 
 export const sqTableDefaults: SqTableElements = {
-  title: 'COMPARE AS OPÇÕES',
-  cols: ['SEM PLANO', 'ROTA DE ATAQUE'],
+  title: 'COMPARE AS FONTES',
+  cols: ['MATERIAL ORIGINAL', 'ANOTAÇÃO DE ESTUDO'],
   rows: [
-    ['Plano aleatório', 'Plano Rota de Ataque'],
-    ['Sem foco definido', 'Meta diária clara'],
-    ['Revisão por sorte', 'Revisão ativa agendada'],
-    ['0 aprovados', '10.482 aprovados'],
+    ['Trecho consultado', 'Explicação escrita'],
+    ['Termo técnico', 'Definição anotada'],
+    ['Regra citada', 'Fonte registrada'],
+    ['Dúvida pendente', 'Ponto a conferir'],
   ],
 }
 
 export const sqChecklistDefaults: SqChecklistElements = {
-  eyebrow: 'REVISÃO DIÁRIA',
-  title: 'EXECUTE O CHECKLIST',
+  eyebrow: 'EXEMPLO DIDÁTICO',
+  title: 'CONFIRA SUAS ANOTAÇÕES',
   items: [
-    'Cumprir as 4h de estudo planejadas',
-    'Resolver 30 questões da matéria do dia',
-    'Fazer revisão ativa do conteúdo estudado',
-    'Registrar dúvidas no caderno de erros',
+    'O tópico está delimitado',
+    'A fonte está identificada',
+    'A explicação responde ao ponto',
+    'As dúvidas ficaram registradas',
   ],
 }

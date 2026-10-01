@@ -57,6 +57,16 @@ O script:
 
 Rollback é executar o mesmo comando com a tag SHA da release anterior.
 
+### Build e deploy local quando o GitHub Actions estiver sem cota
+
+No WSL2, a partir deste checkout, rode:
+
+```bash
+bash ./deploy/build-and-deploy-editorial-local.sh
+```
+
+O script cria uma tag hexadecimal a partir do commit e das mudanças locais, compila as quatro imagens no Docker do WSL2 sem enviá-las ao GHCR, executa as migrations e promove os serviços com o overlay do banco editorial compartilhado. Ele usa `docker/.env.phase7.local`, que deve conter `DEEPSEEK_API_KEY_DESIGN_SYSTEM` junto das demais variáveis protegidas. O resumo informa a tag e o resultado dos healthchecks.
+
 ## Validação pública
 
 No host:

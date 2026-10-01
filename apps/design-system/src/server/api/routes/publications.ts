@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { db } from '../db'
+import { editorialTable, editorialThesesTable } from '@/db/schema-names'
 import { z } from 'zod'
 
 const CreateCreativeSchema = z.object({
@@ -51,8 +52,8 @@ export const publicationRoutes = new Hono()
         t.title AS thesis_title,
         uc.approved_by,
         uc.origin
-      FROM unified_creatives uc
-      LEFT JOIN theses t ON t.id = uc.thesis_id
+      FROM ${sql.raw(editorialTable('unified_creatives'))} uc
+      LEFT JOIN ${sql.raw(editorialThesesTable())} t ON t.id = uc.thesis_id
       WHERE 1 = 1
         ${channel ? sql`AND uc.channel = ${channel}` : sql``}
         ${status ? sql`AND uc.status = ${status}` : sql``}
@@ -78,8 +79,8 @@ export const publicationRoutes = new Hono()
         t.title AS thesis_title,
         uc.approved_by,
         uc.origin
-      FROM unified_creatives uc
-      LEFT JOIN theses t ON t.id = uc.thesis_id
+      FROM ${sql.raw(editorialTable('unified_creatives'))} uc
+      LEFT JOIN ${sql.raw(editorialThesesTable())} t ON t.id = uc.thesis_id
       WHERE uc.batch_id = ${c.req.param('batchId')}
       ORDER BY uc.scheduled_for ASC
     `)
@@ -90,7 +91,7 @@ export const publicationRoutes = new Hono()
     if ('error' in parsed) return parsed.error
     const data = parsed.data
     const row = await db.execute(sql`
-      INSERT INTO unified_creatives (
+      INSERT INTO ${sql.raw(editorialTable('unified_creatives'))} (
         title, caption, channel, format, status, scheduled_for, thesis_id, origin
       ) VALUES (
         ${data.title},
@@ -127,7 +128,7 @@ export const publicationRoutes = new Hono()
     const joinedUpdates = sql.join(updates, sql`, `)
 
     const row = await db.execute(sql`
-      UPDATE unified_creatives
+      UPDATE ${sql.raw(editorialTable('unified_creatives'))}
       SET ${joinedUpdates}
       WHERE id = ${id}
       RETURNING *
@@ -139,7 +140,7 @@ export const publicationRoutes = new Hono()
   .delete('/:id', async (c) => {
     const id = c.req.param('id')
     const row = await db.execute(sql`
-      DELETE FROM unified_creatives WHERE id = ${id} RETURNING id
+      DELETE FROM ${sql.raw(editorialTable('unified_creatives'))} WHERE id = ${id} RETURNING id
     `)
     if (row.rows.length === 0) return c.json({ error: 'Criativo não encontrado' }, 404)
     return c.json({ deleted: true, id })

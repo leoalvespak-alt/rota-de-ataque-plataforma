@@ -25,6 +25,6 @@ describe('creative copy contract', () => {
     expect(actionRoute).toContain('copy_principal')
     expect(actionRoute).toContain('stories')
     expect(actionRoute).toContain('JSON.stringify(copyData)')
-    expect(actionRoute).toContain('INSERT INTO unified_creatives')
+    expect(actionRoute).toContain("editorialTable('unified_creatives')")
   })
 })

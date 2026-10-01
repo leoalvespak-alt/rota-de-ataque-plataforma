@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline } from '../primitives'
+import { TEyebrow, TFooter, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -12,7 +12,6 @@ export interface SqCoverElements {
   eyebrow: Hideable<string>
   title: string
   subtitle: Hideable<string>
-  redline: Hideable<boolean>
   bgImg?: string
 }
 
@@ -44,7 +43,6 @@ export function SqCoverRender({ elements: el, dark }: TemplateRenderProps<SqCove
           <EditableText path="title" value={el.title} />
         </TTitle>
       </div>
-      {el.redline !== false && <TRedline className="relative z-[3]" />}
       {el.subtitle !== false && (
         <div className="relative z-[3]">
           <TBody
@@ -56,6 +54,9 @@ export function SqCoverRender({ elements: el, dark }: TemplateRenderProps<SqCove
           </TBody>
         </div>
       )}
+      <div className="relative z-[3] mt-auto w-full">
+        <TFooter dark={dark || hasImg} />
+      </div>
     </div>
   )
 }
@@ -82,11 +83,6 @@ export function SqCoverControls({ elements: el }: TemplateControlsProps<SqCoverE
           label="Mostrar Eyebrow Tag"
           checked={el.eyebrow !== false}
           onCheckedChange={() => toggleElementVisibility('eyebrow')}
-        />
-        <ControlToggle
-          label="Mostrar Linha Vermelha"
-          checked={el.redline !== false}
-          onCheckedChange={() => toggleElementVisibility('redline')}
         />
       </ControlSection>
       <ControlSection title="Tema">

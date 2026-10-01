@@ -7,7 +7,7 @@ export type NavigationTab = {
   temporal?: boolean
 }
 
-export type NavigationDestinationId = 'pulse' | 'intelligence' | 'decisions' | 'planning' | 'performance' | 'system'
+export type NavigationDestinationId = 'pulse' | 'intelligence' | 'decisions' | 'planning' | 'performance' | 'inbox' | 'system'
 export type NavigationDestination = {
   id: NavigationDestinationId
   title: string
@@ -34,6 +34,9 @@ export const NAVIGATION = [
   ] },
   { id: 'performance', title: 'Performance', href: '/performance', icon: 'performance', tabs: [
     { id: 'conteudo', label_pt: 'Conteúdo', href: '/performance/conteudo', legacyPath: '/desempenho', temporal: true },
+  ] },
+  { id: 'inbox', title: 'Inbox', href: '/inbox', icon: 'relationship', tabs: [
+    { id: 'social', label_pt: 'Canais', href: '/inbox' },
   ] },
   { id: 'system', title: 'Sistema', href: '/sistema', icon: 'automations', tabs: [
     { id: 'saude', label_pt: 'Saúde', href: '/sistema/saude', legacyPath: '/system-health' },

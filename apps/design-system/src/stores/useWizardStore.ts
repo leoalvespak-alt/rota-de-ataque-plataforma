@@ -5,7 +5,6 @@ import { getPresetById } from '@/features/templates/carouselPresets'
 import { getTemplateContract } from '@/domain/templateContracts'
 
 export type CreativeType = 'post' | 'carousel' | 'story'
-export type AspectRatio = 'square' | 'portrait'
 export type WizardStep = 1 | 2 | 3 | 4 | 5
 
 export type ContentSource = 'thesis' | 'free' | 'markdown'
@@ -25,7 +24,6 @@ interface WizardState {
   active: boolean
   step: WizardStep
   creativeType: CreativeType | null
-  aspectRatio: AspectRatio | null
   templateId: string | null
   presetId: string | null
   slideTemplateIds: Record<number, string>
@@ -46,7 +44,6 @@ interface WizardActions {
   nextStep: () => void
   prevStep: () => void
   setCreativeType: (type: CreativeType) => void
-  setAspectRatio: (ratio: AspectRatio) => void
   setTemplateId: (id: string) => void
   setPresetId: (id: string) => void
   setSlideTemplateId: (index: number, templateId: string) => void
@@ -73,7 +70,6 @@ const initialState: WizardState = {
   active: false,
   step: 1,
   creativeType: null,
-  aspectRatio: null,
   templateId: null,
   presetId: null,
   slideTemplateIds: {},
@@ -104,14 +100,8 @@ export const useWizardStore = create<WizardState & WizardActions>()(
 
     setCreativeType: (type) => set((s) => {
       s.creativeType = type
-      if (type === 'story') {
-        s.aspectRatio = 'portrait'
-      } else {
-        s.aspectRatio = null
-      }
     }),
 
-    setAspectRatio: (ratio) => set((s) => { s.aspectRatio = ratio }),
     setTemplateId: (id) => set((s) => { s.templateId = id }),
 
     setPresetId: (id) => set((s) => {
@@ -208,14 +198,14 @@ export const useWizardStore = create<WizardState & WizardActions>()(
     getResolvedFormat: () => {
       const s = get()
       if (s.creativeType === 'story') return 'portrait'
-      return s.aspectRatio === 'portrait' ? 'portrait' : 'square'
+      return 'feed'
     },
 
     getResolvedFilter: () => {
       const s = get()
       if (s.creativeType === 'carousel') return 'carousel'
       if (s.creativeType === 'story') return 'portrait'
-      return s.aspectRatio === 'portrait' ? 'portrait' : 'square'
+      return 'square'
     },
 
     canAdvance: () => {
@@ -223,7 +213,6 @@ export const useWizardStore = create<WizardState & WizardActions>()(
       switch (s.step) {
         case 1:
           if (!s.creativeType) return false
-          if (s.creativeType !== 'story' && !s.aspectRatio) return false
           return true
         case 2:
           return !!s.templateId || !!s.presetId

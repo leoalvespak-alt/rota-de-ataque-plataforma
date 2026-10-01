@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TRedline, TBody } from '../primitives'
+import { TEyebrow, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { SimpleControls } from '../shared/SimpleControls'
 
@@ -25,7 +25,6 @@ export function SqChecklistRender({
       <TTitle fontSize={70} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline />
       <div className="flex flex-1 flex-col justify-center">
         {items.map((item, i) => (
           <div

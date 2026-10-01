@@ -24,7 +24,7 @@ export type ContentFormat = (typeof CONTENT_FORMATS)[number]
 
 export interface QualityScore {
   thesisAlignment: number; novelty: number; clarity: number; specificity: number; hookStrength: number
-  formatFit: number; voiceConsistency: number; factualGrounding: number; repetitionRisk: number; overall: number
+  formatFit: number; voiceConsistency: number; factualGrounding: number | null; repetitionRisk: number; overall: number
 }
 
 export interface SimilarityResult { semantic: number; lexical: number; ngram: number; title: number; hook: number; decision: 'pass' | 'review' | 'block' }

@@ -1,10 +1,10 @@
-import { createDatabase } from '@plataforma/db'
+import { createDatabase, editorialTable } from '@plataforma/db'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiErrorResponse, conflictResponse, invalidRequestResponse } from '@/lib/api-errors'
 import { requireRole } from '@/lib/permissions'
 
-const Body = z.object({ action: z.enum(['approve', 'dismiss']), scheduledFor: z.string().datetime().optional(), title: z.string().trim().min(1).max(180).optional(), caption: z.string().trim().min(1).max(4000).optional(), channel: z.enum(['instagram', 'threads']).optional(), campaignId: z.string().uuid().nullable().optional(), reason: z.string().trim().max(1000).optional() }).strict()
+const Body = z.object({ action: z.enum(['approve', 'dismiss']), scheduledFor: z.string().datetime().optional(), title: z.string().trim().min(1).max(180).optional(), caption: z.string().trim().min(1).max(4000).optional(), channel: z.enum(['instagram', 'threads']).optional(), campaignId: z.string().uuid().nullable().optional(), reason: z.string().trim().max(1000).optional(), priority: z.enum(['P0', 'P1', 'P2', 'P3']).optional(), reviewMode: z.enum(['imediato', 'fila', 'rigoroso']).optional() }).strict()
 const Id = z.string().uuid()
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -19,14 +19,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     await client.query('BEGIN')
     const finding = (await client.query<{
-      id: string; title: string; summary: string | null; pillar: string | null; action_status: 'pending' | 'approved' | 'dismissed'; promoted_publication_id: string | null; promoted_creative_id: string | null; campaign_id: string | null
-    }>(`SELECT id,title,summary,pillar,action_status,promoted_publication_id,promoted_creative_id,campaign_id FROM radar_findings WHERE id=$1 FOR UPDATE`, [id.data])).rows[0]
+      id: string; title: string; summary: string | null; pillar: string | null; relevance_score: number; action_status: 'pending' | 'approved' | 'dismissed'; promoted_publication_id: string | null; promoted_creative_id: string | null; campaign_id: string | null
+    }>(`SELECT id,title,summary,pillar,relevance_score,action_status,promoted_publication_id,promoted_creative_id,campaign_id FROM radar_findings WHERE id=$1 FOR UPDATE`, [id.data])).rows[0]
     if (!finding) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'not_found', traceId: crypto.randomUUID() }, { status: 404 }) }
 
     if (finding.action_status !== 'pending') {
       if (parsed.data.action === 'approve' && finding.action_status === 'approved' && (finding.promoted_creative_id || finding.promoted_publication_id)) {
         const publication = finding.promoted_creative_id
-          ? (await client.query(`SELECT * FROM unified_creatives WHERE id=$1`, [finding.promoted_creative_id])).rows[0] ?? null
+          ? (await client.query(`SELECT * FROM ${editorialTable('unified_creatives')} WHERE id=$1`, [finding.promoted_creative_id])).rows[0] ?? null
           : (await client.query(`SELECT * FROM scheduled_publications WHERE id=$1`, [finding.promoted_publication_id])).rows[0] ?? null
         await client.query('ROLLBACK')
         return NextResponse.json({ findingId: id.data, status: 'approved', publication, replay: true })
@@ -41,10 +41,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     let publication: Record<string, unknown> | null = null
     if (parsed.data.action === 'approve') {
+      const priority = parsed.data.priority ?? (finding.relevance_score >= 0.8 ? 'P1' : 'P2')
+      const reviewMode = parsed.data.reviewMode ?? 'fila'
+      const queueReason = reviewMode === 'imediato' && finding.relevance_score >= 0.8
+        ? `${priority} · notícia de alta relevância — prioridade na fila`
+        : `${priority} · fila padrão por ordem de agendamento`
       publication = (await client.query<Record<string, unknown>>(
-        `INSERT INTO unified_creatives(title,caption,channel,format,scheduled_for,status,origin,curation_status,campaign_id,copy_data,approved_by)
-         VALUES($1,$2,$3,$4,$5,'scheduled','prospector','approved',$6,$7::jsonb,$8) RETURNING *`,
-        [parsed.data.title ?? finding.title, parsed.data.caption ?? finding.summary ?? finding.title, parsed.data.channel ?? 'instagram', parsed.data.channel === 'threads' ? 'threads' : 'feed', parsed.data.scheduledFor ?? new Date(Date.now() + 60 * 60_000).toISOString(), finding.pillar, parsed.data.campaignId ?? finding.campaign_id, JSON.stringify({ pillar: finding.pillar, source: 'radar', findingId: id.data }), user.email ?? 'unknown'],
+        `INSERT INTO ${editorialTable('unified_creatives')}(title,caption,channel,format,pillar,scheduled_for,status,origin,curation_status,campaign_id,copy_data,approved_by)
+         VALUES($1,$2,$3,$4,$5,$6,'scheduled','prospector','approved',$7,$8::jsonb,$9) RETURNING *`,
+        [parsed.data.title ?? finding.title, parsed.data.caption ?? finding.summary ?? finding.title, parsed.data.channel ?? 'instagram', parsed.data.channel === 'threads' ? 'threads' : 'feed', finding.pillar, parsed.data.scheduledFor ?? new Date(Date.now() + 60 * 60_000).toISOString(), parsed.data.campaignId ?? finding.campaign_id, JSON.stringify({ pillar: finding.pillar, source: 'radar', findingId: id.data, priority, reviewMode, queueReason }), user.email ?? 'unknown'],
       )).rows[0] ?? null
       await client.query(`UPDATE radar_findings SET processed=true,promoted_to_calendar=true,action_status='approved',promoted_creative_id=$2,updated_at=now() WHERE id=$1`, [id.data, publication?.id])
     } else {

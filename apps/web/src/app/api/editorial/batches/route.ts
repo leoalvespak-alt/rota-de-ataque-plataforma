@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createDatabase } from '@plataforma/db'
+import { createDatabase, editorialTable } from '@plataforma/db'
 import { getCampaignContext } from '@/lib/campaign-context'
 import { requireRole } from '@/lib/permissions'
 import { apiErrorResponse, invalidRequestResponse } from '@/lib/api-errors'
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       if (!selected) { await client.query('ROLLBACK'); return NextResponse.json({ error: 'campaign_not_found' }, { status: 409 }) }
 
       const batch = (await client.query<{ id: string; status: string }>(
-        `INSERT INTO editorial_batches(campaign_id,cycle_days,starts_on,ends_on,status,source_mix,created_by)
+        `INSERT INTO ${editorialTable('editorial_batches')}(campaign_id,cycle_days,starts_on,ends_on,status,source_mix,created_by)
          VALUES($1,15,$2,$3,'draft','{}'::jsonb,$4)
          ON CONFLICT(campaign_id,starts_on) DO UPDATE SET ends_on=EXCLUDED.ends_on
          RETURNING id,status`,
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         `SELECT id,COALESCE(hook,thesis) title,thesis,angle,hook,evidence,source_references,confidence
          FROM content_opportunities
          WHERE campaign_id=$1 AND status IN ('new','proposed')
-           AND NOT EXISTS (SELECT 1 FROM content_items item WHERE item.opportunity_id=content_opportunities.id AND item.status NOT IN ('archived'))
+         AND NOT EXISTS (SELECT 1 FROM ${editorialTable('content_items')} item WHERE item.opportunity_id=content_opportunities.id AND item.status NOT IN ('archived'))
          ORDER BY opportunity_score DESC,created_at ASC LIMIT $2`,
         [selected.id, parsed.data.radarLimit],
       )).rows
@@ -60,15 +60,15 @@ export async function POST(request: Request) {
         const angle = candidate.kind === 'radar' ? (candidate.item.angle ?? candidate.item.thesis) : (candidate.item.description ?? candidate.item.title)
         const title = candidate.item.title
         const inserted = (await client.query<{ id: string }>(
-          `INSERT INTO content_items(batch_id,campaign_id,opportunity_id,thesis_id,audience_segment,funnel_stage,objective,angle,hook,arguments,cta,intelligence_sources,brand_voice_version,status,created_by)
+          `INSERT INTO ${editorialTable('content_items')}(batch_id,campaign_id,opportunity_id,thesis_id,audience_segment,funnel_stage,objective,angle,hook,arguments,cta,intelligence_sources,brand_voice_version,status,created_by)
            VALUES($1,$2,$3,$4,'candidatos de concursos policiais','awareness','planejamento editorial de 15 dias',$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,'editorial-15d-v1','draft',$10)
            ON CONFLICT DO NOTHING RETURNING id`,
           [batch.id, selected.id, isRadar ? candidate.item.id : null, isRadar ? null : candidate.item.id, angle, hook, JSON.stringify([{ role: 'brief', text: angle }]), JSON.stringify({ text: 'Salve para revisar' }), JSON.stringify({ source: isRadar ? 'radar' : 'evergreen', planned_for: addDays(startsOn, position % 15), evidence: candidate.kind === 'radar' ? candidate.item.evidence : {}, references: candidate.kind === 'radar' ? candidate.item.source_references : [] }), user.email ?? 'unknown'],
         )).rows[0]
-        const contentItemId = inserted?.id ?? (await client.query<{ id: string }>('SELECT id FROM content_items WHERE batch_id=$1 AND hook=$2 LIMIT 1', [batch.id, hook])).rows[0]?.id
+          const contentItemId = inserted?.id ?? (await client.query<{ id: string }>(`SELECT id FROM ${editorialTable('content_items')} WHERE batch_id=$1 AND hook=$2 LIMIT 1`, [batch.id, hook])).rows[0]?.id
         if (!contentItemId) continue
         await client.query(
-          `INSERT INTO content_variants(content_item_id,channel,format,payload,status,generated_by)
+          `INSERT INTO ${editorialTable('unified_creatives')}(content_item_id,channel,format,payload,variant_status,generated_by)
            VALUES($1,'instagram','carousel',$2::jsonb,'draft','editorial-15d-v1'),($1,'threads','text',$3::jsonb,'draft','editorial-15d-v1')
            ON CONFLICT(content_item_id,channel,format) DO NOTHING`,
           [contentItemId, JSON.stringify({ brief: angle, headline: title, caption: angle, cta: 'Salve para revisar', planned_for: addDays(startsOn, position % 15) }), JSON.stringify({ brief: angle, text: `${title}\n\n${angle}` })],
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         )
         created++
       }
-      await client.query(`UPDATE editorial_batches SET source_mix=$2::jsonb,status='in_review' WHERE id=$1`, [batch.id, JSON.stringify({ radar: radar.length, evergreen: theses.length, created, cycleDays: 15 })])
+      await client.query(`UPDATE ${editorialTable('editorial_batches')} SET source_mix=$2::jsonb,status='in_review' WHERE id=$1`, [batch.id, JSON.stringify({ radar: radar.length, evergreen: theses.length, created, cycleDays: 15 })])
       await client.query(`INSERT INTO audit_log(actor_id,action,target,after) VALUES($1,'editorial_batch.created',$2,$3::jsonb)`, [user.email ?? 'unknown', batch.id, JSON.stringify({ startsOn, endsOn, created })])
       await client.query('COMMIT')
       return NextResponse.json({ batchId: batch.id, startsOn, endsOn, created, radarCandidates: radar.length, evergreenCandidates: theses.length }, { status: 201 })
@@ -93,7 +93,7 @@ export async function GET() {
   try {
     await requireRole('operator')
     const { pool } = createDatabase(process.env.DATABASE_URL!)
-    const result = await pool.query(`SELECT id,campaign_id,cycle_days,starts_on,ends_on,status,source_mix,created_at FROM editorial_batches ORDER BY starts_on DESC LIMIT 30`)
+    const result = await pool.query(`SELECT id,campaign_id,cycle_days,starts_on,ends_on,status,source_mix,created_at FROM ${editorialTable('editorial_batches')} ORDER BY starts_on DESC LIMIT 30`)
     return NextResponse.json({ batches: result.rows })
   } catch (error) { return apiErrorResponse(error) }
 }

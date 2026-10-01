@@ -86,6 +86,16 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-migrations:${{ steps.prep.outputs.tag }}
             ${{ env.REGISTRY }}/${{ env.owner }}/prospector-platform-migrations:latest
 
+      - name: Build and push editorial executor
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./workers/editorial-executor/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.owner }}/rota-editorial-executor:${{ steps.prep.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.owner }}/rota-editorial-executor:latest
+
       - name: Deployment summary
         run: |
           echo "Imagens publicadas com a tag ${{ steps.prep.outputs.tag }}." >> "$GITHUB_STEP_SUMMARY"

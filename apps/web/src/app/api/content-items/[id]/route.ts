@@ -23,8 +23,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         `UPDATE content_items SET hook=COALESCE($2,hook),angle=COALESCE($3,angle),objective=COALESCE($4,objective),audience_segment=COALESCE($5,audience_segment),arguments=COALESCE($6::jsonb,arguments),cta=COALESCE($7::jsonb,cta),status=CASE WHEN $8 THEN 'archived' ELSE status END WHERE id=$1 RETURNING *`,
         [id,body.hook ?? null,body.angle ?? null,body.objective ?? null,body.audienceSegment ?? null,body.arguments ? JSON.stringify(body.arguments) : null,body.cta ? JSON.stringify(body.cta) : null,body.archive ?? false],
       )).rows[0]
-      const revision = Number((await client.query<{ revision: number }>(`SELECT COALESCE(MAX(revision),0)+1 revision FROM content_item_revisions WHERE content_item_id=$1`, [id])).rows[0]?.revision ?? 1)
-      await client.query(`INSERT INTO content_item_revisions(content_item_id,revision,snapshot,changed_by) VALUES($1,$2,$3::jsonb,$4)`, [id,revision,JSON.stringify(before),user.email ?? null])
       await client.query(`INSERT INTO audit_log(actor_id,action,target,before,after) VALUES($1,'content_item.updated',$2,$3::jsonb,$4::jsonb)`, [user.email ?? 'unknown',id,JSON.stringify(before),JSON.stringify(item)])
       await client.query('COMMIT'); return NextResponse.json({ item })
     } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error } finally { client.release() }

@@ -11,8 +11,8 @@ describe('useEditorStore', () => {
     useEditorStore.getState().selectTemplate('sq-cover')
     const s = useEditorStore.getState()
     expect(s.activeTemplateId).toBe('sq-cover')
-    expect(s.format).toBe('square')
-    expect(s.elements.title).toBe('CONQUISTE SUA APROVAÇÃO')
+    expect(s.format).toBe('feed')
+    expect(s.elements.title).toBe('ORGANIZE A PRÓXIMA REVISÃO')
   })
 
   it('undo/redo restaura elements sem afetar outros campos (limite 30 do original)', () => {
@@ -24,7 +24,7 @@ describe('useEditorStore', () => {
     expect(useEditorStore.getState().elements.title).toBe('Editado 1')
 
     useEditorStore.temporal.getState().undo()
-    expect(useEditorStore.getState().elements.title).toBe('CONQUISTE SUA APROVAÇÃO')
+    expect(useEditorStore.getState().elements.title).toBe('ORGANIZE A PRÓXIMA REVISÃO')
 
     useEditorStore.temporal.getState().redo()
     expect(useEditorStore.getState().elements.title).toBe('Editado 1')
@@ -32,13 +32,13 @@ describe('useEditorStore', () => {
 
   it('toggleElementVisibility oculta e restaura o valor padrão (bug 4 da auditoria: buildQuoteControls)', () => {
     useEditorStore.getState().selectTemplate('sq-quote')
-    expect(useEditorStore.getState().elements.author).toBe('Rota de Ataque')
+    expect(useEditorStore.getState().elements.author).toBe('[Fonte confirmada]')
 
     useEditorStore.getState().toggleElementVisibility('author')
     expect(useEditorStore.getState().elements.author).toBe(false)
 
     useEditorStore.getState().toggleElementVisibility('author')
-    expect(useEditorStore.getState().elements.author).toBe('Rota de Ataque')
+    expect(useEditorStore.getState().elements.author).toBe('[Fonte confirmada]')
   })
 
   it('resetCard volta aos defaults e limpa o modo escuro', () => {
@@ -48,7 +48,7 @@ describe('useEditorStore', () => {
 
     useEditorStore.getState().resetCard()
     const s = useEditorStore.getState()
-    expect(s.elements.title).toBe('CONQUISTE SUA APROVAÇÃO')
+    expect(s.elements.title).toBe('ORGANIZE A PRÓXIMA REVISÃO')
     expect(s.darkMode).toBe(false)
   })
 

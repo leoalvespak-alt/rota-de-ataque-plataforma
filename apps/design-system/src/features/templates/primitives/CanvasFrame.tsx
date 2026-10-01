@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { CanvasFormat } from '../types'
+import { getCanvasDimensions } from '../canvasDimensions'
 
 interface CanvasFrameProps {
   format: CanvasFormat
@@ -16,19 +17,9 @@ interface CanvasFrameProps {
   id?: string
 }
 
-const FORMAT_SIZE: Record<CanvasFormat, { width: number; height: number }> = {
-  square: { width: 1080, height: 1080 },
-  portrait: { width: 1080, height: 1920 },
-}
-
-/**
- * Espelha #card-canvas do Gerador/index.html (linhas 288-307).
- * Inclui a textura tática (.canvas-texture, linha 310) e a barra de acento (.canvas-accent, linha 328),
- * que TODO template renderiza via baseTexture() no HTML original — aqui viram parte fixa do frame,
- * então nenhum componente de template precisa se lembrar de incluí-las.
- */
+/** Canvas base comum ao editor, às miniaturas e à exportação. */
 export function CanvasFrame({ format, dark, children, style, id }: CanvasFrameProps) {
-  const { width, height } = FORMAT_SIZE[format]
+  const { width, height } = getCanvasDimensions(format)
 
   return (
     <div
@@ -36,6 +27,7 @@ export function CanvasFrame({ format, dark, children, style, id }: CanvasFramePr
       style={{
         width,
         height,
+        flexShrink: 0,
         position: 'relative',
         background: dark ? 'var(--dark-bg)' : 'var(--light-bg)',
         overflow: 'hidden',
@@ -44,33 +36,6 @@ export function CanvasFrame({ format, dark, children, style, id }: CanvasFramePr
         ...style,
       }}
     >
-      {/* .canvas-texture — grid tático sutil, opacity 6% (linha 310) */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          zIndex: 1,
-          opacity: 0.06,
-          backgroundImage: dark
-            ? 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)'
-            : 'linear-gradient(rgba(0,0,0,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,1) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-      {/* .canvas-accent — barra vermelha de 8px no topo (linha 328) */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 8,
-          background: 'var(--red)',
-          zIndex: 5,
-          pointerEvents: 'none',
-        }}
-      />
       {children}
     </div>
   )

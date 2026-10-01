@@ -43,7 +43,7 @@ export function getTemplateContract(templateId: string): TemplateContract | unde
   return { templateId, fieldSchema: { fields }, capabilities, variants, qualityRules: template.qualityRules ?? standardRules(fields), layoutRules: template.layoutRules ?? standardLayouts }
 }
 
-export function getEquivalentTemplate(templateId: string, format: 'square' | 'portrait'): string | undefined {
+export function getEquivalentTemplate(templateId: string, format: 'square' | 'feed' | 'portrait'): string | undefined {
   const template = getTemplateById(templateId)
   if (!template) return undefined
   const equivalent = template.equivalents?.find((entry) => entry.format === format)

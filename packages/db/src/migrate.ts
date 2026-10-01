@@ -5,6 +5,10 @@ import { createDatabase } from './index.js'
 const direction = process.argv[2] === 'down' ? 'down' : 'up'
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required')
+const migrationLimit = process.env.MIGRATIONS_TO?.trim()
+const migrationAllowlist = process.env.MIGRATIONS_ONLY?.split(',').map((version) => version.trim()).filter(Boolean)
+if (migrationLimit && !/^\d{4}_[a-z0-9_]+$/.test(migrationLimit)) throw new Error('MIGRATIONS_TO must be a full migration version')
+if (migrationAllowlist?.some((version) => !/^\d{4}_[a-z0-9_]+$/.test(version))) throw new Error('MIGRATIONS_ONLY must contain full migration versions')
 const migrationsDir = path.resolve(import.meta.dirname, '../migrations')
 const { pool } = createDatabase(databaseUrl)
 
@@ -22,6 +26,8 @@ try {
     const applied = new Set((await pool.query<{ version: string }>('SELECT version FROM schema_migrations')).rows.map((row) => row.version))
     for (const file of files) {
       const version = file.replace('.up.sql', '')
+      if (migrationLimit && version > migrationLimit) continue
+      if (migrationAllowlist && !migrationAllowlist.includes(version)) continue
       if (applied.has(version)) continue
       const sql = await readMigration(file)
       const client = await pool.connect()

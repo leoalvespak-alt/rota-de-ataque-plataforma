@@ -1,26 +1,19 @@
 import { useEffect } from 'react'
-import { useWizardStore, type CreativeType, type AspectRatio } from '@/stores/useWizardStore'
+import { useWizardStore, type CreativeType } from '@/stores/useWizardStore'
 import { useProfileStore } from '@/stores/useProfileStore'
 import { cn } from '@/lib/utils'
-import { Image, Layers3, RectangleVertical, Square, RectangleHorizontal } from 'lucide-react'
+import { Image, Layers3, RectangleVertical } from 'lucide-react'
 
 const CREATIVE_TYPES: { id: CreativeType; label: string; desc: string; Icon: typeof Image }[] = [
-  { id: 'post', label: 'Post Estático', desc: 'Imagem única para feed do Instagram ou Facebook', Icon: Image },
-  { id: 'carousel', label: 'Carrossel', desc: 'Série de slides para posts de arrastar', Icon: Layers3 },
-  { id: 'story', label: 'Story', desc: 'Formato vertical 9:16 para stories e reels', Icon: RectangleVertical },
-]
-
-const ASPECT_RATIOS: { id: AspectRatio; label: string; desc: string; Icon: typeof Square }[] = [
-  { id: 'square', label: 'Quadrado', desc: '1:1 — 1080×1080px', Icon: Square },
-  { id: 'portrait', label: 'Retrato', desc: '4:5 — 1080×1350px', Icon: RectangleHorizontal },
+  { id: 'post', label: 'Post Estático', desc: 'Feed 4:5, 1080×1350 px', Icon: Image },
+  { id: 'carousel', label: 'Carrossel', desc: 'Feed 4:5, 1080×1350 px por card', Icon: Layers3 },
+  { id: 'story', label: 'Story', desc: 'Formato 9:16, 1080×1920 px', Icon: RectangleVertical },
 ]
 
 export function WizardStep1Format() {
   const creativeType = useWizardStore((s) => s.creativeType)
-  const aspectRatio = useWizardStore((s) => s.aspectRatio)
   const profileId = useWizardStore((s) => s.profileId)
   const setCreativeType = useWizardStore((s) => s.setCreativeType)
-  const setAspectRatio = useWizardStore((s) => s.setAspectRatio)
   const setProfileId = useWizardStore((s) => s.setProfileId)
 
   const { profiles, fetchProfiles, activeProfileId } = useProfileStore()
@@ -31,7 +24,6 @@ export function WizardStep1Format() {
     if (!profileId && activeProfileId) setProfileId(activeProfileId)
   }, [activeProfileId, profileId, setProfileId])
 
-  const needsAspectRatio = creativeType === 'post' || creativeType === 'carousel'
   const selectedProfile = profiles.find((p) => p.id === profileId)
 
   return (
@@ -104,44 +96,6 @@ export function WizardStep1Format() {
           </button>
         ))}
       </div>
-
-      {needsAspectRatio && (
-        <div>
-          <h3 className="mb-2 text-sm font-semibold text-ui-text">Proporção</h3>
-          <p className="mb-4 text-xs text-ui-muted">
-            Escolha a proporção do canvas para {creativeType === 'post' ? 'o post' : 'o carrossel'}.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {ASPECT_RATIOS.map((ratio) => (
-              <button
-                key={ratio.id}
-                onClick={() => setAspectRatio(ratio.id)}
-                className={cn(
-                  'flex items-center gap-4 rounded-xl border-2 p-5 text-left transition-all',
-                  aspectRatio === ratio.id
-                    ? 'border-brand-red bg-brand-red/5'
-                    : 'border-ui-border bg-ui-panel hover:border-brand-red/40',
-                )}
-              >
-                <div
-                  className={cn(
-                    'flex size-12 items-center justify-center rounded-lg',
-                    aspectRatio === ratio.id
-                      ? 'bg-brand-red text-white'
-                      : 'bg-ui-panel2 text-ui-muted',
-                  )}
-                >
-                  <ratio.Icon className="size-6" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-ui-text">{ratio.label}</div>
-                  <div className="text-xs text-ui-muted">{ratio.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

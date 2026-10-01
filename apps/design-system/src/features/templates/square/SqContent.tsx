@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline } from '../primitives'
+import { TEyebrow, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -9,7 +9,6 @@ export interface SqContentElements {
   eyebrow: Hideable<string>
   title: string
   body: string
-  redline: Hideable<boolean>
 }
 
 /** Espelha renderContentSquare() do Gerador/index.html (linha 2143). */
@@ -24,7 +23,6 @@ export function SqContentRender({ elements: el, dark }: TemplateRenderProps<SqCo
       <TTitle fontSize={80} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      {el.redline !== false && <TRedline />}
       <TBody fontSize={34} dark={dark} style={{ whiteSpace: 'pre-line' }}>
         <EditableText path="body" value={el.body} />
       </TBody>
@@ -45,11 +43,6 @@ export function SqContentControls({ elements: el }: TemplateControlsProps<SqCont
           label="Mostrar Eyebrow Tag"
           checked={el.eyebrow !== false}
           onCheckedChange={() => toggleElementVisibility('eyebrow')}
-        />
-        <ControlToggle
-          label="Mostrar Linha Vermelha"
-          checked={el.redline !== false}
-          onCheckedChange={() => toggleElementVisibility('redline')}
         />
       </ControlSection>
       <ControlSection title="Tema">

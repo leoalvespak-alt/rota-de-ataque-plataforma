@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TRedline, TBody } from '../primitives'
+import { TEyebrow, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { StepsControls } from '../shared/StepsControls'
 
@@ -22,7 +22,6 @@ export function SqStepsRender({ elements: el, dark }: TemplateRenderProps<SqStep
       <TTitle fontSize={68} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline />
       <div className="flex flex-1 flex-col justify-center gap-4">
         {steps.map((s, i) => (
           <div key={i} className="flex items-start gap-5">

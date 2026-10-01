@@ -20,7 +20,8 @@ import { publicationRoutes } from './routes/publications'
 import { aiRoutes } from './routes/ai'
 import { authRoutes } from './routes/auth'
 import { requireAuth } from './auth'
-import { db, pool, prospectorPool } from './db'
+import { db, pool } from './db'
+import { designTable } from '@/db/schema-names'
 import { getEditorialMetrics } from '@/server/editorial/metrics'
 
 const app = new Hono()
@@ -63,12 +64,12 @@ app.onError((error, c) => {
 })
 
 process.on('SIGTERM', () => {
-  Promise.all([pool.end(), prospectorPool?.end()]).then(() => process.exit(0)).catch(() => process.exit(1))
+  pool.end().then(() => process.exit(0)).catch(() => process.exit(1))
 })
 
 const port = Number(process.env.API_PORT ?? 3001)
 setInterval(() => {
-  db.execute(sql`DELETE FROM ai_jobs WHERE expires_at < now() - interval '7 days'`).catch(error => {
+  db.execute(sql`DELETE FROM ${sql.raw(designTable('ai_jobs'))} WHERE expires_at < now() - interval '7 days'`).catch(error => {
     console.error(JSON.stringify({ level: 'error', event: 'cleanup_failed', message: error instanceof Error ? error.message : 'unknown' }))
   })
 }, 24 * 60 * 60 * 1000)

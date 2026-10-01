@@ -1,4 +1,4 @@
-import { createDatabase } from '@plataforma/db'
+import { createDatabase, editorialTable } from '@plataforma/db'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRole } from '@/lib/permissions'
@@ -34,15 +34,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       contentItemId = existing.rows[0]?.id
       if (!contentItemId) {
         contentItemId = (await client.query<{ id: string }>(
-          `INSERT INTO content_items(campaign_id,opportunity_id,audience_segment,funnel_stage,objective,angle,hook,arguments,cta,intelligence_sources,brand_voice_version,status,created_by)
+          `INSERT INTO ${editorialTable('content_items')}(campaign_id,opportunity_id,audience_segment,funnel_stage,objective,angle,hook,arguments,cta,intelligence_sources,brand_voice_version,status,created_by)
            VALUES($1,$2,'prospects','awareness',$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,'current','draft',$9) RETURNING id`,
-          [before.campaign_id, id, item.thesis, item.angle, item.hook, JSON.stringify([{ text: item.angle ?? item.thesis, evidence: item.evidence }]), JSON.stringify({ text: 'Salve e compartilhe com quem precisa.' }), JSON.stringify(item.source_references ?? []), user.email ?? 'unknown'],
+          [before.campaign_id, id, item.thesis, item.angle, item.hook, JSON.stringify([{ text: item.angle ?? item.thesis, evidence: item.evidence }]), JSON.stringify({ text: 'Faça parte da plataforma pelo link da BIO: plano de estudos, questões, teoria em PDF e muito mais.' }), JSON.stringify(item.source_references ?? []), user.email ?? 'unknown'],
         )).rows[0]!.id
-        const baseCopy = [item.hook, item.angle, 'Salve para consultar depois.'].filter(Boolean).join('\n\n')
+        const baseCopy = [item.hook, item.angle, 'Faça parte da plataforma pelo link da BIO: plano de estudos, questões, teoria em PDF e muito mais.'].filter(Boolean).join('\n\n')
         await client.query(
-          `INSERT INTO content_variants(content_item_id,channel,format,payload,status,generated_by)
+          `INSERT INTO ${editorialTable('unified_creatives')}(content_item_id,channel,format,payload,variant_status,generated_by)
            VALUES($1,'instagram','carousel',$2::jsonb,'draft','organic-draft-v1'),($1,'threads','text',$3::jsonb,'draft','organic-draft-v1')`,
-          [contentItemId, JSON.stringify({ caption: baseCopy, slides: [{ role: 'cover', title: item.hook ?? item.thesis, body: item.angle ?? '' }, { role: 'content', title: item.thesis, body: item.angle ?? '' }, { role: 'cta', title: 'Próximo passo', body: 'Salve e compartilhe com quem precisa.' }] }), JSON.stringify({ text: baseCopy })],
+          [contentItemId, JSON.stringify({ caption: baseCopy, slides: [{ role: 'cover', title: item.hook ?? item.thesis, body: item.angle ?? '' }, { role: 'content', title: item.thesis, body: item.angle ?? '' }, { role: 'cta', title: 'Próximo passo', body: 'Faça parte da plataforma pelo link da BIO.' }] }), JSON.stringify({ text: baseCopy })],
         )
         await client.query(
           `INSERT INTO review_inbox(item_type,item_ref_id,reason,suggested_action,context) VALUES('content_item',$1,'Rascunho editorial gerado a partir de oportunidade aprovada',$2::jsonb,$3::jsonb)`,

@@ -1,5 +1,5 @@
 import type { TemplateRenderProps } from '../types'
-import { TTag, TTitle, TRedline, TBody } from '../primitives'
+import { TTag, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { TipControls } from '../shared/TipControls'
 
@@ -22,7 +22,6 @@ export function SqTipRender({ elements: el, dark }: TemplateRenderProps<SqTipEle
       <TTitle fontSize={72} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline />
       <div className="flex flex-1 flex-col justify-center gap-7">
         {items.map((item, i) => (
           <div key={i} className="flex items-start gap-4.5">

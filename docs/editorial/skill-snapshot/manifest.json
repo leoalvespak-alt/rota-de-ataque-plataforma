@@ -1,0 +1,412 @@
+{
+  "snapshotId": "rota-social-criativos-2026-09-27",
+  "capturedAt": "2026-09-27",
+  "sourceRoot": "C:/Users/Lenovo/.codex/skills/rota-social-criativos",
+  "files": [
+    {
+      "path": "evals/01-post-publico-frio.md",
+      "bytes": 631,
+      "sha256": "4c42339cad9392f1cea8b465f065828ef6f34c3f49249068bb7a37ace0962174"
+    },
+    {
+      "path": "evals/02-carousel-demo-plano.md",
+      "bytes": 665,
+      "sha256": "c3a8642d7667c5560ec70ed6c87b4dccb655919348ee5af06e3f85fa3ea3007e"
+    },
+    {
+      "path": "evals/03-story-conversao.md",
+      "bytes": 482,
+      "sha256": "8870a7a72288e71721c4c2f3b3053dbb1d7e4712fc22378ec5812d0f2d8f5de4"
+    },
+    {
+      "path": "evals/04-sem-evidencia.md",
+      "bytes": 510,
+      "sha256": "fd43e6cb2e95336096556eb41b48deafd02aa17cb7987ec3256bb716a0804670"
+    },
+    {
+      "path": "evals/05-depoimento-sem-fonte.md",
+      "bytes": 395,
+      "sha256": "6314a428b418e7c31ed0e2c377c9e5549c3293c75e90c30d7aeac6015324849e"
+    },
+    {
+      "path": "evals/06-direcao-visual-aprovada.md",
+      "bytes": 440,
+      "sha256": "16290cd8d05edf5f9006aa074e232eb692746a760dd9dbeadca31f859edef297"
+    },
+    {
+      "path": "evals/07-referencia-visual.md",
+      "bytes": 444,
+      "sha256": "5cc0712a79f601f8c8fafe8fbddeadd82afe500b2b5c054746a6e64613ef7aed"
+    },
+    {
+      "path": "evals/08-redesign-peca-existente.md",
+      "bytes": 457,
+      "sha256": "b0179ba693762325fbaa89e0b724feea70e575a4c8af16ad868d91b08f13da47"
+    },
+    {
+      "path": "evals/09-publico-frio-quente.md",
+      "bytes": 480,
+      "sha256": "553a2df6d801fa778e9a5ddba1e5b6e712617418c137959f27cda34425f643de"
+    },
+    {
+      "path": "evals/10-recurso-beneficio.md",
+      "bytes": 464,
+      "sha256": "a6dad0042c353d54225a18fef22c6d4cd950583ce849b150d53e7244cb86b51a"
+    },
+    {
+      "path": "evals/11-regra-do-um.md",
+      "bytes": 378,
+      "sha256": "39d74a7a1d247bf421a92f856ac24def2aba62ec5323c92fda92c2c330d6b064"
+    },
+    {
+      "path": "evals/12-carrossel-sem-filler.md",
+      "bytes": 677,
+      "sha256": "5b00e66533248bb73a27ca101e778e3929153b11d95143fc77a8033108a1c399"
+    },
+    {
+      "path": "evals/13-hook-diferencial-prova.md",
+      "bytes": 383,
+      "sha256": "5ae4608e06c9866e53eca1e081500a5fea558afc491290aaa00e3fe93dcb2926"
+    },
+    {
+      "path": "evals/14-escassez-inexistente.md",
+      "bytes": 380,
+      "sha256": "515f11c7c9fb4e176c99aec683fe23214dfb66f5342b2717f4cfad979ac0abe1"
+    },
+    {
+      "path": "evals/15-objecao-sem-ataque.md",
+      "bytes": 387,
+      "sha256": "fcd83b594fa38976105cce665d689f176cee551c97dd344d8117570793e8976e"
+    },
+    {
+      "path": "evals/16-leitura-por-varredura.md",
+      "bytes": 446,
+      "sha256": "eb39be42e5044caae8c8987fdeb9a87229eff0f28e6f3bf9be32359b22aa6209"
+    },
+    {
+      "path": "evals/17-capa-qualificada-sem-despejo-tecnico.md",
+      "bytes": 748,
+      "sha256": "665b9162d10f4bd865e0148e0e8a347890a55969d6a830b5e9ae866e244fc27b"
+    },
+    {
+      "path": "evals/18-transparencia-e-crop.md",
+      "bytes": 840,
+      "sha256": "38d13ea4f8cd1417a075d7283fb66428c476987407ae12c71b12525ad8ebc579"
+    },
+    {
+      "path": "evals/19-legibilidade-e-agrupamento.md",
+      "bytes": 1396,
+      "sha256": "34f6c4c005714cd4f8586c847ffdb7c079ddf47d3d7a9ae3188b49191c591728"
+    },
+    {
+      "path": "evals/20-sequencia-crop-e-argumento.md",
+      "bytes": 1218,
+      "sha256": "f573e52e7c907f58bd4592cb5c24fd0be9f634799169841345cb86c390606f8f"
+    },
+    {
+      "path": "evals/21-sem-barra-cromatica-decorativa.md",
+      "bytes": 1216,
+      "sha256": "eb958f7b88b0a2345dc2a40188d3535580466ba27acd260db5fb7fdd1f880264"
+    },
+    {
+      "path": "evals/22-persuasao-rag-sem-alegacao-inventada.md",
+      "bytes": 1290,
+      "sha256": "965fb373b78bf87c5b4e452719aafe7c8d94134da3e6b601787f1be4f9a65474"
+    },
+    {
+      "path": "evals/23-voz-natural-e-vocabulario.md",
+      "bytes": 939,
+      "sha256": "33be609e69a0828407c35a0ccde2cbf7c48c60ec7aed3969cde5232a21f8bbeb"
+    },
+    {
+      "path": "evals/24-humanizacao-trava-factual.md",
+      "bytes": 788,
+      "sha256": "50c79d18a96ae04496eba058335a96a7c4bce75c4aef8e259a52fb384a31c647"
+    },
+    {
+      "path": "evals/25-cta-proporcional-ao-formato.md",
+      "bytes": 924,
+      "sha256": "3d0f57b331d646441561b86689aa9fcac4136031a55605c364e06758eed693be"
+    },
+    {
+      "path": "evals/26-escopo-geral-e-sem-cabecalho-editorial.md",
+      "bytes": 952,
+      "sha256": "485e7a6cc978bbf285072a693cb932b01b7f0b0551ca02d01439ed22a76c58a0"
+    },
+    {
+      "path": "evals/27-pessoa-identificavel-unica-por-capa.md",
+      "bytes": 835,
+      "sha256": "ed66b4928fa650ec8a2ae6360bc1770741ba33f69f84f098b5b32db030461016"
+    },
+    {
+      "path": "evals/28-sem-travessao-na-copy-de-arte.md",
+      "bytes": 647,
+      "sha256": "02c9593d1fdccb3a281d26a53c73a4f15cb52c63c09c4584717d7726177368c4"
+    },
+    {
+      "path": "evals/29-excecao-de-alvo-expecifico.md",
+      "bytes": 741,
+      "sha256": "5fedccddd255c9f1793c0869a3b601e7536549f5198db0a790c060f67394811c"
+    },
+    {
+      "path": "evals/30-distribuicao-de-estilos-em-lote.md",
+      "bytes": 813,
+      "sha256": "1d401297b1a088395d06755c5a576ac98dae9814b9621e40f34ab647f53819a5"
+    },
+    {
+      "path": "evals/31-passagem-visual-entre-cards.md",
+      "bytes": 755,
+      "sha256": "c35c61414ca3b0800a2900e0afc5d454b677f1b2daf6d4f5997ca08740807461"
+    },
+    {
+      "path": "evals/32-efeito-tipografico-localizado.md",
+      "bytes": 705,
+      "sha256": "dfdbbf50339f2f269c3d9666f3f4a07e3b31a679ab7d83347cbea0d64e58b218"
+    },
+    {
+      "path": "evals/33-curadoria-foto-publico-brasileiro.md",
+      "bytes": 3156,
+      "sha256": "71982e260c6e26442f1618aee1dac7c76dff5a9b9ed71f6946155590be63dd35"
+    },
+    {
+      "path": "evals/34-golden-carrossel-valor-e-progressao.md",
+      "bytes": 1694,
+      "sha256": "0421bd313a18398fb683d9bddbdf36f0cfc4e594e5b27e5d930711e6a9b85372"
+    },
+    {
+      "path": "evals/35-regressao-de-alinhamento-e-icone.md",
+      "bytes": 1105,
+      "sha256": "d38ecc7c968681049c9d972c8d79721b8957e4c42ae909ba6838ec782a8a39b2"
+    },
+    {
+      "path": "evals/36-lote-com-card-bloqueado-e-status-pausado.md",
+      "bytes": 1217,
+      "sha256": "ae590b6f4ed933951cdb34a29e0baad785c2189f043616c089c982077fd2c419"
+    },
+    {
+      "path": "evals/37-fontes-grandes-e-leitura-real.md",
+      "bytes": 1571,
+      "sha256": "5b931d1d3ce126659b24f4f95a150f7ba7a61975e2ea8d5c9aaaead66125ce77"
+    },
+    {
+      "path": "evals/38-golden-copy-com-contexto-e-aplicacao.md",
+      "bytes": 2587,
+      "sha256": "7483aa589c0ff011a5b86110cf0a0d020b39da26cda56416e319d7ba818553ec"
+    },
+    {
+      "path": "evals/39-composicao-sem-caixas-automaticas.md",
+      "bytes": 1378,
+      "sha256": "e16bbc5bff2bb192cb6e14900ec9b0fa048a2b6b691bbaffcad3a567a21fe18f"
+    },
+    {
+      "path": "evals/40-seis-formatos-com-funcao-propria.md",
+      "bytes": 2102,
+      "sha256": "9c95fc69b659dcded64a62e7f1e647bf0613af0d52562d7234180f3287f65205"
+    },
+    {
+      "path": "evals/41-profundidade-sem-enchimento.md",
+      "bytes": 1825,
+      "sha256": "5c390c4b5c69149daaf01bc02170c912577d190fae480e3b61a014f578bfe1e4"
+    },
+    {
+      "path": "evals/42-conexao-e-prova-sem-simplificacao.md",
+      "bytes": 1468,
+      "sha256": "81c54df94c6e8020914ebb693965f97e46fa0439bb886423b37b292e6d982734"
+    },
+    {
+      "path": "evals/PROCESSO-DE-MUDANCA.md",
+      "bytes": 2382,
+      "sha256": "76ddecbb34589ebdbd0b54555f8445dfe398938da6dbcd0b34c75b3911092f86"
+    },
+    {
+      "path": "evals/prova-visual-screenshot.md",
+      "bytes": 749,
+      "sha256": "dd77ce140829e71296c935af7dbb500de978c0d1fb442b9d59b9b488a403c9d9"
+    },
+    {
+      "path": "evals/results/2026-09-26-planejamento-independente.md",
+      "bytes": 18830,
+      "sha256": "09a685c6381ff9f3214dc2bad7e8e296fdd281654f6bcbc43998869481652609"
+    },
+    {
+      "path": "evals/REVISAO-2026-09-26.md",
+      "bytes": 5827,
+      "sha256": "9fa48ad2adf97b4de01b26aef1842722d2ca7b42526504869183e86f2840212f"
+    },
+    {
+      "path": "references/angles-and-copy.md",
+      "bytes": 10853,
+      "sha256": "1a63e82c049f4b94743f4c89008d8a92951f7eb7e26620accf0febf14040e0e6"
+    },
+    {
+      "path": "references/aprofundamento-copy.md",
+      "bytes": 6865,
+      "sha256": "27ee0b03a35cd972454c5fbf643b373d5366e6886711460d17cab294b1c86612"
+    },
+    {
+      "path": "references/audience-and-message.md",
+      "bytes": 6201,
+      "sha256": "1a7e1fb2edb972c75dfde12e3846313393d8df09e31040ff0f859620cb5f2d89"
+    },
+    {
+      "path": "references/campaign-visual-grammar.md",
+      "bytes": 2295,
+      "sha256": "7206608b7da8bbf4140c985110ded3e3672a5cc39a09538793179b555021490d"
+    },
+    {
+      "path": "references/carousel-copy-layout-audit.md",
+      "bytes": 7094,
+      "sha256": "4fbfe07488e116c981ba1f84c8596e8b3e5f04336c1e11eaf672d0681d0ad64d"
+    },
+    {
+      "path": "references/copy-por-formato.md",
+      "bytes": 12982,
+      "sha256": "f4f6df215d58f4ba8215fff41ccf8f2c54100300aa61a837302e21288daad50f"
+    },
+    {
+      "path": "references/exemplos-copy-por-formato.md",
+      "bytes": 11444,
+      "sha256": "9786f7194d6b6b925e2b3a4e3d0df25497c5db2f237d51ba9070dd61bf405799"
+    },
+    {
+      "path": "references/external-source-audit.md",
+      "bytes": 6008,
+      "sha256": "07b668dae8526bc93f20ab753746824eb54d057619172d1043b764244b6fafb5"
+    },
+    {
+      "path": "references/formats.md",
+      "bytes": 4927,
+      "sha256": "61cfcd8320a04b0d28077cf7d238995f6920ed47828d2e9e1eb1b74f0b3d358b"
+    },
+    {
+      "path": "references/fundamentos-livros-copy-conexao.md",
+      "bytes": 6913,
+      "sha256": "9a82fa8f7844c7ec2fc1f43beda3da8e84f899253641bf7f10d4437d5a850683"
+    },
+    {
+      "path": "references/guia-copy-clara-humana-e-util.md",
+      "bytes": 13711,
+      "sha256": "e3a01b4ea1d6c82ad769819a644e5caf56bc007b0cd1ef49ecf61b0150d5a63a"
+    },
+    {
+      "path": "references/guia-escrita-natural-ptbr.md",
+      "bytes": 3204,
+      "sha256": "a42da079c5be5df67a84ec42486c02b9c49918f5160c9b736da0a37ebfd36426"
+    },
+    {
+      "path": "references/html-css-system.md",
+      "bytes": 9322,
+      "sha256": "d6001de8dc49f43fe9d06630e24ee9b6c289daf530b5222df74dfff07ceb6308"
+    },
+    {
+      "path": "references/humanizacao-ptbr.md",
+      "bytes": 3959,
+      "sha256": "36b6c4ac4227fb821517604e94380df690c2ec352abcdd29f9a725d26a84e5f7"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/jev-integration.md",
+      "bytes": 7803,
+      "sha256": "cad3c2bebc04d8ab8dd8d9c06c77ad89b4c3f53b8bbb2c77d3ea79f75e65cc5f"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-composicao.md",
+      "bytes": 26827,
+      "sha256": "cff25114c3c5a9cbbec5c4c54a70e02ef9a929b7b50ae811ea3ae87f3027bd8d"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-consumo-rapido.md",
+      "bytes": 13039,
+      "sha256": "09815371786446ecb1e3115af2e8f8dd4deb2f57aeeed828960392fcbb520d3f"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-conteudo.md",
+      "bytes": 15628,
+      "sha256": "599175a9ca922f274475e23a765320f38aa3cfbc9bbacc592b027d002b66015c"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-estilo.md",
+      "bytes": 19532,
+      "sha256": "ae1bebea1b754613856249b8758444488b85f508054d2842c0f2ebc7a4b06a06"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-exclusivos-pt-br.md",
+      "bytes": 37206,
+      "sha256": "7492db6556c274b0669a9e398211e8a3484142b807ca3341c2580e89155a9ddb"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-linguagem.md",
+      "bytes": 15453,
+      "sha256": "bf55a525554cac3fec3901144ad76add49cbfe7a2c6490c68dd7cff729752bac"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-portugues-simplificado.md",
+      "bytes": 18587,
+      "sha256": "7519275254e30e8ab1de29ee1eea09d79c78488bb69faa55701ba05eac7d6cb5"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/references/padroes-tom.md",
+      "bytes": 18319,
+      "sha256": "896aef4966b35f05692e0329644c33ec4d7f61338aba9b9c62926bab54f26a8f"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/scripts/jev_questions.json",
+      "bytes": 31823,
+      "sha256": "47b84b32a3a9b15a5bdb1881c4f98ff42b7031f0fe515ded54cb4b5964a4a024"
+    },
+    {
+      "path": "references/humanizar-upstream/humanizar/SKILL.md",
+      "bytes": 57839,
+      "sha256": "caac93107826c66b1f5d2370301759fba01fa55c11c3c7e4c506a4f78fe445dc"
+    },
+    {
+      "path": "references/humanizar-upstream/LICENSE",
+      "bytes": 10895,
+      "sha256": "7f3782cf1f11882ee69cb60bcb36e6a0cd7dd1b798ee3a0d655faeae742090e7"
+    },
+    {
+      "path": "references/humanizar-upstream/ORIGIN.md",
+      "bytes": 709,
+      "sha256": "e9f8d3baff65b04358035d8649eeb9bf535237131c5042520104a936a5715174"
+    },
+    {
+      "path": "references/narrative-frameworks.md",
+      "bytes": 10380,
+      "sha256": "01f911c3f454b64d7fb4955b1305a1ace42fdc14f00945abe90aae22f27d11bc"
+    },
+    {
+      "path": "references/persuasion-rag.md",
+      "bytes": 5782,
+      "sha256": "4a21b0e0aa53ce4069cc350217b4202b70beec0f06f4777ec65467899445587d"
+    },
+    {
+      "path": "references/pexels-image-research.md",
+      "bytes": 17793,
+      "sha256": "c088e8a3ad8b3a9751c9a21206c287460cb8c7a0a19c8d17ee766ca30a4fe59f"
+    },
+    {
+      "path": "references/production-qa.md",
+      "bytes": 15662,
+      "sha256": "848666f99dd649d426d5d13905d1704a5495d8e329bc198c901edd625656e454"
+    },
+    {
+      "path": "references/rota-brand-and-evidence.md",
+      "bytes": 8283,
+      "sha256": "722547db9524f4d58292803f8dab1d7dbf6311b59c8bcf71ca43ccd1796e1570"
+    },
+    {
+      "path": "references/style-orchestration.md",
+      "bytes": 5324,
+      "sha256": "8ae2da73606e24a2ad3c29d550d96fda5158c3cb13f1be3412a7959232691ce3"
+    },
+    {
+      "path": "references/visual-direction.md",
+      "bytes": 15425,
+      "sha256": "010eb01864e328d924a61c7bca1e2e7bbd791f21fdf328c9ec60a14de5d7d188"
+    },
+    {
+      "path": "SKILL.md",
+      "bytes": 16230,
+      "sha256": "f7b4adf1baa677b2a33cb809f406a02eb1497186a535de474a91d604d432d502"
+    }
+  ]
+}

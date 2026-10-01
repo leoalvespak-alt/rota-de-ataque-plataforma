@@ -639,6 +639,46 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
 
+  workers/editorial-executor:
+    dependencies:
+      '@plataforma/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@plataforma/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@plataforma/social-publishing':
+        specifier: workspace:*
+        version: link:../../packages/social-publishing
+      '@plataforma/task-runtime':
+        specifier: workspace:*
+        version: link:../../packages/task-runtime
+      '@plataforma/worker-content-item-orchestrator':
+        specifier: workspace:*
+        version: link:../content-item-orchestrator
+      '@plataforma/worker-news-radar':
+        specifier: workspace:*
+        version: link:../news-radar
+      tsx:
+        specifier: 4.23.5
+        version: 4.23.5
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      '@types/pg':
+        specifier: 8.20.3
+        version: 8.20.3
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/ui@4.1.10)(jsdom@30.0.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.5))
+
   workers/news-radar:
     dependencies:
       '@plataforma/db':
@@ -650,6 +690,9 @@ importers:
       '@plataforma/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@plataforma/task-runtime':
+        specifier: workspace:*
+        version: link:../../packages/task-runtime
     devDependencies:
       '@types/pg':
         specifier: 8.20.3

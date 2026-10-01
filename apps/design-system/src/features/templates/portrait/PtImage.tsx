@@ -1,10 +1,10 @@
 import type { TemplateRenderProps, TemplateControlsProps } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline, TSlot } from '../primitives'
+import { TEyebrow, TTitle, TBody, TSlot } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useSlotFilePicker } from '../useSlotFilePicker'
 import { SqTextImageControls, type SqTextImageElements } from '../square/SqTextImage'
 
-export type PtImageElements = Omit<SqTextImageElements, 'redline'>
+export type PtImageElements = SqTextImageElements
 
 /** Espelha renderImagePortrait() do Gerador/index.html (linha 2249). */
 export function PtImageRender({ elements: el, dark }: TemplateRenderProps<PtImageElements>) {
@@ -29,7 +29,6 @@ export function PtImageRender({ elements: el, dark }: TemplateRenderProps<PtImag
         <TTitle fontSize={90} dark={dark}>
           <EditableText path="title" value={el.title} />
         </TTitle>
-        <TRedline />
         <TBody fontSize={40} dark={dark}>
           <EditableText path="body" value={el.body} />
         </TBody>

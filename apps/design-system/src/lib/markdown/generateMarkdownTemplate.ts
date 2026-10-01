@@ -1,11 +1,11 @@
 export interface MarkdownTemplateParams {
-  aspectRatio: 'square' | 'portrait'
+  aspectRatio: 'square' | 'feed' | 'portrait'
   cardCount: number
 }
 
 export function generateMarkdownTemplate(params: MarkdownTemplateParams): string {
   const { aspectRatio, cardCount } = params
-  const formatLabel = aspectRatio === 'portrait' ? 'Retrato 1080×1350' : 'Quadrado 1080×1080'
+  const formatLabel = aspectRatio === 'portrait' ? 'Story 1080×1920' : aspectRatio === 'feed' ? 'Feed 1080×1350' : 'Quadrado 1080×1080'
   const count = Math.max(1, Math.min(10, cardCount))
 
   const lines: string[] = [

@@ -21,6 +21,15 @@ export default async function SystemHealthPage() {
       FROM task_runs GROUP BY task_name ORDER BY task_name`),
     pool.query<{ task_name: string; destination: string; cadence: string; enabled: boolean }>(`SELECT task_name, destination, cadence, enabled FROM task_schedules ORDER BY task_name`),
   ]);
+  const executorMigration = await pool.query<{ applied: boolean }>(`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version='0049_durable_task_executor') AS applied`);
+  const recentTaskRuns = executorMigration.rows[0]?.applied
+    ? await pool.query<{ id: string; task_name: string; status: string; attempt: number; max_attempts: number; lane: string; priority: number; available_at: string; lease_until: string | null; checkpoint_keys: string; has_error: boolean; created_at: string }>(
+      `SELECT id,task_name,status,attempt,max_attempts,lane,priority,available_at,lease_until,
+        COALESCE((SELECT string_agg(key, ', ' ORDER BY key) FROM jsonb_object_keys(COALESCE(checkpoint,'{}'::jsonb)) AS keys(key)),'') checkpoint_keys,
+        error IS NOT NULL has_error,created_at
+       FROM editorial.task_runs ORDER BY created_at DESC LIMIT 20`,
+    )
+    : { rows: [] };
   const enabledByDb = new Map(workerSettings.rows.map((row) => [row.worker_name, row.enabled]));
   const taskCounts = new Map(taskRuns.rows.map((row) => [row.task_name, row]));
   const taskNames = Array.from(new Set([...QUEUE_NAMES, ...taskCounts.keys()]));
@@ -28,5 +37,5 @@ export default async function SystemHealthPage() {
     const counts = taskCounts.get(worker);
     return { worker, desired: enabledByDb.get(worker) ?? false, waiting: counts?.waiting ?? 0, delayed: counts?.delayed ?? 0, active: counts?.active ?? 0, failed: counts?.failed ?? 0 };
   });
-  return <SystemHealthClient heartbeats={heartbeats.rows} alerts={alerts.rows} healthScore={Math.round(Number(health.rows[0]?.score ?? 100))} currentTime={Date.now()} canaries={canaries.rows} capabilities={capabilities} killSwitchEnabled={killSwitch.rows[0]?.enabled === true} workers={queueCounts} taskSchedules={taskSchedules.rows} />;
+  return <SystemHealthClient heartbeats={heartbeats.rows} alerts={alerts.rows} healthScore={Math.round(Number(health.rows[0]?.score ?? 100))} currentTime={Date.now()} canaries={canaries.rows} capabilities={capabilities} killSwitchEnabled={killSwitch.rows[0]?.enabled === true} workers={queueCounts} taskSchedules={taskSchedules.rows} taskRuns={recentTaskRuns.rows} executorReady={executorMigration.rows[0]?.applied === true} />;
 }

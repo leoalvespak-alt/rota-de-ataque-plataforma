@@ -1,0 +1,19 @@
+[Unit]
+Description=Rota de Ataque editorial executor
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/rota-editorial/editorial-executor.env
+WorkingDirectory=/mnt/c/Users/Lenovo/Desktop/Rota de Ataque/Sistema de Design/plataforma
+ExecStartPre=/usr/bin/test -r "/mnt/c/Users/Lenovo/Desktop/Rota de Ataque/Sistema de Design/plataforma/docker/.env.phase7.local"
+ExecStart=/usr/bin/bash "/mnt/c/Users/Lenovo/Desktop/Rota de Ataque/Sistema de Design/plataforma/deploy/run-editorial-executor.sh"
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=45s
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

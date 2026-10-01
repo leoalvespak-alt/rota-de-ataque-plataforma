@@ -8,10 +8,10 @@ const sourceDirectory = path.dirname(fileURLToPath(import.meta.url))
 const appDirectory = path.join(sourceDirectory, 'app')
 
 describe('navegação canônica', () => {
-  it('declara os seis destinos editoriais principais', () => {
-    expect(NAVIGATION).toHaveLength(6)
-    expect(NAVIGATION.map((destination) => destination.id)).toEqual(['pulse', 'intelligence', 'decisions', 'planning', 'performance', 'system'])
-    expect(new Set(NAVIGATION.map((destination) => destination.href)).size).toBe(6)
+  it('declara os sete destinos editoriais principais', () => {
+    expect(NAVIGATION).toHaveLength(7)
+    expect(NAVIGATION.map((destination) => destination.id)).toEqual(['pulse', 'intelligence', 'decisions', 'planning', 'performance', 'inbox', 'system'])
+    expect(new Set(NAVIGATION.map((destination) => destination.href)).size).toBe(7)
   })
 
   it('mantém aliases editoriais como redirects permanentes', async () => {

@@ -1,3 +1,7 @@
+export { buildSlotPrompt, composeSlotDecision } from './slot-job.js'
+export type { SlotJobDeps, SlotJobResult } from './slot-job.js'
+export { chatSlotCompletion, loadSlotLlmConfig } from './slot-llm.js'
+export type { SlotChatMessage, SlotLlmConfig } from './slot-llm.js'
 import {
   createWorker,
   type WorkerJob,

@@ -1,5 +1,5 @@
 import type { TemplateRenderProps } from '../types'
-import { TTitle, TBody, TRedline, TSlot } from '../primitives'
+import { TTitle, TBody, TSlot } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useSlotFilePicker } from '../useSlotFilePicker'
 import { SimpleControls } from '../shared/SimpleControls'
@@ -35,7 +35,6 @@ export function SqProfileRender({ elements: el, dark }: TemplateRenderProps<SqPr
           </TBody>
         </div>
       </div>
-      <TRedline />
       {/* Nota de fidelidade: o HTML original também hardcodeia var(--light-text) aqui
           sem regra de dark mode (renderProfileSquare, linha 2389) — mesma inconsistência
           replicada, não introduzida pela migração. */}

@@ -2,10 +2,11 @@ import type { CardDocument } from './documents'
 import { stableId } from './documents'
 import { getEquivalentTemplate, getTemplateContract } from './templateContracts'
 import { validateCards } from './validation'
+import type { CanvasFormat } from '@/features/templates/types'
 
 export interface ConversionPreview { sourceId: string; target?: CardDocument; warnings: string[]; valid: boolean }
 
-export function previewConversion(card: CardDocument, format: 'square' | 'portrait'): ConversionPreview {
+export function previewConversion(card: CardDocument, format: CanvasFormat): ConversionPreview {
   const targetId = getEquivalentTemplate(card.templateId, format)
   if (!targetId) return { sourceId: card.id, warnings: ['Não há equivalência aprovada para este formato.'], valid: false }
   const targetContract = getTemplateContract(targetId)

@@ -81,3 +81,66 @@ describe('Fase 8 legacy expurgo migration', () => {
     }
   })
 })
+
+describe('durable editorial task executor migration', () => {
+  it('adds local durable leases, scoped idempotency, transactional outbox and a guarded rollback', async () => {
+    const up = await migration('0049_durable_task_executor.up.sql')
+    const down = await migration('0049_durable_task_executor.down.sql')
+    for (const column of ['available_at', 'priority', 'lane', 'lease_owner', 'lease_until', 'heartbeat_at', 'checkpoint', 'account_id', 'item_id', 'revision_id']) {
+      expect(up).toContain(`ADD COLUMN IF NOT EXISTS ${column}`)
+    }
+    expect(up).toMatch(/CREATE UNIQUE INDEX task_runs_business_identity_idx[\s\S]*task_name, item_id, revision_id, account_id/u)
+    expect(up).toMatch(/CREATE TABLE editorial\.task_outbox/u)
+    expect(up).toMatch(/destination = 'local'/u)
+    expect(up).toMatch(/enabled = false/u)
+    expect(down).toMatch(/task runtime has been used/u)
+    expect(down).toMatch(/task_run_audit/u)
+  })
+})
+
+describe('Meta social inbox migration', () => {
+  it('stores signed, deduplicated inbox revisions and has bounded PII retention', async () => {
+    const up = await migration('0050_meta_inbox_events.up.sql')
+    const down = await migration('0050_meta_inbox_events.down.sql')
+    expect(up).toMatch(/CREATE TABLE IF NOT EXISTS editorial\.social_inbox_events/u)
+    expect(up).toMatch(/UNIQUE \(provider, channel, account_external_id, event_kind, external_event_id, revision_hash\)/u)
+    expect(up).toMatch(/personal_data_expires_at[^\n]*30 days/u)
+    expect(up).toMatch(/dedupe_expires_at[^\n]*180 days/u)
+    expect(up).toMatch(/inbox\.retention\.cleanup/u)
+    expect(down).toMatch(/Cannot roll back Meta inbox migration after social inbox events have been recorded/u)
+  })
+})
+
+describe('source pagination migration', () => {
+  it('persists bounded pagination progress without marking PCI complete before its first scan', async () => {
+    const up = await migration('0053_news_source_pagination.up.sql')
+    const down = await migration('0053_news_source_pagination.down.sql')
+    expect(up).toMatch(/ADD COLUMN pagination_cursor text/u)
+    expect(up).toMatch(/ADD COLUMN pagination_complete boolean NOT NULL DEFAULT false/u)
+    expect(up).toMatch(/portal IS DISTINCT FROM 'pci-concursos'/u)
+    expect(down).toMatch(/DROP COLUMN pagination_cursor/u)
+    expect(down).toMatch(/DROP COLUMN pagination_complete/u)
+  })
+})
+
+describe('legacy opportunity archive migration', () => {
+  it('adds a reversible archived status without deleting linked opportunities', async () => {
+    const up = await migration('0054_archive_legacy_content_opportunities.up.sql')
+    const down = await migration('0054_archive_legacy_content_opportunities.down.sql')
+    expect(up).toMatch(/'archived'/u)
+    expect(up).not.toMatch(/DELETE FROM content_opportunities/u)
+    expect(down).toMatch(/Cannot remove archived status while archived opportunities exist/u)
+  })
+})
+
+describe('twice-daily news schedule migration', () => {
+  it('enables only incremental radar collection at the two Sao Paulo windows', async () => {
+    const up = await migration('0055_editorial_news_automation.up.sql')
+    const down = await migration('0055_editorial_news_automation.down.sql')
+    expect(up).toContain("cadence = 'twice-daily'")
+    expect(up).toContain("'America/Sao_Paulo'")
+    expect(up).toContain("jsonb_build_array('12:00', '20:00')")
+    expect(up).toContain("'mode', 'incremental'")
+    expect(down).toContain("enabled = false")
+  })
+})

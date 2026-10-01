@@ -14,7 +14,7 @@ export function TTag({ children, style, className }: TTagProps) {
       style={{
         fontFamily: "'Rajdhani', sans-serif",
         fontWeight: 700,
-        fontSize: 22,
+        fontSize: 24,
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
         background: 'rgba(193,18,31,0.12)',

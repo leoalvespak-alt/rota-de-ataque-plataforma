@@ -1,4 +1,4 @@
-import { createDatabase } from '@plataforma/db'
+import { createDatabase, editorialTable } from '@plataforma/db'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiErrorResponse, conflictResponse, invalidRequestResponse } from '@/lib/api-errors'
@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       [suggestion.campaign_id, title, description, title, JSON.stringify({ evidence: suggestion.evidence, suggestionId: id.data, format, channel }), id.data],
     )).rows[0]
     const creative = (await client.query<Record<string, unknown>>(
-      `INSERT INTO unified_creatives(campaign_id,title,caption,channel,format,status,scheduled_for,origin,thesis_id,cta,copy_data,curation_status,approved_by,source_suggestion_id)
+      `INSERT INTO ${editorialTable('unified_creatives')}(campaign_id,title,caption,channel,format,status,scheduled_for,origin,thesis_id,cta,copy_data,curation_status,approved_by,source_suggestion_id)
        VALUES($1,$2,$3,$4,$5,$6,$7,'prospector',$8,$9,$10::jsonb,'approved',$11,$12)
        RETURNING *`,
       [suggestion.campaign_id, title, caption, channel, format, status, parsed.data.scheduledFor ?? null, suggestion.thesis_id, parsed.data.cta ?? null, JSON.stringify(copyData), user.email ?? 'unknown', id.data],

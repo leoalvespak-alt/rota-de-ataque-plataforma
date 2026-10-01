@@ -1,14 +1,17 @@
 name: rota-editorial-production
 
-x-prospector-db-url: &prospector-db-url postgresql://${PROSPECTOR_DB_USER}:${PROSPECTOR_DB_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
-x-design-db-url: &design-db-url postgresql://${DESIGN_DB_USER}:${DESIGN_DB_PASSWORD}@host.docker.internal:6432/rota_design?sslmode=require
+x-prospector-db-url: &prospector-db-url postgresql://${PROSPECTOR_DB_USER}:${PROSPECTOR_DB_PASSWORD}@host.docker.internal:6432/prospector?sslmode=verify-full&sslrootcert=/run/pgbouncer/server.crt
+x-design-db-url: &design-db-url postgresql://${DESIGN_DB_USER}:${DESIGN_DB_PASSWORD}@host.docker.internal:6432/rota_design?sslmode=verify-full&sslrootcert=/run/pgbouncer/server.crt
+
+x-pgbouncer-ca-mount: &pgbouncer-ca-mount
+  - /etc/pgbouncer/tls/server.crt:/run/pgbouncer/server.crt:ro
 
 services:
   prospector-migrate:
     image: ghcr.io/leoalvespak-alt/prospector-platform-migrations:${IMAGE_TAG:?IMAGE_TAG must be set}
     environment:
       DATABASE_URL: *prospector-db-url
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    volumes: *pgbouncer-ca-mount
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: "no"
@@ -19,7 +22,6 @@ services:
     environment:
       DATABASE_URL: *prospector-db-url
       DATABASE_POOL_MAX: "10"
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
       NEXT_PUBLIC_BASE_PATH: /prospector
       APP_URL: https://design.rotadeataque.com.br/prospector
       NEXTAUTH_URL: https://design.rotadeataque.com.br/prospector/api/auth
@@ -27,9 +29,34 @@ services:
       AUTH_ADMIN_EMAILS: ${AUTH_ADMIN_EMAILS}
       AUTH_OPERATOR_EMAILS: ${AUTH_OPERATOR_EMAILS}
       AUTH_PASSWORD: ${AUTH_PASSWORD}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_SOCIAL_ACCESS_TOKEN: ${META_SOCIAL_ACCESS_TOKEN:-}
+      META_PAGE_ACCESS_TOKEN: ${META_PAGE_ACCESS_TOKEN:-}
+      META_BUSINESS_ACCOUNT_ID: ${META_BUSINESS_ACCOUNT_ID:-}
+      META_INSTAGRAM_ACCOUNT_ID: ${META_INSTAGRAM_ACCOUNT_ID:-}
+      META_INSTAGRAM_ACCESS_TOKEN: ${META_INSTAGRAM_ACCESS_TOKEN:-}
+      META_FACEBOOK_PAGE_ID: ${META_FACEBOOK_PAGE_ID:-}
+      META_API_VERSION: ${META_API_VERSION:-}
+      META_GRAPH_BASE_URL: ${META_GRAPH_BASE_URL:-}
+      THREADS_ACCESS_TOKEN: ${THREADS_ACCESS_TOKEN:-}
+      THREADS_USER_ID: ${THREADS_USER_ID:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
       AUTH_BOOTSTRAP_VIEWER: "false"
       EXPECTED_DB_MIGRATION: "0045_task_runtime"
       NODE_ENV: production
+    volumes: *pgbouncer-ca-mount
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:
@@ -46,8 +73,8 @@ services:
     image: ghcr.io/leoalvespak-alt/rota-design-api:${IMAGE_TAG:?IMAGE_TAG must be set}
     environment:
       DATABASE_URL: *design-db-url
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
       DESIGN_MIGRATION_BASELINE_EXISTING: "false"
+    volumes: *pgbouncer-ca-mount
     extra_hosts:
       - host.docker.internal:host-gateway
     command: ["pnpm", "db:migrate"]
@@ -58,17 +85,29 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: *design-db-url
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
-      PROSPECTOR_DATABASE_URL: postgresql://prospector_reader:${PROSPECTOR_READER_PASSWORD}@host.docker.internal:6432/prospector?sslmode=require
+      PROSPECTOR_DATABASE_URL: postgresql://prospector_reader:${PROSPECTOR_READER_PASSWORD}@host.docker.internal:6432/prospector?sslmode=verify-full&sslrootcert=/run/pgbouncer/server.crt
       API_PORT: "3001"
       WEB_ORIGIN: https://design.rotadeataque.com.br
       API_SESSION_SECRET: ${DESIGN_API_SESSION_SECRET}
       DESIGN_API_PASSWORD: ${DESIGN_API_PASSWORD}
       API_AUTH_TOKEN: ${DESIGN_API_AUTH_TOKEN}
+      DEEPSEEK_API_KEY_DESIGN_SYSTEM: ${DEEPSEEK_API_KEY_DESIGN_SYSTEM:?DeepSeek credential required}
       DEEPSEEK_MODEL: deepseek-v4-flash
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      GLM_MODEL_DESIGN_SYSTEM: ${GLM_MODEL_DESIGN_SYSTEM:-z-ai/glm-5.3-flash}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
       RELEASE_ID: ${RELEASE_ID:-production}
       TRUST_PROXY: "true"
       NODE_ENV: production
+    volumes: *pgbouncer-ca-mount
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:

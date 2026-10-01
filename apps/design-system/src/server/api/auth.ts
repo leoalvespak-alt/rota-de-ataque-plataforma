@@ -46,7 +46,7 @@ function verifySession(value: string | undefined): string | null {
 
 export function authenticatePassword(password: string): boolean {
   const expected = process.env.DESIGN_API_PASSWORD
-  return Boolean(expected && expected.length >= 12 && equalSecret(password, expected))
+  return Boolean(expected && expected.length >= 8 && equalSecret(password, expected))
 }
 
 export function getAuthenticatedUserId(c: Context): string {

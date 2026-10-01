@@ -23,7 +23,7 @@ export function CreativeBridgeListener() {
       if (!parsed.success) return
       const payload = parsed.data
       useEditorStore.getState().selectTemplate(payload.template_recommendation ?? 'sq-cover')
-      useEditorStore.getState().replaceElements({ eyebrow: payload.topic, title: payload.hook, subtitle: payload.thesis, redline: true })
+      useEditorStore.getState().replaceElements({ eyebrow: payload.topic, title: payload.hook, subtitle: payload.thesis })
       sessionStorage.setItem('creative-bridge:last-payload', JSON.stringify(payload))
       setPayload(payload)
       setCopy(payload.copy)

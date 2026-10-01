@@ -49,6 +49,8 @@ describe('middleware — Location header', () => {
     ['/prospector/api/health', 'GET'],
     ['/prospector/api/health/live', 'GET'],
     ['/prospector/api/health/ready', 'GET'],
+    ['/prospector/api/webhooks/meta', 'GET'],
+    ['/prospector/api/webhooks/meta', 'POST'],
   ])('libera rota pública %s para validação no handler', async (url, method) => {
     const { default: middleware } = await import('./middleware')
     const { NextRequest } = await import('next/server')
@@ -72,5 +74,14 @@ describe('middleware — Location header', () => {
       { method: 'POST' },
     ))
     expect(response.status).toBe(401)
+  })
+
+  it('não libera subrotas do webhook nem métodos não declarados', async () => {
+    const { default: middleware } = await import('./middleware')
+    const { NextRequest } = await import('next/server')
+    const subroute = await middleware(new NextRequest(new URL('https://design.rotadeataque.com.br/prospector/api/webhooks/meta/extra')))
+    const put = await middleware(new NextRequest(new URL('https://design.rotadeataque.com.br/prospector/api/webhooks/meta'), { method: 'PUT' }))
+    expect(subroute.status).toBe(401)
+    expect(put.status).toBe(401)
   })
 })

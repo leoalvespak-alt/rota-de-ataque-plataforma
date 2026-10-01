@@ -16,7 +16,7 @@ interface TemplateCardProps {
 }
 
 const FORMAT_LABELS = {
-  square: 'Quadrado',
+  square: 'Feed 4:5',
   portrait: 'Story',
   carousel: 'Carrossel',
 } as const

@@ -1,5 +1,5 @@
 import type { TemplateRenderProps } from '../types'
-import { TTitle, TRedline, TPageIndicator } from '../primitives'
+import { TTitle } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { CrSlideControls } from './CrSlide'
 
@@ -7,7 +7,6 @@ export interface CrComparisonElements {
   title: string
   left: string[]
   right: string[]
-  page: string
 }
 
 /**
@@ -29,19 +28,19 @@ export function CrComparisonRender({
       </TTitle>
       {/* Nota de fidelidade: os cards esquerdo/direito são sempre light no original
           (renderCarouselComparison, linhas 2604-2605) — sem regra dark mode, replicado. */}
-      <TRedline />
       <div className="flex flex-1 gap-5">
         <div className="flex-1 rounded-xl p-6" style={{ background: 'var(--light-bg-alt)' }}>
-          <div className="mb-3 font-heading text-[22px] font-bold tracking-[0.08em] text-[#EF4444] uppercase">
+          <div className="mb-3 font-heading text-2xl font-bold tracking-[0.08em] text-[#EF4444] uppercase">
             SEM MÉTODO
           </div>
           <div>
             {left.map((l, i) => (
               <div
                 key={i}
-                className="flex gap-2.5 py-2.5 text-2xl"
+                className="flex gap-2.5 py-2.5"
                 style={{
                   fontFamily: "'IBM Plex Sans', sans-serif",
+                  fontSize: 30,
                   color: 'var(--light-muted)',
                   borderBottom: '1px solid var(--light-border)',
                 }}
@@ -58,16 +57,17 @@ export function CrComparisonRender({
           className="flex-1 rounded-xl border-2 p-6"
           style={{ background: 'var(--light-bg-alt)', borderColor: 'rgba(34,197,94,0.3)' }}
         >
-          <div className="mb-3 font-heading text-[22px] font-bold tracking-[0.08em] text-[#22C55E] uppercase">
+          <div className="mb-3 font-heading text-2xl font-bold tracking-[0.08em] text-[#22C55E] uppercase">
             ROTA DE ATAQUE
           </div>
           <div>
             {right.map((r, i) => (
               <div
                 key={i}
-                className="flex gap-2.5 py-2.5 text-2xl"
+                className="flex gap-2.5 py-2.5"
                 style={{
                   fontFamily: "'IBM Plex Sans', sans-serif",
+                  fontSize: 30,
                   color: 'var(--light-text)',
                   borderBottom: '1px solid var(--light-border)',
                 }}
@@ -80,11 +80,6 @@ export function CrComparisonRender({
             ))}
           </div>
         </div>
-      </div>
-      <div className="flex justify-end">
-        <TPageIndicator fontSize={26}>
-          <EditableText path="page" value={el.page} />
-        </TPageIndicator>
       </div>
     </div>
   )

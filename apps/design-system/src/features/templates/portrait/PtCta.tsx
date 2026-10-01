@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, Hideable } from '../types'
-import { TEyebrow, TTitle, TBody, TRedline } from '../primitives'
+import { TEyebrow, TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { SimpleControls } from '../shared/SimpleControls'
 
@@ -42,7 +42,6 @@ export function PtCtaRender({ elements: el, dark }: TemplateRenderProps<PtCtaEle
           <EditableText path="title" value={el.title} />
         </TTitle>
       </div>
-      <TRedline width={70} height={6} className="relative z-3" />
       <div className="relative z-3">
         <TBody
           fontSize={40}

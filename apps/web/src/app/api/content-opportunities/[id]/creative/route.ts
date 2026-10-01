@@ -20,7 +20,7 @@ async function loadPayload(id: string, pool: ReturnType<typeof createDatabase>['
     return creativeBridgePayloadSchema.parse({
       schema_version: '1.0', content_item_id: row.content_item_id, variant_id: row.variant_id, opportunity_id: row.opportunity_id,
       campaign_id: row.campaign_id, thesis: row.thesis, topic: row.thesis, hook: row.hook, copy: row.payload.caption ?? row.angle ?? row.hook,
-      cta: 'Salve e compartilhe com quem precisa.', format: 'instagram_carousel', slide_structure: row.payload.slides ?? [],
+      cta: 'Faça parte da plataforma pelo link da BIO: plano de estudos, questões, teoria em PDF e muito mais.', format: 'instagram_carousel', slide_structure: row.payload.slides ?? [],
       media_requirements: { aspectRatio: '4:5', reviewRequired: true }, template_recommendation: 'sq-cover', source_references: references,
       correlation_id: randomUUID(),
     })

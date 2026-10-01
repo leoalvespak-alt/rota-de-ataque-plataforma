@@ -7,12 +7,12 @@ import { transitionWorkflow } from './workflow'
 import type { CardDocument } from './documents'
 
 const card: CardDocument = {
-  id: 'card-1', templateId: 'sq-cover', elements: { eyebrow: 'TESTE', title: 'TÍTULO', subtitle: 'Texto', redline: true }, darkMode: false,
+  id: 'card-1', templateId: 'sq-cover', elements: { eyebrow: 'TESTE', title: 'TÍTULO', subtitle: 'Texto' }, darkMode: false,
   decor: { texture: { type: 'none', opacity: 0 }, watermark: { visible: false, text: '', position: 'bottom-right', opacity: 0 }, bgLibraryId: 'none' },
 }
 
 describe('domain contracts', () => {
-  it('expõe contratos seguros para todos os 26 templates', () => {
+  it('expõe contratos seguros para todas as 50 composições', () => {
     expect(getTemplateContract('sq-cover')?.fieldSchema.fields.map((field) => field.name)).toContain('title')
     expect(getTemplateContract('cr-cta')?.variants).toHaveLength(1)
   })

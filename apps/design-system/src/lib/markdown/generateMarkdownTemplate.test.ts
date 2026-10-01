@@ -31,7 +31,7 @@ describe('generateMarkdownTemplate', () => {
     expect(md).toContain('## SLIDE 2')
     expect(md).toContain('## SLIDE 3')
     expect(md).not.toContain('## SLIDE 4')
-    expect(md).toContain('Retrato 1080×1350')
+    expect(md).toContain('Story 1080×1920')
   })
 
   it('10 cards — máximo suportado', () => {
@@ -44,6 +44,11 @@ describe('generateMarkdownTemplate', () => {
   it('formato quadrado aparece no cabeçalho', () => {
     const md = generateMarkdownTemplate({ aspectRatio: 'square', cardCount: 3 })
     expect(md).toContain('Quadrado 1080×1080')
+  })
+
+  it('formato de feed aparece no cabeçalho', () => {
+    const md = generateMarkdownTemplate({ aspectRatio: 'feed', cardCount: 3 })
+    expect(md).toContain('Feed 1080×1350')
   })
 
   it('contém campos **eyebrow**, **title**, **body** em todos os blocos', () => {

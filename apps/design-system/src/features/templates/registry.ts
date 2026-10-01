@@ -1,4 +1,5 @@
 import type { TemplateDefinition } from './types'
+import { NEW_SPEC_TEMPLATES } from './spec/specTemplates'
 
 // ---- SQUARE (12) ----
 import { SqCoverRender, SqCoverControls } from './square/SqCover'
@@ -66,7 +67,7 @@ import {
 
 /**
  * Espelha o array TEMPLATES do Gerador/index.html original (linhas 2013-2043).
- * Mesmos 26 templates, mesmos ids, mesma categoria/filter/format/tags — fonte de
+ * Os 26 IDs legados e 24 composições novas convivem no mesmo registry — fonte de
  * verdade única para galeria, seleção e thumbnails (resolve a dívida D1 da análise:
  * no HTML original 14/26 templates não tinham thumbnail real na galeria porque o
  * dicionário `buildThumbHtml` cobria só 12; aqui a Fase 6 usa o próprio `Render`
@@ -77,9 +78,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-cover',
     name: 'Capa Principal',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal', 'motivacao'],
     defaults: sqCoverDefaults,
     Render: SqCoverRender,
@@ -88,7 +89,6 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
       { name: 'eyebrow', semantic: 'eyebrow', type: 'text', required: false, maxLength: 36, bindable: true },
       { name: 'title', semantic: 'title', type: 'text', required: true, maxLength: 90, bindable: true },
       { name: 'subtitle', semantic: 'subtitle', type: 'text', required: false, maxLength: 160, bindable: true },
-      { name: 'redline', semantic: 'highlight', type: 'boolean', required: false, bindable: false },
     ] },
     capabilities: { image: false, cta: false, list: false, resize: true, styles: ['title', 'subtitle', 'eyebrow', 'highlight'] },
     variants: [{ id: 'default', label: 'Padrão', density: 'medium', hasImage: false, ctaPosition: 'none' }],
@@ -96,9 +96,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-text-image',
     name: 'Texto + Imagem',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: sqTextImageDefaults,
     Render: SqTextImageRender,
@@ -107,9 +107,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-content',
     name: 'Card de Conteúdo',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: sqContentDefaults,
     Render: SqContentRender,
@@ -118,9 +118,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-quote',
     name: 'Citação / Destaque',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['motivacao'],
     defaults: sqQuoteDefaults,
     Render: SqQuoteRender,
@@ -129,9 +129,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-tip',
     name: 'Dica Rápida',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: sqTipDefaults,
     Render: SqTipRender,
@@ -140,9 +140,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-two-images',
     name: '2 Imagens + Texto',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: sqTwoImagesDefaults,
     Render: SqTwoImagesRender,
@@ -151,9 +151,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-steps',
     name: 'Passo a Passo',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: sqStepsDefaults,
     Render: SqStepsRender,
@@ -162,9 +162,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-stats',
     name: 'Estatísticas / Prova Social',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal', 'motivacao'],
     defaults: sqStatsDefaults,
     Render: SqStatsRender,
@@ -173,9 +173,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-profile',
     name: 'Testemunho / Depoimento',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal', 'motivacao'],
     defaults: sqProfileDefaults,
     Render: SqProfileRender,
@@ -184,9 +184,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-tweet',
     name: 'Estilo Tweet',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['motivacao'],
     defaults: sqTweetDefaults,
     Render: SqTweetRender,
@@ -195,9 +195,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-table',
     name: 'Tabela Comparativa',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'tribunal'],
     defaults: sqTableDefaults,
     Render: SqTableRender,
@@ -206,9 +206,9 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
   {
     id: 'sq-checklist',
     name: 'Checklist de Revisão',
-    category: 'Posts Quadrados',
+    category: 'Posts de Feed',
     filter: 'square',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: sqChecklistDefaults,
     Render: SqChecklistRender,
@@ -294,7 +294,7 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'Capa Carrossel',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal', 'motivacao'],
     defaults: crCoverDefaults,
     Render: CrCoverRender,
@@ -303,7 +303,6 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
       { name: 'eyebrow', semantic: 'eyebrow', type: 'text', required: false, maxLength: 36, bindable: true },
       { name: 'title', semantic: 'title', type: 'text', required: true, maxLength: 90, bindable: true },
       { name: 'subtitle', semantic: 'subtitle', type: 'text', required: false, maxLength: 160, bindable: true },
-      { name: 'page', semantic: 'numbering', type: 'text', required: true, maxLength: 12, bindable: false },
     ] },
     capabilities: { image: false, cta: false, list: false, resize: true, styles: ['title', 'subtitle', 'eyebrow', 'caption'] },
     variants: [{ id: 'default', label: 'Padrão', density: 'medium', hasImage: false, ctaPosition: 'none' }],
@@ -313,7 +312,7 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'Capa Escura',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal', 'motivacao'],
     defaults: crCoverDarkDefaults,
     Render: CrCoverDarkRender,
@@ -324,7 +323,7 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'Slide Conteúdo',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: crSlideDefaults,
     Render: CrSlideRender,
@@ -335,7 +334,7 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'Slide Texto + Imagem',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: crTextImageDefaults,
     Render: CrTextImageRender,
@@ -346,7 +345,7 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'Slide Passos / Lista',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal'],
     defaults: crListDefaults,
     Render: CrListRender,
@@ -357,7 +356,7 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'Slide Destaque / Fato',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal', 'motivacao'],
     defaults: crFactDefaults,
     Render: CrFactRender,
@@ -368,7 +367,7 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'Slide Antes vs Depois',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'tribunal'],
     defaults: crComparisonDefaults,
     Render: CrComparisonRender,
@@ -379,12 +378,13 @@ export const TEMPLATES: TemplateDefinition<never>[] = [
     name: 'CTA Final',
     category: 'Carrosséis',
     filter: 'carousel',
-    format: 'square',
+    format: 'feed',
     tags: ['fiscal', 'policial', 'tribunal', 'motivacao'],
     defaults: crCtaDefaults,
     Render: CrCtaRender,
     Controls: CrCtaControls,
   },
+  ...NEW_SPEC_TEMPLATES as unknown as TemplateDefinition<never>[],
 ] as unknown as TemplateDefinition<never>[]
 
 export function getTemplateById(id: string) {

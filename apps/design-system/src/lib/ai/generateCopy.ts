@@ -1,6 +1,12 @@
 import type { AIModel } from '@/stores/useAIStore'
 import { apiFetch } from '@/lib/api/client'
 import { validateCopyResponse } from './validateCopy'
+import {
+  buildSocialCaptionPrompt,
+  buildSocialCaptionSystemPrompt,
+  SOCIAL_COPY_GUIDELINES,
+  type SocialCaptionBrief,
+} from '@/domain/editorial/copyGuidelines'
 
 interface GenerateOptions {
   signal?: AbortSignal
@@ -48,7 +54,8 @@ export async function generateCopy(params: {
 }): Promise<Record<string, string>> {
   const systemPrompt = `Você é um copywriter tático da Rota de Ataque para ${careerDescription(params.career)}.
 Retorne APENAS um objeto JSON válido com as chaves: ${params.availableFields.map((field) => `"${field}"`).join(', ')}.
-Sem markdown ou texto fora do JSON. Valores em português, curtos, diretos e sem motivação vazia.`
+${SOCIAL_COPY_GUIDELINES.map((rule) => `- ${rule}`).join('\n')}
+Sem markdown ou texto fora do JSON. Ajuste o tamanho à função e ao espaço disponível; mantenha a explicação completa o bastante para ser aplicada.`
   const content = await requestCopy({
     model: params.model,
     prompt: `Crie a copy para: ${params.prompt}`,
@@ -100,7 +107,8 @@ export async function generateCarouselCopy(params: {
     prompt: `Markdown de origem:\n\n${params.markdown}`,
     systemPrompt: `Você é um copywriter tático para ${careerDescription(params.career)}.
 Retorne somente um array JSON com exatamente ${params.slides.length} objetos, na ordem indicada.
-Cada objeto pode conter somente os campos de seu slide:\n${slideSpec}`,
+${SOCIAL_COPY_GUIDELINES.map((rule) => `- ${rule}`).join('\n')}
+Escreva o argumento antes de distribuí-lo. A capa abre uma promessa que a sequência cumpre; cada card acrescenta um passo compreensível, sem repetição nem numeração visível. Inclua critério e exemplo suficiente para aplicar a orientação. Cada objeto pode conter somente os campos de seu slide:\n${slideSpec}`,
     maxTokens: 1600,
     options: { signal: params.signal, idempotencyKey: params.idempotencyKey },
   })
@@ -118,4 +126,26 @@ Cada objeto pode conter somente os campos de seu slide:\n${slideSpec}`,
     if (errors.length) throw new Error(`Card ${index + 1} inválido: ${errors.join('; ')}`)
     return validData
   })
+}
+
+export async function generateSocialCaption(params: {
+  model: AIModel
+  brief: SocialCaptionBrief
+  signal?: AbortSignal
+  idempotencyKey?: string
+}): Promise<string> {
+  const content = await requestCopy({
+    model: params.model,
+    prompt: buildSocialCaptionPrompt(params.brief),
+    systemPrompt: buildSocialCaptionSystemPrompt(),
+    maxTokens: 900,
+    options: { signal: params.signal, idempotencyKey: params.idempotencyKey },
+  })
+  const parsed: unknown = JSON.parse(content.replace(/```json|```/g, '').trim())
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || typeof (parsed as { caption?: unknown }).caption !== 'string') {
+    throw new Error('A IA não retornou uma legenda válida.')
+  }
+  const caption = (parsed as { caption: string }).caption.trim()
+  if (!caption) throw new Error('A IA retornou uma legenda vazia.')
+  return caption
 }

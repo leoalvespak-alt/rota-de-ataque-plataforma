@@ -1,5 +1,5 @@
 import type { TemplateRenderProps, TemplateControlsProps, Hideable } from '../types'
-import { TTitle, TBody, TRedline, TPageIndicator } from '../primitives'
+import { TTitle, TBody } from '../primitives'
 import { EditableText } from '../primitives/EditableText'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { ControlSection } from '@/features/editor/ControlPanel/ControlSection'
@@ -10,7 +10,6 @@ export interface CrCtaElements {
   title: string
   body: string
   cta: Hideable<string>
-  page: string
 }
 
 /** Espelha renderCarouselCTA() do Gerador/index.html (linha 2309). */
@@ -37,7 +36,6 @@ export function CrCtaRender({ elements: el, dark }: TemplateRenderProps<CrCtaEle
       <TTitle fontSize={86} dark={dark}>
         <EditableText path="title" value={el.title} />
       </TTitle>
-      <TRedline width={80} />
       <TBody fontSize={36} dark={dark}>
         <EditableText path="body" value={el.body} />
       </TBody>
@@ -49,11 +47,6 @@ export function CrCtaRender({ elements: el, dark }: TemplateRenderProps<CrCtaEle
           <EditableText path="cta" value={el.cta} />
         </div>
       )}
-      <div className="absolute right-22.5 bottom-22.5">
-        <TPageIndicator fontSize={26}>
-          <EditableText path="page" value={el.page} />
-        </TPageIndicator>
-      </div>
     </div>
   )
 }

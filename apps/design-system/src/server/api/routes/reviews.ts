@@ -81,12 +81,20 @@ reviewRoutes.post('/:contentId/rollback/:version', async (c) => {
     .where(eq(contentVersions.contentItemId, id))
   const snapshot = versions.find((item) => item.version === Number(c.req.param('version')))
   if (!snapshot) notFound('Versão')
+  const saved = snapshot.copyData
+  const copyData = (saved.copy_data ?? saved.copyData ?? saved) as Record<string, unknown>
+  const templateId = typeof saved.template_id === 'string'
+    ? saved.template_id
+    : typeof saved.templateId === 'string'
+      ? saved.templateId
+      : typeof snapshot.templateId === 'string'
+        ? snapshot.templateId
+        : null
   const [updated] = await db
     .update(contentItems)
     .set({
-      copyData: snapshot.copyData,
-      templateId: snapshot.templateId,
-      version: snapshot.version,
+      copyData,
+      templateId,
       updatedAt: new Date(),
     })
     .where(eq(contentItems.id, id))

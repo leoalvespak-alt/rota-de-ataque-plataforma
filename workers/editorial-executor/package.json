@@ -1,0 +1,29 @@
+{
+  "name": "@plataforma/worker-editorial-executor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@plataforma/db": "workspace:*",
+    "@plataforma/shared": "workspace:*",
+    "@plataforma/social-publishing": "workspace:*",
+    "@plataforma/task-runtime": "workspace:*",
+    "@plataforma/worker-content-item-orchestrator": "workspace:*",
+    "@plataforma/worker-news-radar": "workspace:*",
+    "tsx": "4.23.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "@types/pg": "8.20.3",
+    "pg": "8.22.0",
+    "typescript": "6.0.2",
+    "vitest": "4.1.10"
+  }
+}

@@ -10,8 +10,10 @@ export interface ApprovedPublication {
 
 export interface PublicationResult {
   channel: SocialChannel
-  status: 'published' | 'failed' | 'disabled'
+  status: 'published' | 'failed' | 'disabled' | 'unknown'
   externalId: string | null
+  /** Container ID to inspect when the publish request may have succeeded without a receipt. */
+  reconciliationId?: string | null
   error: string | null
   attempts: number
 }
@@ -45,6 +47,54 @@ async function requestWithRetry(requester: Requester, input: RequestInfo | URL, 
   return { response, attempts }
 }
 
+async function publishContainerOnce(
+  requester: Requester,
+  input: RequestInfo | URL,
+  init: RequestInit,
+  channel: SocialChannel,
+  containerId: string,
+  priorAttempts: number,
+  failureLabel: string,
+): Promise<PublicationResult> {
+  let response: Response
+  try {
+    response = await requester(input, init)
+  } catch {
+    return {
+      channel,
+      status: 'unknown',
+      externalId: null,
+      reconciliationId: containerId,
+      error: 'Meta publish outcome is unknown; reconcile this container before retrying',
+      attempts: priorAttempts + 1,
+    }
+  }
+
+  const data = await response.json().catch(() => ({})) as { id?: string; error?: { message?: string } }
+  if (response.ok && data.id) {
+    return { channel, status: 'published', externalId: data.id, error: null, attempts: priorAttempts + 1 }
+  }
+
+  if (response.status === 408 || response.status === 429 || response.status >= 500 || response.ok) {
+    return {
+      channel,
+      status: 'unknown',
+      externalId: null,
+      reconciliationId: containerId,
+      error: 'Meta publish outcome is unknown; reconcile this container before retrying',
+      attempts: priorAttempts + 1,
+    }
+  }
+
+  return {
+    channel,
+    status: 'failed',
+    externalId: null,
+    error: data.error?.message ?? `${failureLabel} (${response.status})`,
+    attempts: priorAttempts + 1,
+  }
+}
+
 export class MetaSocialPublisher {
   constructor(
     private readonly config: { accessToken: string; apiVersion: string; baseUrl: string; instagramAccountId?: string; threadsUserId?: string; threadsEnabled: boolean },
@@ -72,11 +122,7 @@ export class MetaSocialPublisher {
     const container = await requestWithRetry(this.requester, `${root}/media`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image_url: publication.imageUrl, caption: publication.caption, access_token: this.config.accessToken }) }, 3)
     const containerData = await container.response.json().catch(() => ({})) as { id?: string; error?: { message?: string } }
     if (!container.response.ok || !containerData.id) return { channel: 'instagram', status: 'failed', externalId: null, error: containerData.error?.message ?? `Meta container failed (${container.response.status})`, attempts: container.attempts }
-    const published = await requestWithRetry(this.requester, `${root}/media_publish`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ creation_id: containerData.id, access_token: this.config.accessToken }) }, 3)
-    const publishedData = await published.response.json().catch(() => ({})) as { id?: string; error?: { message?: string } }
-    return published.response.ok && publishedData.id
-      ? { channel: 'instagram', status: 'published', externalId: publishedData.id, error: null, attempts: container.attempts + published.attempts }
-      : { channel: 'instagram', status: 'failed', externalId: containerData.id, error: publishedData.error?.message ?? `Meta publish failed (${published.response.status})`, attempts: container.attempts + published.attempts }
+    return publishContainerOnce(this.requester, `${root}/media_publish`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ creation_id: containerData.id, access_token: this.config.accessToken }) }, 'instagram', containerData.id, container.attempts, 'Meta publish failed')
   }
 
   private async publishThreads(publication: ApprovedPublication): Promise<PublicationResult> {
@@ -85,17 +131,18 @@ export class MetaSocialPublisher {
     const container = await requestWithRetry(this.requester, `${root}/threads`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ media_type: 'TEXT', text: publication.caption, access_token: this.config.accessToken }) }, 3)
     const containerData = await container.response.json().catch(() => ({})) as { id?: string; error?: { message?: string } }
     if (!container.response.ok || !containerData.id) return { channel: 'threads', status: 'failed', externalId: null, error: containerData.error?.message ?? `Threads container failed (${container.response.status})`, attempts: container.attempts }
-    const published = await requestWithRetry(this.requester, `${root}/threads_publish`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ creation_id: containerData.id, access_token: this.config.accessToken }) }, 3)
-    const publishedData = await published.response.json().catch(() => ({})) as { id?: string; error?: { message?: string } }
-    return published.response.ok && publishedData.id
-      ? { channel: 'threads', status: 'published', externalId: publishedData.id, error: null, attempts: container.attempts + published.attempts }
-      : { channel: 'threads', status: 'failed', externalId: containerData.id, error: publishedData.error?.message ?? `Threads publish failed (${published.response.status})`, attempts: container.attempts + published.attempts }
+    return publishContainerOnce(this.requester, `${root}/threads_publish`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ creation_id: containerData.id, access_token: this.config.accessToken }) }, 'threads', containerData.id, container.attempts, 'Threads publish failed')
   }
 }
 
 export function createMetaSocialPublisher(env: SocialEnvironment = currentEnvironment(), requester: Requester = fetch): MetaSocialPublisher | null {
   if (value(env, 'META_SOCIAL_PUBLISHING_ENABLED') !== 'true') return null
-  const accessToken = value(env, 'META_SOCIAL_ACCESS_TOKEN') ?? value(env, 'META_ACCESS_TOKEN')
+  // Page tokens carry the Instagram/Threads publishing grants; the legacy
+  // Instagram token cannot be parsed by the Graph API for media endpoints.
+  const accessToken = value(env, 'META_PAGE_ACCESS_TOKEN')
+    ?? value(env, 'META_INSTAGRAM_ACCESS_TOKEN')
+    ?? value(env, 'META_SOCIAL_ACCESS_TOKEN')
+    ?? value(env, 'META_ACCESS_TOKEN')
   if (!accessToken) return null
   return new MetaSocialPublisher({
     accessToken,

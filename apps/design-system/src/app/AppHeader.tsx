@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { HeaderPrimaryButton, HeaderSecondaryButton } from './HeaderButtons'
 import { useSeriesExport } from '@/features/series/useSeriesExport'
+import { apiFetch } from '@/lib/api/client'
 import { ProjectSessionControls } from '@/features/projects/ProjectSessionControls'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { NavLink } from 'react-router-dom'
@@ -15,6 +16,7 @@ import {
   Download,
   LayoutDashboard,
   Layers3,
+  LogOut,
   Package,
   PanelLeft,
   PanelRight,
@@ -57,6 +59,14 @@ export function AppHeader({ onDownload, onSave }: { onDownload: () => void; onSa
   const wizardStep = useWizardStore((s) => s.step)
 
   const isInCreateFlow = activeTab === 'create' || activeTab === 'wizard'
+
+  const logout = async () => {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' })
+    } finally {
+      window.location.reload()
+    }
+  }
 
   return (
     <header className="relative z-50 flex min-h-13 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-ui-border bg-ui-panel px-3 py-2 lg:px-5">
@@ -118,6 +128,15 @@ export function AppHeader({ onDownload, onSave }: { onDownload: () => void; onSa
         {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
       </HeaderSecondaryButton>
 
+      <HeaderSecondaryButton
+        title="Sair da sessão"
+        aria-label="Sair da sessão"
+        className="size-9 px-0"
+        onClick={() => void logout()}
+      >
+        <LogOut className="size-4" />
+      </HeaderSecondaryButton>
+
       {activeTab === 'create' && (
         <div className="flex min-w-0 items-center justify-end gap-2">
           <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -133,7 +152,7 @@ export function AppHeader({ onDownload, onSave }: { onDownload: () => void; onSa
                 <div>
                   <div className="text-xs font-semibold">Visualização</div>
                   <div className="mt-0.5 text-[10px] text-ui-muted">
-                    {format === 'portrait' ? 'Retrato 1080×1920' : 'Quadrado 1080×1080'}
+                    {format === 'portrait' ? 'Story 1080×1920' : format === 'feed' ? 'Feed 1080×1350' : 'Quadrado 1080×1080'}
                   </div>
                 </div>
                 <label className="flex items-center justify-between gap-3 text-xs text-ui-muted">

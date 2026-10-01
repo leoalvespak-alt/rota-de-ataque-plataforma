@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { appPath } from "@/lib/base-path";
 import type { IntegrationCapability } from "@/lib/integration-capabilities";
+import { summarizeWorkerHealth } from "./health-state";
 interface Heartbeat {
   worker: string;
   instance_id: string;
@@ -51,6 +52,20 @@ interface TaskSchedule {
   cadence: string;
   enabled: boolean;
 }
+interface TaskRun {
+  id: string;
+  task_name: string;
+  status: string;
+  attempt: number;
+  max_attempts: number;
+  lane: string;
+  priority: number;
+  available_at: string;
+  lease_until: string | null;
+  checkpoint_keys: string;
+  has_error: boolean;
+  created_at: string;
+}
 function RunbookLink({ href, name }: { href: string; name: string }) {
     return <UiRunbookLink href={href} name={name} />;
 }
@@ -64,6 +79,8 @@ export function SystemHealthClient({
   killSwitchEnabled,
   workers,
   taskSchedules = [],
+  taskRuns = [],
+  executorReady = false,
 }: {
   heartbeats: Heartbeat[];
   alerts: Alert[];
@@ -74,22 +91,17 @@ export function SystemHealthClient({
   killSwitchEnabled: boolean;
   workers: WorkerState[];
   taskSchedules?: TaskSchedule[];
+  taskRuns?: TaskRun[];
+  executorReady?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false),
     [stopped, setStopped] = useState(killSwitchEnabled),
-    [message, setMessage] = useState("");
-  const stale = heartbeats.filter(
-      (item) => currentTime - new Date(item.last_beat_at).getTime() > 90_000,
-    ).length,
-    missing = workers.filter(
-      (worker) =>
-        worker.desired &&
-        !heartbeats.some(
-          (heartbeat) =>
-            heartbeat.worker === worker.worker &&
-            currentTime - new Date(heartbeat.last_beat_at).getTime() < 90_000,
-        ),
-    ).length,
+    [message, setMessage] = useState(""),
+    [runtimeTasks, setRuntimeTasks] = useState(taskRuns),
+    [retryingTask, setRetryingTask] = useState<string | null>(null);
+  const workerHealth = summarizeWorkerHealth(heartbeats, workers, currentTime, executorReady),
+    stale = workerHealth.stale,
+    missing = workerHealth.missing,
     critical = alerts.filter((item) => item.severity === "critical").length,
     state =
       critical || stale || missing
@@ -111,6 +123,24 @@ export function SystemHealthClient({
       );
     } else throw new Error("Não foi possível alterar o kill-switch.");
     setConfirming(false);
+  }
+  async function retryTask(runId: string) {
+    setRetryingTask(runId);
+    setMessage("");
+    try {
+    const response = await fetch(appPath(`/api/task-runs/${runId}/retry`), { method: "POST" });
+    if (response.ok) {
+      setRuntimeTasks(current => current.map(task => task.id === runId ? { ...task, status: "accepted", has_error: false } : task));
+      setMessage("Nova tentativa enfileirada com o checkpoint preservado.");
+    } else {
+      const body = await response.json().catch(() => null);
+      setMessage(body?.error === "task_not_failed" ? "A tarefa já não está em estado de falha." : "Não foi possível enfileirar outra tentativa.");
+    }
+    } catch {
+      setMessage("Falha de rede ao solicitar a nova tentativa.");
+    } finally {
+      setRetryingTask(null);
+    }
   }
   return (
     <main className="page">
@@ -134,6 +164,7 @@ export function SystemHealthClient({
         }
       />
       <p role="status">{message}</p>
+        <p className="bridge-inline-notice" role="note">O kill-switch pausa agendas, claims de tarefas e novas entregas da outbox no executor. Tarefas em curso terminam sob o lease; consumidores legados seguem no controle operacional atual.</p>
       <section className="health-summary card">
         <HealthDial value={healthScore} state={state} />
         <div>
@@ -151,7 +182,7 @@ export function SystemHealthClient({
         />
       </section>
       <KpiRow>
-        <KpiCard label="Workers ativos" value={Math.max(0, workers.filter((worker) => worker.desired).length - missing)} />
+        <KpiCard label="Workers ativos" value={workerHealth.active} />
         <KpiCard
           label="Tarefas pendentes"
           value={workers.reduce((sum, item) => sum + item.waiting + item.delayed + item.active, 0)}
@@ -170,6 +201,22 @@ export function SystemHealthClient({
         <h2>Agendas persistidas</h2>
         <p>{taskSchedules.filter((item) => item.enabled).length} ativas · {taskSchedules.filter((item) => !item.enabled).length} pausadas</p>
         {taskSchedules.length ? <ul>{taskSchedules.map((item) => <li key={item.task_name}><StatusBadge status={item.enabled ? "enabled" : "disabled"} /> {item.task_name} · {item.cadence} · destino {item.destination}</li>)}</ul> : <p>Nenhuma agenda registrada no banco.</p>}
+      </section>
+      <section className="card" style={{ marginBottom: "var(--space-6)" }}>
+        <h2>Execuções recentes</h2>
+        {!executorReady ? <p>A fila durável aparece após a migration 0049.</p> : runtimeTasks.length ? (
+          <div className="health-table" role="table">
+            {runtimeTasks.map(task => <div role="row" key={task.id}>
+              <strong>{task.task_name}</strong>
+              <StatusBadge status={task.status} />
+              <span>tentativa {task.attempt}/{task.max_attempts}</span>
+              <span>lane {task.lane} · prioridade {task.priority}</span>
+              <span>{task.has_error ? "falha registrada" : task.checkpoint_keys ? `checkpoint: ${task.checkpoint_keys}` : "sem checkpoint"}</span>
+              <span>{task.lease_until ? `lease até ${new Date(task.lease_until).toLocaleTimeString('pt-BR')}` : new Date(task.available_at).toLocaleString('pt-BR')}</span>
+              {task.status === "failed" && <button type="button" disabled={retryingTask === task.id} onClick={() => void retryTask(task.id)}>{retryingTask === task.id ? "Enfileirando…" : "Tentar novamente"}</button>}
+            </div>)}
+          </div>
+        ) : <p>Nenhuma execução registrada.</p>}
       </section>
       <div className="feature-grid">
         <section className="card panel">
