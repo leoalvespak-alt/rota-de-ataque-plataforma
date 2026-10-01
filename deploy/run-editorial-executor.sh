@@ -8,7 +8,7 @@ COMPOSE_OVERRIDE_FILE="${ROTA_EDITORIAL_COMPOSE_OVERRIDE_FILE:-$ROOT_DIR/docker/
 PROJECT_NAME="${ROTA_EDITORIAL_PROJECT_NAME:-rota-editorial-fase7}"
 TAG="${IMAGE_TAG:-}"
 
-[[ "$TAG" =~ ^[0-9a-f]{24}$ ]] || { echo "FAIL: IMAGE_TAG must be a 24-character immutable release tag" >&2; exit 1; }
+[[ "$TAG" =~ ^[0-9a-fA-F]{7,40}$ ]] || { echo "FAIL: IMAGE_TAG must be an immutable release tag (7-40 hex characters)" >&2; exit 1; }
 [[ -f "$ENV_FILE" ]] || { echo "FAIL: production environment file not found" >&2; exit 1; }
 docker image inspect "ghcr.io/leoalvespak-alt/rota-editorial-executor:$TAG" >/dev/null 2>&1 || {
   echo "FAIL: local editorial executor image is missing for IMAGE_TAG" >&2

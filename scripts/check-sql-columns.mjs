@@ -102,6 +102,17 @@ try {
   const schema = `_sqlcheck_${Date.now()}`
   await client.query(`CREATE SCHEMA "${schema}"`)
   await client.query(`SET search_path TO "${schema}", public`)
+  // Cutover migrations (0047+) assume production roles exist; the disposable
+  // gate runs as superuser, so satisfy the precondition without touching
+  // the migration files themselves.
+  await client.query(`DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'prospector_app') THEN
+      CREATE ROLE prospector_app NOLOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'prospector_reader') THEN
+      CREATE ROLE prospector_reader NOLOGIN;
+    END IF;
+  END $$`)
 
   console.log('Applying migrations...')
   for (const { name, sql } of sortedMigrations()) {
