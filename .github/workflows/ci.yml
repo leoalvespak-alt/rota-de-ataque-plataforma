@@ -93,6 +93,10 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @plataforma/shared build
+      - run: pnpm --filter @plataforma/design-system exec tsx scripts/migrate.ts up
+        env:
+          DATABASE_URL: postgresql://plataforma:plataforma@localhost:5433/plataforma_sqlcheck
+          DESIGN_MIGRATION_SCHEMA: design
       - run: node scripts/check-sql-columns.mjs
         env:
           DATABASE_URL: postgresql://plataforma:plataforma@localhost:5433/plataforma_sqlcheck

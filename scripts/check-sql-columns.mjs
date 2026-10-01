@@ -2,7 +2,7 @@
  * SQL column validation gate.
  *
  * Reads every migration in packages/db/migrations/*.up.sql (in order),
- * applies them to a temporary schema in the target database, then walks
+ * applies them to the disposable target database, then walks
  * apps/web/src and workers/<worker>/src looking for SQL string literals.
  * Each literal is compiled with PREPARE; any 42703 (undefined_column) or
  * 42P01 (undefined_table) causes the script to exit non-zero.
@@ -58,7 +58,7 @@ function extractSqlLiterals(sourceRoot) {
     try { entries = readdirSync(dir, { withFileTypes: true }) } catch { return }
     for (const entry of entries) {
       const full = path.join(dir, entry.name)
-      if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') walk(full)
+      if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules' && entry.name !== 'dist') walk(full)
       else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.js'))) files.push(full)
     }
   }
@@ -99,9 +99,14 @@ const client = await pool.connect()
 let exitCode = 0
 
 try {
-  const schema = `_sqlcheck_${Date.now()}`
-  await client.query(`CREATE SCHEMA "${schema}"`)
-  await client.query(`SET search_path TO "${schema}", public`)
+  // Cutover migrations (0046+) address schema-qualified relations
+  // (public.* moved to editorial.*, design.* moved in), so the gate applies
+  // everything in public on the disposable database instead of an isolated
+  // temp schema. CI provides a fresh service database per run.
+  await client.query(`SET search_path TO public`)
+  await client.query(`CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public`)
+  await client.query(`CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public`)
+  await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public`)
   // Cutover migrations (0047+) assume production roles exist; the disposable
   // gate runs as superuser, so satisfy the precondition without touching
   // the migration files themselves.
@@ -113,6 +118,20 @@ try {
       CREATE ROLE prospector_reader NOLOGIN;
     END IF;
   END $$`)
+  // 0048 also requires the Design transfer marker produced by
+  // transfer-design-data.ts. The gate simulates a post-transfer database;
+  // provide the marker the same way the transfer script defines it.
+  await client.query(`create table if not exists design.design_data_migrations (
+    version text primary key,
+    source_database text not null,
+    copied_tables integer not null,
+    row_counts jsonb not null,
+    copied_at timestamptz not null default now()
+  )`)
+  await client.query(`insert into design.design_data_migrations(version,source_database,copied_tables,row_counts)
+    values('design-data-2026-09-27-v1','gate-simulated',0,'{}') on conflict do nothing`)
+  // migrate.ts bookkeeping table (created by the runner itself in production).
+  await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`)
 
   console.log('Applying migrations...')
   for (const { name, sql } of sortedMigrations()) {
@@ -149,7 +168,7 @@ try {
     }
   }
 
-  await client.query(`DROP SCHEMA "${schema}" CASCADE`)
+  // Nothing to clean up: the disposable database itself is discarded after CI.
 } finally {
   client.release()
   await pool.end()
