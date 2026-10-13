@@ -19,6 +19,11 @@ services:
   prospector-web:
     image: ghcr.io/leoalvespak-alt/prospector-platform-web:${IMAGE_TAG:?IMAGE_TAG must be set}
     restart: unless-stopped
+    # 13-10: mesma VM WSL2 da Plataforma 2.0; teto para nao saturar o host.
+    cpus: 0.5
+    cpu_shares: 256
+    mem_limit: 768m
+    memswap_limit: 1g
     environment:
       DATABASE_URL: *prospector-db-url
       DATABASE_POOL_MAX: "10"
@@ -83,6 +88,11 @@ services:
   design-api:
     image: ghcr.io/leoalvespak-alt/rota-design-api:${IMAGE_TAG:?IMAGE_TAG must be set}
     restart: unless-stopped
+    # 13-10: mesma VM WSL2 da Plataforma 2.0; teto para nao saturar o host.
+    cpus: 0.5
+    cpu_shares: 256
+    mem_limit: 512m
+    memswap_limit: 768m
     environment:
       DATABASE_URL: *design-db-url
       PROSPECTOR_DATABASE_URL: postgresql://prospector_reader:${PROSPECTOR_READER_PASSWORD}@host.docker.internal:6432/prospector?sslmode=verify-full&sslrootcert=/run/pgbouncer/server.crt
@@ -123,6 +133,11 @@ services:
   design-web:
     image: ghcr.io/leoalvespak-alt/rota-design-web:${IMAGE_TAG:?IMAGE_TAG must be set}
     restart: unless-stopped
+    # 13-10: mesma VM WSL2 da Plataforma 2.0; teto para nao saturar o host.
+    cpus: 0.25
+    cpu_shares: 256
+    mem_limit: 128m
+    memswap_limit: 192m
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
       interval: 15s
@@ -133,6 +148,11 @@ services:
   editorial-caddy:
     image: caddy:2.9-alpine
     restart: unless-stopped
+    # 13-10: mesma VM WSL2 da Plataforma 2.0; teto para nao saturar o host.
+    cpus: 0.25
+    cpu_shares: 256
+    mem_limit: 128m
+    memswap_limit: 192m
     ports:
       - "127.0.0.1:8080:80"
     volumes:

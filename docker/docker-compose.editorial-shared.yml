@@ -79,6 +79,11 @@ services:
       context: ..
       dockerfile: workers/editorial-executor/Dockerfile
     restart: "no"
+    # 13-10: mesma VM WSL2 da Plataforma 2.0; teto para nao saturar o host.
+    cpus: 1.0
+    cpu_shares: 256
+    mem_limit: 1536m
+    memswap_limit: 2g
     environment:
       DATABASE_URL: *shared-editorial-db-url
       DATABASE_POOL_MAX: "5"
