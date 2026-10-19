@@ -63,8 +63,12 @@ export async function verifyFactualPreserved(input: {
   model: string
   timeoutMs: number
   signal?: AbortSignal
+  onFailure?: (reason: string) => void
 }): Promise<FactualCheck | null> {
-  if (!input.apiKey.trim() || !input.title.trim()) return null
+  if (!input.apiKey.trim() || !input.title.trim()) {
+    input.onFailure?.('verification_unconfigured')
+    return null
+  }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(new Error('JEV timeout')), input.timeoutMs)
   const onAbort = () => controller.abort()
@@ -94,14 +98,20 @@ export async function verifyFactualPreserved(input: {
         },
       }),
     })
-    if (!response.ok) return null
+    if (!response.ok) {
+      input.onFailure?.(response.status === 402 ? 'insufficient_credits' : `verification_http_${response.status ?? 'error'}`)
+      return null
+    }
     const data = (await response.json().catch(() => null)) as {
       answers?: { trava_factual?: { type?: string; noul?: number } }
       usage?: { cost?: number; input_tokens?: number }
       model?: string
     } | null
     const changed = data?.answers?.trava_factual?.noul
-    if (typeof changed !== 'number' || !Number.isFinite(changed)) return null
+    if (typeof changed !== 'number' || !Number.isFinite(changed) || changed < 0 || changed > 1) {
+      input.onFailure?.('verification_invalid_response')
+      return null
+    }
     return {
       preserved: 1 - changed,
       costUsd: typeof data?.usage?.cost === 'number' ? data.usage.cost : null,
@@ -109,6 +119,7 @@ export async function verifyFactualPreserved(input: {
       inputTokens: typeof data?.usage?.input_tokens === 'number' ? data.usage.input_tokens : null,
     }
   } catch {
+    input.onFailure?.('verification_unavailable')
     return null
   } finally {
     clearTimeout(timer)

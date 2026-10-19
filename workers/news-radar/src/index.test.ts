@@ -257,6 +257,40 @@ describe('news-radar', () => {
     }
   })
 
+  it('does not resume historical PCI pages during the daily incremental collection', async () => {
+    const source = {
+      id: 'pci-daily', name: 'PCI Concursos', url: 'https://www.pciconcursos.com.br/noticias', feed_url: null,
+      source_type: 'html' as const, portal: 'pci-concursos', active: true, etag: 'old', last_modified: null,
+      failure_count: 0, last_fetched_at: null, pagination_cursor: 'https://www.pciconcursos.com.br/noticias/370', pagination_complete: false,
+    }
+    const repo = makeRepo([source])
+    const originalFetch = globalThis.fetch
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(
+      '<a href="/noticias/concurso-pm-novo">Concurso da PM com novo edital</a><a class="page-link" href="/noticias/1">1</a>',
+      { headers: { 'content-type': 'text/html' } },
+    )))
+    globalThis.fetch = fetchMock
+    vi.useFakeTimers()
+    try {
+      const pending = processNewsRadar({ repo, ai: null }, 'incremental')
+      await vi.runAllTimersAsync()
+      await pending
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(repo.upsertNewsItem).toHaveBeenCalledOnce()
+      expect(repo.markSourceFetched).toHaveBeenCalledWith(source.id, 'old', null, null, true)
+    } finally {
+      vi.useRealTimers()
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('reports the whole eligible queue separately from undated stored records', async () => {
+    const repo = makeRepo()
+    repo.getClassificationBacklog = vi.fn().mockResolvedValue({ eligible: 240, undated: 55238, stale: 49, future: 0 })
+    const result = await processNewsRadar({ repo, ai: null }, 'classification-only')
+    expect(result).toMatchObject({ classificationPending: 240, classificationBacklog: { eligible: 240, undated: 55238, stale: 49, future: 0 } })
+  })
+
   it('resumes a stored PCI cursor after a 304 on the root listing', async () => {
     const source = {
       id: 'pci-resume', name: 'PCI Concursos', url: 'https://www.pciconcursos.com.br/noticias', feed_url: null,
@@ -297,7 +331,7 @@ describe('news-radar', () => {
     })
     vi.useFakeTimers()
     try {
-      const pending = processNewsRadar({ repo, ai: null }, 'incremental')
+      const pending = processNewsRadar({ repo, ai: null }, 'full')
       await vi.runAllTimersAsync()
       await pending
       expect(repo.markSourceFetched).toHaveBeenCalledWith(
@@ -321,7 +355,7 @@ describe('news-radar', () => {
       ? Promise.resolve(new Response('<a class="page-link" href="/noticias/1">1</a>', { headers: { 'content-type': 'text/html' } }))
       : Promise.resolve(new Response('blocked', { status: 403 })))
     try {
-      await processNewsRadar({ repo, ai: null }, 'incremental')
+      await processNewsRadar({ repo, ai: null }, 'full')
       expect(repo.incrementSourceFailure).toHaveBeenCalledWith(source.id, 'Source returned HTTP 403')
       expect(repo.markSourceFetched).not.toHaveBeenCalled()
     } finally {
@@ -502,6 +536,32 @@ describe('news-radar', () => {
         expect.anything(),
         expect.objectContaining({ review_status: 'review', auto_content_allowed: false }),
       )
+    } finally {
+      globalThis.fetch = originalFetch
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it('continues classifying but stops JEV requests after exhausted credits in a run', async () => {
+    vi.stubEnv('RADAR_AUTO_CONTENT_ENABLED', 'true')
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key')
+    const ai: AiClassifier = { classify: vi.fn().mockResolvedValue({
+      concurso_alvo: 'PM', categoria: 'PM', estado: 'MG', banca: null, fase_ciclo: 'edital_publicado',
+      relevance_score: 0.95, confidence: 0.93, factuality_score: 0.9,
+      is_police_relevant: true, is_duplicate: false, reason: 'Edital publicado.',
+    }) }
+    const repo = makeRepo([], ['a', 'b'].map(id => ({ id, title: 'PMMG abre concurso com vagas', summary: null, content: null, url: `https://www.pciconcursos.com.br/noticias/${id}`, source_name: 'PCI Concursos' })))
+    const originalFetch = globalThis.fetch
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(null, { status: 402 })))
+    globalThis.fetch = fetchMock
+    try {
+      const result = await processNewsRadar({ repo, ai }, 'classification-only')
+      expect(result).toMatchObject({ classified: 2, autoApproved: 0, verificationDeferred: 2, verificationDeferredReason: 'insufficient_credits' })
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expect(repo.persistClassification).toHaveBeenCalledTimes(2)
+      for (const call of vi.mocked(repo.persistClassification).mock.calls) {
+        expect(call[2]).toMatchObject({ review_status: 'review', auto_content_allowed: false })
+      }
     } finally {
       globalThis.fetch = originalFetch
       vi.unstubAllEnvs()

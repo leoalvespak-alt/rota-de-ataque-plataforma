@@ -55,6 +55,8 @@ export function decryptToken(value: string, key: Buffer) {
   return Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]).toString('utf8')
 }
 
+export { readNewsRadarBacklog, type NewsRadarBacklog } from './news-radar-backlog.js'
+
 export type LlmProviderKind = 'openai-compatible' | 'anthropic' | 'local'
 export interface LlmRuntimeConfig { provider: 'openai-compatible' | 'anthropic'; endpoint?: string; model: string; apiKey?: string; maxOutputTokens: number; temperature: number; source: 'database' | 'environment' }
 

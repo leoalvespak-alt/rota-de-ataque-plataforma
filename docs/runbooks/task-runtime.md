@@ -1,5 +1,24 @@
 # Runtime de tarefas editoriais
 
+## Radar: coleta e fila de classificação, 19/10/2026
+
+Estado medido antes da correção: executor ativo, agenda `news-radar.daily` habilitada às 12h e 20h em `America/Sao_Paulo`; última rodada de 18/10 às 20h concluída. As demais três agendas continuam desabilitadas. Os relatos de quatro agendas desligadas abaixo descrevem os ensaios de setembro.
+
+O PCI acumulou registros porque a coleta incremental retomava o cursor histórico, que chegou à página 370. Dos 55.287 registros não classificados medidos, 55.238 estavam sem publicação conhecida e 49 fora dos últimos 30 dias. Nenhum era elegível naquele instante. O booleano `classified=false` sozinho não representa a fila disponível para IA.
+
+Comportamento corrigido no código:
+
+- `incremental`, usado pela agenda diária, consulta somente a listagem atual do PCI e encerra o cursor histórico. `full` conserva a paginação limitada com cursor para uma execução histórica explícita. Não usar `full` no agendamento diário.
+- Até 30 detalhes por portal são consultados por rodada. O PCI incremental consulta a listagem sem validators condicionais, permitindo completar os detalhes de artigos atuais mesmo sem mudança de listagem. As regras existentes de retry, versões, origem HTTPS e tamanho continuam aplicadas.
+- A IA recebe até 100 itens com data confirmada entre agora menos 30 dias e agora. Sem data, antigos e futuros permanecem armazenados fora dessa seleção. Não substituir publicação por horário de coleta, não apagar registros e não marcar registros como classificados sem uma decisão.
+- `readNewsRadarBacklog` mede toda a fila elegível, registros sem data, antigos e futuros. `classificationPending` no resultado da tarefa passa a medir toda a fila elegível restante, em vez de apenas o lote de até 100. `classificationBacklog` registra as quatro contagens.
+- `verificationDeferred` e `verificationDeferredReason` distinguem a verificação JEV da classificação. HTTP 402 é registrado como `insufficient_credits`; outras respostas falhas geram códigos limitados sem corpo do provider. Após 402, a rodada não faz novas chamadas JEV. A classificação continua e os achados permanecem em revisão humana.
+- Saúde apresenta as contagens, a última coleta concluída e a pendência JEV da última rodada. Radar e fila de revisão exibem os achados mais recentes primeiro; relevância é critério secundário.
+
+O acervo sem data não é uma fila autorizada para chamadas pagas. Artigos atuais podem receber data pela busca de detalhes nas próximas rodadas. Recuperação histórica adicional exige uma execução delimitada e sua própria avaliação de custo. O limite de 30 detalhes pode adiar parte da listagem; o resultado informa `detailsDeferredByLimit`.
+
+Validação de produção desta correção ainda pendente nesta edição. Não houve expurgo ou reclassificação em massa, nem alteração de credenciais ou autorização de publicação.
+
 ## Estado de implantação
 
 O runtime inclui store PostgreSQL, leases, heartbeat, checkpoints, tentativas, recuperação após lease vencido, outbox transacional e supervisor por lanes. Em 28/09/2026, as migrations 0046 a 0053 foram aplicadas no database prospector do PostgreSQL no WSL2, com backup anterior à migration 0053 e ensaio em database descartável. As migrations do Design foram aplicadas no schema design, e 53 tabelas com 62 linhas foram transferidas de rota_design. A release local `0a90325fc16cc3ee15670c4d` está ativa; Design e Prospector usam o banco compartilhado. O unit `rota-editorial-executor.service` está habilitado e ativo, com heartbeat recente. Após o deploy, `NRestarts=0`; os quatro endpoints públicos de saúde responderam 200. O ensaio persistente deixou dois jobs sintéticos concluídos, zero jobs em execução ou na fila, outbox ativa vazia, quatro agendas desativadas e 262 notícias preservadas. A migration 0051 concede ao prospector_app os privilégios do runtime; a 0052 registra versões de detalhes em editorial.news_item_versions e concede grants ao prospector_app e ao prospector_reader; a 0053 guarda o cursor e a conclusão da paginação.

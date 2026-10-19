@@ -1,4 +1,4 @@
-import { createDatabase } from "@plataforma/db";
+import { createDatabase, readNewsRadarBacklog } from "@plataforma/db";
 import { SystemHealthClient } from "./SystemHealthClient";
 import { getIntegrationCapabilities } from "@/lib/integration-capabilities";
 import { QUEUE_NAMES } from "@plataforma/shared/client";
@@ -21,6 +21,11 @@ export default async function SystemHealthPage() {
       FROM task_runs GROUP BY task_name ORDER BY task_name`),
     pool.query<{ task_name: string; destination: string; cadence: string; enabled: boolean }>(`SELECT task_name, destination, cadence, enabled FROM task_schedules ORDER BY task_name`),
   ]);
+  const radarBacklog = await readNewsRadarBacklog(pool);
+  const latestRadar = await pool.query<{ completed_at: string; verification_reason: string | null; classification_reason: string | null }>(
+    `SELECT completed_at, result->>'verificationDeferredReason' verification_reason, result->>'classificationDeferredReason' classification_reason
+     FROM editorial.task_runs WHERE task_name='news-radar.daily' AND status='completed' ORDER BY completed_at DESC LIMIT 1`
+  );
   const executorMigration = await pool.query<{ applied: boolean }>(`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version='0049_durable_task_executor') AS applied`);
   const recentTaskRuns = executorMigration.rows[0]?.applied
     ? await pool.query<{ id: string; task_name: string; status: string; attempt: number; max_attempts: number; lane: string; priority: number; available_at: string; lease_until: string | null; checkpoint_keys: string; has_error: boolean; created_at: string }>(
@@ -37,5 +42,5 @@ export default async function SystemHealthPage() {
     const counts = taskCounts.get(worker);
     return { worker, desired: enabledByDb.get(worker) ?? false, waiting: counts?.waiting ?? 0, delayed: counts?.delayed ?? 0, active: counts?.active ?? 0, failed: counts?.failed ?? 0 };
   });
-  return <SystemHealthClient heartbeats={heartbeats.rows} alerts={alerts.rows} healthScore={Math.round(Number(health.rows[0]?.score ?? 100))} currentTime={Date.now()} canaries={canaries.rows} capabilities={capabilities} killSwitchEnabled={killSwitch.rows[0]?.enabled === true} workers={queueCounts} taskSchedules={taskSchedules.rows} taskRuns={recentTaskRuns.rows} executorReady={executorMigration.rows[0]?.applied === true} />;
+  return <SystemHealthClient heartbeats={heartbeats.rows} alerts={alerts.rows} healthScore={Math.round(Number(health.rows[0]?.score ?? 100))} currentTime={Date.now()} canaries={canaries.rows} capabilities={capabilities} killSwitchEnabled={killSwitch.rows[0]?.enabled === true} workers={queueCounts} taskSchedules={taskSchedules.rows} taskRuns={recentTaskRuns.rows} radarBacklog={radarBacklog} radarLastRun={latestRadar.rows[0] ?? null} executorReady={executorMigration.rows[0]?.applied === true} />;
 }

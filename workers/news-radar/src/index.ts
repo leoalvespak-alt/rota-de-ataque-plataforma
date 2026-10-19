@@ -1,5 +1,6 @@
 import { createWorker, type WorkerSpec } from '@plataforma/shared/worker'
 import type { Pool } from 'pg'
+import type { NewsRadarBacklog } from '@plataforma/db'
 import { gunzipSync } from 'node:zlib'
 import { nextHtmlPaginationUrl, normalizeSourceEntry, parseFeed, parseHtml, parseSitemap, RADAR_SOURCE_DEFINITIONS, type RadarSourceDefinition, type SourceEntry } from './sources.js'
 import { fetchQueridoDiario, QueridoDiarioAdapterError } from './querido-diario.js'
@@ -71,6 +72,7 @@ export interface RadarFinding {
 }
 
 export interface Repository {
+  getClassificationBacklog?(): Promise<NewsRadarBacklog>
   getActiveSources(): Promise<NewsSource[]>
   upsertNewsItem(item: NewsItem): Promise<{ id: string; isNew: boolean; articleDetails: ArticleDetailsTarget | null }>
   saveArticleDetails(itemId: string, result: Extract<ArticleDetailsFetchResult, { ok: true; status: 200 }>): Promise<void>
@@ -351,7 +353,7 @@ function sourcePaginationState(source: NewsSource, result?: unknown) {
   }
 }
 
-export async function fetchRssFeed(source: NewsSource, signal?: AbortSignal): Promise<{
+export async function fetchRssFeed(source: NewsSource, signal?: AbortSignal, recentOnly = false): Promise<{
   entries: SourceEntry[]
   etag: string | null
   lastModified: string | null
@@ -378,16 +380,17 @@ export async function fetchRssFeed(source: NewsSource, signal?: AbortSignal): Pr
   }
   const usesSitemap = sourceDefinition.sitemapUrl !== null
   const requestUrl = sourceDefinition.sitemapUrl ?? source.feed_url ?? source.url
-  const paginatedPciListing = !usesSitemap && source.source_type === 'html' && source.portal === 'pci-concursos'
+  const recentPciListing = recentOnly && source.source_type === 'html' && source.portal === 'pci-concursos'
+  const paginatedPciListing = !recentPciListing && !usesSitemap && source.source_type === 'html' && source.portal === 'pci-concursos'
   const paginationComplete = paginatedPciListing ? source.pagination_complete : true
-  if (!paginatedPciListing || paginationComplete) {
+  if (!recentPciListing && (!paginatedPciListing || paginationComplete)) {
     if (source.etag) headers['If-None-Match'] = source.etag
     if (source.last_modified) headers['If-Modified-Since'] = source.last_modified
   }
 
   let firstPageUrl = requestUrl
   let response: Response
-  if (paginatedPciListing) {
+  if (paginatedPciListing || recentPciListing) {
     const firstPage = await fetchPaginatedHtmlPage(requestUrl, sourceDefinition, signal, headers)
     response = firstPage.response
     firstPageUrl = firstPage.finalUrl.href
@@ -420,7 +423,7 @@ export async function fetchRssFeed(source: NewsSource, signal?: AbortSignal): Pr
     : responseBytes
   if (decodedBytes.byteLength > MAX_SOURCE_RESPONSE_BYTES) throw new Error('Decoded source response exceeded the configured byte limit')
   const body = new TextDecoder('utf-8').decode(decodedBytes)
-  if (paginatedPciListing && response.status !== 304) {
+  if ((paginatedPciListing || recentPciListing) && response.status !== 304) {
     const contentType = response.headers.get('content-type') ?? ''
     if (!/^text\/html(?:;|$)|^application\/xhtml\+xml(?:;|$)/i.test(contentType)) {
       throw new Error('Source listing response is not HTML')
@@ -496,7 +499,7 @@ export async function fetchRssFeed(source: NewsSource, signal?: AbortSignal): Pr
   }
 }
 
-export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' | 'full' | 'classification-only'): Promise<{ fetched: number; newItems: number; detailsFetched: number; detailsNotModified: number; detailsFailed: number; detailsDeferredByLimit: number; classified: number; findings: number; autoApproved: number; classificationPending: number; classificationDeferredReason: string | null }> {
+export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' | 'full' | 'classification-only'): Promise<{ fetched: number; newItems: number; detailsFetched: number; detailsNotModified: number; detailsFailed: number; detailsDeferredByLimit: number; classified: number; findings: number; autoApproved: number; classificationPending: number; classificationBacklog: NewsRadarBacklog | null; classificationDeferredReason: string | null; verificationDeferred: number; verificationDeferredReason: string | null }> {
   deps.signal?.throwIfAborted()
   const sources = mode === 'classification-only' ? [] : await deps.repo.getActiveSources()
   let fetched = 0, newItems = 0
@@ -515,7 +518,7 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
       }
       const fetchedSource = source.source_type === 'api'
         ? await fetchQueridoDiario(source, deps.signal)
-        : await fetchRssFeed(source, deps.signal)
+        : await fetchRssFeed(source, deps.signal, mode === 'incremental')
       const { entries, etag, lastModified, notModified } = fetchedSource
       const pagination = sourcePaginationState(source, fetchedSource)
       if (notModified) {
@@ -543,7 +546,7 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
 
         const detailSource = RADAR_SOURCE_DEFINITIONS.some(definition => definition.portal === source.portal && definition.sourceType === 'html')
         if (!detailSource || !result.articleDetails) continue
-        if (articleDetailAttempts >= 10) {
+        if (articleDetailAttempts >= 30) {
           detailsDeferredByLimit++
           continue
         }
@@ -579,6 +582,8 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
 
   const unclassified = await deps.repo.getUnclassifiedItems(100)
   let classified = 0, findings = 0, autoApproved = 0
+  let verificationDeferred = 0
+  let verificationDeferredReason: string | null = null
   let classificationDeferredReason: string | null = deps.ai ? null : 'classifier_unavailable'
   const autoConfig = loadJevAutoConfig()
   const jevApiKey = process.env.OPENROUTER_API_KEY?.trim() ?? ''
@@ -627,14 +632,16 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
           autoConfig,
         )
       ) {
-        const check = await verifyFactualPreserved({
+        const check = verificationDeferredReason === 'insufficient_credits' ? null : await verifyFactualPreserved({
           title: item.title,
           summary: item.summary ?? item.content,
           apiKey: jevApiKey,
           model: autoConfig.model,
           timeoutMs: autoConfig.timeoutMs,
           signal: deps.signal ?? undefined,
+          onFailure: reason => { verificationDeferredReason = reason },
         })
+        if (!check) verificationDeferred++
         if (check && check.preserved >= autoConfig.minPreserved) {
           finding.review_status = 'approved'
           finding.auto_content_allowed = true
@@ -653,5 +660,6 @@ export async function processNewsRadar(deps: NewsRadarDeps, mode: 'incremental' 
     }
   }
 
-  return { fetched, newItems, detailsFetched, detailsNotModified, detailsFailed, detailsDeferredByLimit, classified, findings, autoApproved, classificationPending: unclassified.length - classified, classificationDeferredReason }
+  const classificationBacklog = await deps.repo.getClassificationBacklog?.() ?? null
+  return { fetched, newItems, detailsFetched, detailsNotModified, detailsFailed, detailsDeferredByLimit, classified, findings, autoApproved, classificationPending: classificationBacklog?.eligible ?? unclassified.length - classified, classificationBacklog, classificationDeferredReason, verificationDeferred, verificationDeferredReason }
 }

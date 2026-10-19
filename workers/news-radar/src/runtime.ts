@@ -1,4 +1,4 @@
-import { loadLlmRuntimeConfig } from '@plataforma/db'
+import { loadLlmRuntimeConfig, readNewsRadarBacklog } from '@plataforma/db'
 import { logger, reportIaUsage } from '@plataforma/shared'
 import type { Pool } from 'pg'
 import type { TaskHandler } from '@plataforma/task-runtime'
@@ -214,6 +214,7 @@ export function createNewsRadarTaskHandler(pool: Pool): TaskHandler {
        FROM news_items ni JOIN news_sources ns ON ns.id = ni.source_id
        WHERE ni.classified = false
          AND ni.published_at >= now() - interval '30 days'
+         AND ni.published_at <= now()
        ORDER BY ni.published_at DESC, ni.fetched_at DESC LIMIT $1`,
       [limit]
     )
@@ -223,6 +224,8 @@ export function createNewsRadarTaskHandler(pool: Pool): TaskHandler {
   async persistClassification(itemId, classification, finding) {
     return persistNewsClassification(pool, itemId, classification, finding)
   },
+
+  getClassificationBacklog: () => readNewsRadarBacklog(pool),
 
   }
 

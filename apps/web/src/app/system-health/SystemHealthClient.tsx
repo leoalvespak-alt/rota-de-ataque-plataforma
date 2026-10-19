@@ -15,6 +15,7 @@ import { useState } from "react";
 import { appPath } from "@/lib/base-path";
 import type { IntegrationCapability } from "@/lib/integration-capabilities";
 import { summarizeWorkerHealth } from "./health-state";
+import type { NewsRadarBacklog } from '@plataforma/db';
 interface Heartbeat {
   worker: string;
   instance_id: string;
@@ -81,6 +82,8 @@ export function SystemHealthClient({
   taskSchedules = [],
   taskRuns = [],
   executorReady = false,
+  radarBacklog,
+  radarLastRun,
 }: {
   heartbeats: Heartbeat[];
   alerts: Alert[];
@@ -93,6 +96,8 @@ export function SystemHealthClient({
   taskSchedules?: TaskSchedule[];
   taskRuns?: TaskRun[];
   executorReady?: boolean;
+  radarBacklog?: NewsRadarBacklog;
+  radarLastRun?: { completed_at: string; verification_reason: string | null; classification_reason: string | null } | null;
 }) {
   const [confirming, setConfirming] = useState(false),
     [stopped, setStopped] = useState(killSwitchEnabled),
@@ -193,6 +198,19 @@ export function SystemHealthClient({
         />
         <KpiCard label="Alertas críticos" value={critical} />
       </KpiRow>
+      {radarBacklog && <section className="card" style={{ marginTop: "var(--space-6)", marginBottom: "var(--space-6)" }}>
+        <h2>Coleta e classificação do Radar</h2>
+        <p>{radarLastRun ? `Última coleta concluída: ${new Date(radarLastRun.completed_at).toLocaleString('pt-BR')}.` : 'Nenhuma coleta concluída.'} Coletas diárias às 12h e 20h, horário de Brasília.</p>
+        <KpiRow>
+          <KpiCard label="Fila elegível para IA" value={radarBacklog.eligible} />
+          <KpiCard label="Armazenadas sem data" value={radarBacklog.undated} />
+          <KpiCard label="Fora da janela de 30 dias" value={radarBacklog.stale} />
+          <KpiCard label="Com data futura" value={radarBacklog.future} />
+        </KpiRow>
+        <p>A IA recebe até 100 notícias por rodada, com publicação confirmada nos últimos 30 dias. Registros sem data e antigos ficam preservados fora dessa fila. A coleta diária do PCI consulta somente a listagem atual, sem percorrer o arquivo histórico.</p>
+        {radarLastRun?.classification_reason && <p role="status">Classificação adiada: {radarLastRun.classification_reason === 'classifier_unavailable' ? 'classificador indisponível' : 'falha no classificador'}. Os itens elegíveis continuam na fila.</p>}
+        {radarLastRun?.verification_reason && <p role="status">{radarLastRun.verification_reason === 'insufficient_credits' ? 'JEV sem créditos.' : 'Verificação JEV pendente.'} Os achados permanecem para revisão humana.</p>}
+      </section>}
       <section className="card" style={{ marginTop: "var(--space-6)", marginBottom: "var(--space-6)" }}>
         <h2>Falhas operacionais recentes</h2>
         {alerts.length ? <ul>{alerts.slice(0, 10).map(alert => <li key={alert.id}><StatusBadge status={alert.severity} /> {alert.kind} · {new Date(alert.created_at).toLocaleString('pt-BR')}</li>)}</ul> : <p>Nenhuma falha persistida nas fontes de alerta.</p>}

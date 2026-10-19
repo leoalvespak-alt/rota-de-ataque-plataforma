@@ -1,5 +1,11 @@
 # Arquitetura editorial vigente
 
+## Correção do Radar em 19/10/2026
+
+O [runbook de tarefas editoriais](runbooks/task-runtime.md#radar-coleta-e-fila-de-classificação-19102026) descreve a correção do acúmulo histórico do PCI. A coleta diária incremental consulta apenas a listagem atual; varredura histórica exige modo `full` explícito. O acervo sem data fica preservado fora da seleção para IA. A fila elegível contém somente notícias com publicação confirmada nos últimos 30 dias, excluindo datas futuras, e é contada separadamente do acervo. O DeepSeek classifica; o JEV é uma verificação posterior para aprovação automática e sua falha conserva a revisão humana.
+
+Na medição de 19/10, o executor e a agenda do Radar estavam ativos, com coletas às 12h e 20h em Brasília e última rodada concluída em 18/10 às 20h. As outras três agendas estavam desligadas. As referências a quatro agendas desativadas nas seções de implantação abaixo descrevem o estado inicial de setembro. O aceite de produção da nova correção será registrado no runbook após o deploy.
+
 ## Runtime local
 
 - Caddy é a única entrada HTTP local para o stack editorial.

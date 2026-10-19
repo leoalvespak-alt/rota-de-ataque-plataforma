@@ -8,6 +8,7 @@ import type { TaskSqlPool } from '@plataforma/task-runtime/postgres-store'
 import { EditorialTaskSupervisor } from '@plataforma/task-runtime/supervisor'
 import { createNewsRadarTaskHandler } from '@plataforma/worker-news-radar/runtime'
 import { createInboxRetentionCleanupTaskHandler } from './inbox.js'
+import { readNewsRadarBacklog } from '@plataforma/db'
 
 const testDatabaseUrl = process.env.TASK_RUNTIME_TEST_DATABASE_URL
 const integration = describe.skipIf(!testDatabaseUrl)
@@ -338,6 +339,14 @@ integration('PostgreSQL editorial task executor', () => {
       expect(source.rows[0]).toMatchObject({ etag: '"radar-local-fixture-v1"' })
       expect(source.rows[0]?.last_fetched_at).toBeInstanceOf(Date)
       expect(outbox.rows[0]).toMatchObject({ event_type: 'news-radar.completed', status: 'pending' })
+      await pool.query(`INSERT INTO public.news_items(source_id,external_id,url,url_hash,title,published_at,classified)
+        SELECT $1::uuid,kind,kind,kind,kind,publication,done FROM (VALUES
+          ('undated',NULL::timestamptz,false),
+          ('old',now()-interval '31 days',false),
+          ('future',now()+interval '1 day',false),
+          ('already-classified',now(),true)
+        ) fixture(kind,publication,done)`, [sourceId])
+      await expect(readNewsRadarBacklog(pool)).resolves.toEqual({ eligible: 1, undated: 1, stale: 1, future: 1 })
     } finally {
       await supervisor.stop()
       globalThis.fetch = previousFetch

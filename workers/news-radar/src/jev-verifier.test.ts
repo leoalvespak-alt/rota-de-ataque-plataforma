@@ -77,4 +77,12 @@ describe('jev-verifier', () => {
       minPreserved: 0.8,
     })
   })
+
+  it('reports exhausted credits without approving the item or exposing the response body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('private provider error', { status: 402 })))
+    const onFailure = vi.fn()
+    const check = await verifyFactualPreserved({ title: 'Teste', summary: null, apiKey: 'key', model: 'm', timeoutMs: 5000, onFailure })
+    expect(check).toBeNull()
+    expect(onFailure).toHaveBeenCalledWith('insufficient_credits')
+  })
 })
