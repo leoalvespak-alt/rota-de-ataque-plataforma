@@ -200,7 +200,7 @@ export function SystemHealthClient({
       </KpiRow>
       {radarBacklog && <section className="card" style={{ marginTop: "var(--space-6)", marginBottom: "var(--space-6)" }}>
         <h2>Coleta e classificação do Radar</h2>
-        <p>{radarLastRun ? `Última coleta concluída: ${new Date(radarLastRun.completed_at).toLocaleString('pt-BR')}.` : 'Nenhuma coleta concluída.'} Coletas diárias às 12h e 20h, horário de Brasília.</p>
+        <p>{radarLastRun ? `Última coleta concluída: ${new Date(radarLastRun.completed_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.` : 'Nenhuma coleta concluída.'} Coletas diárias às 12h e 20h, horário de Brasília.</p>
         <KpiRow>
           <KpiCard label="Fila elegível para IA" value={radarBacklog.eligible} />
           <KpiCard label="Armazenadas sem data" value={radarBacklog.undated} />

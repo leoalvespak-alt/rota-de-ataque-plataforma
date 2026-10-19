@@ -55,7 +55,23 @@ export function decryptToken(value: string, key: Buffer) {
   return Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]).toString('utf8')
 }
 
-export { readNewsRadarBacklog, type NewsRadarBacklog } from './news-radar-backlog.js'
+export interface NewsRadarBacklog {
+  eligible: number
+  undated: number
+  stale: number
+  future: number
+}
+
+// Publication dates remain distinct from fetch dates for historical records.
+export async function readNewsRadarBacklog(pool: Pick<Pool, 'query'>): Promise<NewsRadarBacklog> {
+  const result = await pool.query<NewsRadarBacklog>(`SELECT
+    count(*) FILTER (WHERE published_at >= now() - interval '30 days' AND published_at <= now())::int eligible,
+    count(*) FILTER (WHERE published_at IS NULL)::int undated,
+    count(*) FILTER (WHERE published_at < now() - interval '30 days')::int stale,
+    count(*) FILTER (WHERE published_at > now())::int future
+    FROM public.news_items WHERE classified = false`)
+  return result.rows[0]!
+}
 
 export type LlmProviderKind = 'openai-compatible' | 'anthropic' | 'local'
 export interface LlmRuntimeConfig { provider: 'openai-compatible' | 'anthropic'; endpoint?: string; model: string; apiKey?: string; maxOutputTokens: number; temperature: number; source: 'database' | 'environment' }
