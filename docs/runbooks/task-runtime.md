@@ -17,7 +17,15 @@ Comportamento corrigido no código:
 
 O acervo sem data não é uma fila autorizada para chamadas pagas. Artigos atuais podem receber data pela busca de detalhes nas próximas rodadas. Recuperação histórica adicional exige uma execução delimitada e sua própria avaliação de custo. O limite de 30 detalhes pode adiar parte da listagem; o resultado informa `detailsDeferredByLimit`.
 
-Validação de produção desta correção ainda pendente nesta edição. Não houve expurgo ou reclassificação em massa, nem alteração de credenciais ou autorização de publicação.
+Em 19/10, após pedido explícito do operador para excluir o acervo, foram removidas em transação 55.287 notícias não classificadas: 55.238 sem data e 49 com publicação anterior a 30 dias. O predicado foi `classified=false AND (published_at IS NULL OR published_at < now()-interval '30 days')`. O preflight confirmou zero tarefas em execução e zero achados vinculados aos alvos. A transação abortaria se a população mudasse ou se surgisse vínculo com achado. Permaneceram 1.698 notícias classificadas, zero notícias pendentes e os 107 achados existentes.
+
+Backup anterior ao expurgo: `/var/backups/rota-editorial/pre-radar-history-delete-20261019T041802Z/prospector.dump`, diretório 0700 e dump 0600. `pg_restore --list` reconheceu o arquivo. SHA-256: `12309b96709748cbed85a478a9775cf1ec7404e97a32ab33e0cd586f3603bdda`. O dump completo permite recuperação administrativa; um restore deste arquivo específico ainda não foi ensaiado. Não houve reclassificação em massa, alteração de credenciais ou autorização de publicação.
+
+O código corrigido está no commit `1a327c2`. O CI de qualidade, regressão do Design e migrations passou; o pipeline de imagens e deploy também concluiu com sucesso. Prospector web, Design web/API e executor receberam essa tag. O executor foi conferido `active/running`, `Result=success`, `NRestarts=0`, com um container da nova imagem. O readiness público/local do Prospector confirmou banco e migrations.
+
+Reteste em produção: Saúde apresentou zero nas quatro categorias; Radar e a aba Radar da revisão colocaram o achado de 18/10 às 20h acima dos itens de 16/10 e 15/10. As telas foram examinadas no Edge e o Console não registrou erros ou avisos na amostra. O canário dentro da imagem ativa consultou o PCI sem persistência ou IA paga: uma página, 170 entradas atuais, cursor histórico nulo e paginação encerrada. A leitura do banco retornou `eligible=0`, `undated=0`, `stale=0`, `future=0`. O controle de JEV sem créditos foi coberto por testes HTTP 402, preservando revisão humana e classificação, sem nova chamada real ao provider.
+
+Validação local: 55 testes do Radar, 18 testes do executor com PostgreSQL descartável e 12 contratos de migrations passaram; o script confirmou a remoção dos objetos descartáveis. Typechecks do Radar e do Prospector web passaram. O primeiro build revelou uma exportação `.js` incompatível com o consumidor Next; a consulta foi movida para o entrypoint existente do pacote DB e a repetição no CI passou. O hook de push do Design ficou sem progresso no Windows e foi dispensado de forma pontual; a suíte equivalente passou no CI. O restore do dump específico e a observação de uma próxima rodada agendada continuam pendentes; nenhuma coleta produtiva adicional, publicação ou reclassificação em massa foi disparada pelo reteste.
 
 ## Estado de implantação
 
